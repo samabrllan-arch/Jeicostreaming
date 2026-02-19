@@ -1295,8 +1295,6 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
     user-select: none;
 }
 </style>
-
-
 </head>
 <body>
 
@@ -1426,6 +1424,10 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
         <li class="nav-item" onclick="nav('codigos', this)">
             <span class="material-icons-round">vpn_key</span>
             <span>CÓDIGOS</span>
+        </li>
+        <li class="nav-item" onclick="nav('ranking', this)">
+            <span class="material-icons-round">emoji_events</span>
+            <span>RANKING</span>
         </li>
         
         <li class="nav-item logout-link" onclick="logout()" style="margin-top: auto;">
@@ -4156,444 +4158,6 @@ const styleSheetCodigos = document.createElement("style");
 styleSheetCodigos.innerText = codigosStyles;
 document.head.appendChild(styleSheetCodigos);
 </script>
-<script src="ranking.js">/**
- * ===============================================================
- * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
- * ===============================================================
- */
-
-let cargandoRanking = false;
-
-/**
- * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
- */
-async function cargarRanking() {
-    if (cargandoRanking) return;
-    cargandoRanking = true;
-
-    // --- PREPARAR CONTENEDOR ---
-    const mainSection = document.getElementById('sec-ranking');
-    let container = document.getElementById('ranking-content');
-    
-    if (!container && mainSection) {
-        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
-        container = document.getElementById('ranking-content');
-    }
-    
-    if (!container) {
-        cargandoRanking = false;
-        return; 
-    }
-
-    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
-    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
-    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
-    const cacheRanking = localStorage.getItem('jeico_ranking_data');
-    
-    // Verificamos si tenemos datos y si corresponden al día de hoy
-    const datosSonDeHoy = (fechaGuardada === hoy);
-
-    if (cacheRanking && datosSonDeHoy) {
-        console.log("Ranking: Cargando desde caché (Datos de hoy).");
-        const datos = JSON.parse(cacheRanking);
-        renderRankingUI(container, datos.top10, datos.miRanking);
-        cargandoRanking = false;
-        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
-    }
-
-    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
-    
-    // Loader solo si vamos a buscar datos nuevos
-    container.innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
-            <div class="spinner"></div>
-            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
-        </div>
-    `;
-
-    try {
-        const u = localStorage.getItem('jeico_user');
-        const t = localStorage.getItem('jeico_token');
-
-        if (!u || !t) {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
-            cargandoRanking = false;
-            return;
-        }
-
-        const res = await apiCall({ 
-            accion: 'getRanking', 
-            usuario: u, 
-            token: t 
-        });
-
-        if (res && res.success) {
-            // Guardamos datos y LA FECHA DE HOY
-            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
-            localStorage.setItem('jeico_ranking_date', hoy);
-            
-            renderRankingUI(container, res.top10, res.miRanking);
-        } else {
-            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
-            if (cacheRanking) {
-                const datosViejos = JSON.parse(cacheRanking);
-                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
-            } else {
-                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
-            }
-        }
-
-    } catch (error) {
-        if (cacheRanking) {
-            const datosViejos = JSON.parse(cacheRanking);
-            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-        } else {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
-        }
-    } finally {
-        cargandoRanking = false;
-    }
-}
-
-/**
- * 2. RENDERIZADO UI: Construir la interfaz épica
- */
-function renderRankingUI(container, top10, miData) {
-    container.innerHTML = "";
-
-    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
-    const divMiStats = document.createElement('div');
-    divMiStats.className = 'my-stats-card';
-    
-    // Determinar mensaje según posición
-    let mensajeAnimo = "¡Sigue comprando para subir!";
-    let iconoPosicion = "trending_up";
-    let clasePosicion = "";
-
-    if (miData.posicion === 1) { 
-        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
-        iconoPosicion = "emoji_events";
-        clasePosicion = "rank-1-text";
-    } else if (miData.posicion > 0 && miData.posicion <= 3) {
-        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
-        iconoPosicion = "military_tech";
-    } else if (miData.posicion > 0 && miData.posicion <= 10) {
-        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
-        iconoPosicion = "star";
-    } else if (miData.posicion === -1) {
-        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
-    }
-
-    divMiStats.innerHTML = `
-        <div class="my-stats-header">
-            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
-            <span>TU RENDIMIENTO</span>
-        </div>
-        <div class="my-stats-grid">
-            <div class="stat-item">
-                <div class="stat-label">POSICIÓN GLOBAL</div>
-                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
-            </div>
-            <div class="stat-item border-left">
-                <div class="stat-label">CUENTAS COMPRADAS</div>
-                <div class="stat-value text-accent">${miData.compras}</div>
-            </div>
-        </div>
-        <div class="my-stats-footer">
-            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
-        </div>
-    `;
-    container.appendChild(divMiStats);
-
-    // --- B. LISTA DEL TOP 10 ---
-    const divLeaderboard = document.createElement('div');
-    divLeaderboard.className = 'leaderboard-container';
-    
-    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
-
-    if(top10.length === 0) {
-        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
-    } else {
-        top10.forEach((user, index) => {
-            const rank = index + 1;
-            let rankClass = "rank-item";
-            let iconHtml = `<span class="rank-number">#${rank}</span>`;
-            
-            // Estilos especiales para el podio
-            if (rank === 1) {
-                rankClass += " rank-gold";
-                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
-            } else if (rank === 2) {
-                rankClass += " rank-silver";
-                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
-            } else if (rank === 3) {
-                rankClass += " rank-bronze";
-                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
-            }
-
-            // Resaltar si soy yo
-            if (user.usuario === miData.usuario) {
-                rankClass += " its-me";
-            }
-
-            htmlList += `
-                <div class="${rankClass}">
-                    <div class="rank-left">
-                        ${iconHtml}
-                        <span class="rank-name">${user.usuario}</span>
-                    </div>
-                    <div class="rank-right">
-                        <span class="rank-score">${user.compras}</span>
-                        <span class="rank-label">Ventas</span>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    htmlList += `</div>`;
-    divLeaderboard.innerHTML = htmlList;
-    container.appendChild(divLeaderboard);
-
-    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
-    const divDisclaimer = document.createElement('div');
-    divDisclaimer.className = 'ranking-disclaimer';
-    divDisclaimer.innerHTML = `
-        <span class="material-icons-round" style="font-size: 1rem;">update</span>
-        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
-    `;
-    container.appendChild(divDisclaimer);
-}
-
-/**
- * ===============================================================
- * ESTILOS CSS PREMIUM (INYECTADOS)
- * ===============================================================
- */
-const rankingStyles = `
-    .ranking-wrapper {
-        padding: 10px;
-        max-width: 800px;
-        margin: 0 auto;
-        animation: fadeIn 0.5s ease;
-    }
-
-    /* --- DISCLAIMER --- */
-    .ranking-disclaimer {
-        margin-top: 20px;
-        text-align: center;
-        font-size: 0.75rem;
-        color: #666;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px dashed #333;
-    }
-
-    /* --- MI TARJETA --- */
-    .my-stats-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-        border: 1px solid #333;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    /* Efecto de brillo superior */
-    .my-stats-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 4px;
-        background: linear-gradient(90deg, var(--accent), #b721ff);
-    }
-
-    .my-stats-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        font-size: 1.2rem;
-        margin-bottom: 20px;
-        opacity: 0.9;
-    }
-
-    .my-stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .stat-item {
-        text-align: center;
-    }
-    
-    .border-left {
-        border-left: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .stat-label {
-        color: #666;
-        font-size: 0.7rem;
-        font-weight: 800;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
-    }
-
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        color: #fff;
-        line-height: 1;
-    }
-    
-    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
-    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
-
-    .my-stats-footer {
-        margin-top: 20px;
-        background: rgba(255,255,255,0.03);
-        padding: 10px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 0.85rem;
-        color: #aaa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    /* --- LEADERBOARD --- */
-    .leaderboard-container {
-        background: #000;
-        border-radius: 16px;
-        border: 1px solid #222;
-        padding: 20px;
-    }
-
-    .leaderboard-title {
-        text-align: center;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        margin-top: 0;
-        margin-bottom: 20px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        background: -webkit-linear-gradient(#fff, #888);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .leaderboard-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .rank-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #111;
-        padding: 12px 15px;
-        border-radius: 10px;
-        border: 1px solid transparent;
-        transition: transform 0.2s;
-    }
-    
-    .rank-item:hover {
-        transform: translateX(5px);
-        background: #161616;
-    }
-
-    .rank-left { display: flex; align-items: center; gap: 15px; }
-    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-
-    .rank-number {
-        font-family: 'Righteous', sans-serif;
-        color: #444;
-        font-size: 1.2rem;
-        width: 30px;
-        text-align: center;
-    }
-
-    .rank-name {
-        font-weight: 600;
-        color: #eee;
-        font-size: 0.95rem;
-    }
-
-    .rank-score {
-        font-weight: 800;
-        color: #fff;
-        font-size: 1.1rem;
-    }
-    
-    .rank-label {
-        font-size: 0.6rem;
-        color: #555;
-        text-transform: uppercase;
-        font-weight: 700;
-    }
-
-    /* --- MEDALLAS Y COLORES --- */
-    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
-    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
-    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
-    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
-
-    /* Estilos de fila Top 3 */
-    .rank-gold {
-        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
-        border: 1px solid rgba(255,215,0,0.3);
-    }
-    .rank-silver {
-        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
-        border: 1px solid rgba(192,192,192,0.2);
-    }
-    .rank-bronze {
-        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
-        border: 1px solid rgba(205,127,50,0.2);
-    }
-
-    /* Highlight del propio usuario */
-    .its-me {
-        border: 1px solid var(--accent);
-        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
-    }
-    .its-me .rank-name { color: var(--accent); }
-`;
-
-const styleSheetRanking = document.createElement("style");
-styleSheetRanking.innerText = rankingStyles;
-document.head.appendChild(styleSheetRanking);
-
-// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
-document.addEventListener('DOMContentLoaded', () => {
-    const secRanking = document.getElementById('sec-ranking');
-    
-    if (secRanking) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    if (!secRanking.classList.contains('hidden')) {
-                        cargarRanking();
-                    }
-                }
-            });
-        });
-        observer.observe(secRanking, { attributes: true });
-    }
-});</script>
 <script id="script-datos.js">
     /**
  * ===============================================================
@@ -5529,7 +5093,443 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 </script>
+<script id="ranking.js">/**
+ * ===============================================================
+ * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
+ * ===============================================================
+ */
 
+let cargandoRanking = false;
 
+/**
+ * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
+ */
+async function cargarRanking() {
+    if (cargandoRanking) return;
+    cargandoRanking = true;
+
+    // --- PREPARAR CONTENEDOR ---
+    const mainSection = document.getElementById('sec-ranking');
+    let container = document.getElementById('ranking-content');
+    
+    if (!container && mainSection) {
+        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
+        container = document.getElementById('ranking-content');
+    }
+    
+    if (!container) {
+        cargandoRanking = false;
+        return; 
+    }
+
+    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
+    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
+    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
+    const cacheRanking = localStorage.getItem('jeico_ranking_data');
+    
+    // Verificamos si tenemos datos y si corresponden al día de hoy
+    const datosSonDeHoy = (fechaGuardada === hoy);
+
+    if (cacheRanking && datosSonDeHoy) {
+        console.log("Ranking: Cargando desde caché (Datos de hoy).");
+        const datos = JSON.parse(cacheRanking);
+        renderRankingUI(container, datos.top10, datos.miRanking);
+        cargandoRanking = false;
+        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
+    }
+
+    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
+    
+    // Loader solo si vamos a buscar datos nuevos
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
+            <div class="spinner"></div>
+            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
+        </div>
+    `;
+
+    try {
+        const u = localStorage.getItem('jeico_user');
+        const t = localStorage.getItem('jeico_token');
+
+        if (!u || !t) {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
+            cargandoRanking = false;
+            return;
+        }
+
+        const res = await apiCall({ 
+            accion: 'getRanking', 
+            usuario: u, 
+            token: t 
+        });
+
+        if (res && res.success) {
+            // Guardamos datos y LA FECHA DE HOY
+            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
+            localStorage.setItem('jeico_ranking_date', hoy);
+            
+            renderRankingUI(container, res.top10, res.miRanking);
+        } else {
+            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
+            if (cacheRanking) {
+                const datosViejos = JSON.parse(cacheRanking);
+                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
+            } else {
+                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
+            }
+        }
+
+    } catch (error) {
+        if (cacheRanking) {
+            const datosViejos = JSON.parse(cacheRanking);
+            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+        } else {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
+        }
+    } finally {
+        cargandoRanking = false;
+    }
+}
+
+/**
+ * 2. RENDERIZADO UI: Construir la interfaz épica
+ */
+function renderRankingUI(container, top10, miData) {
+    container.innerHTML = "";
+
+    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
+    const divMiStats = document.createElement('div');
+    divMiStats.className = 'my-stats-card';
+    
+    // Determinar mensaje según posición
+    let mensajeAnimo = "¡Sigue comprando para subir!";
+    let iconoPosicion = "trending_up";
+    let clasePosicion = "";
+
+    if (miData.posicion === 1) { 
+        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
+        iconoPosicion = "emoji_events";
+        clasePosicion = "rank-1-text";
+    } else if (miData.posicion > 0 && miData.posicion <= 3) {
+        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
+        iconoPosicion = "military_tech";
+    } else if (miData.posicion > 0 && miData.posicion <= 10) {
+        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
+        iconoPosicion = "star";
+    } else if (miData.posicion === -1) {
+        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
+    }
+
+    divMiStats.innerHTML = `
+        <div class="my-stats-header">
+            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
+            <span>TU RENDIMIENTO</span>
+        </div>
+        <div class="my-stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">POSICIÓN GLOBAL</div>
+                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
+            </div>
+            <div class="stat-item border-left">
+                <div class="stat-label">CUENTAS COMPRADAS</div>
+                <div class="stat-value text-accent">${miData.compras}</div>
+            </div>
+        </div>
+        <div class="my-stats-footer">
+            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
+        </div>
+    `;
+    container.appendChild(divMiStats);
+
+    // --- B. LISTA DEL TOP 10 ---
+    const divLeaderboard = document.createElement('div');
+    divLeaderboard.className = 'leaderboard-container';
+    
+    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
+
+    if(top10.length === 0) {
+        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
+    } else {
+        top10.forEach((user, index) => {
+            const rank = index + 1;
+            let rankClass = "rank-item";
+            let iconHtml = `<span class="rank-number">#${rank}</span>`;
+            
+            // Estilos especiales para el podio
+            if (rank === 1) {
+                rankClass += " rank-gold";
+                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
+            } else if (rank === 2) {
+                rankClass += " rank-silver";
+                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
+            } else if (rank === 3) {
+                rankClass += " rank-bronze";
+                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
+            }
+
+            // Resaltar si soy yo
+            if (user.usuario === miData.usuario) {
+                rankClass += " its-me";
+            }
+
+            htmlList += `
+                <div class="${rankClass}">
+                    <div class="rank-left">
+                        ${iconHtml}
+                        <span class="rank-name">${user.usuario}</span>
+                    </div>
+                    <div class="rank-right">
+                        <span class="rank-score">${user.compras}</span>
+                        <span class="rank-label">Ventas</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    htmlList += `</div>`;
+    divLeaderboard.innerHTML = htmlList;
+    container.appendChild(divLeaderboard);
+
+    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
+    const divDisclaimer = document.createElement('div');
+    divDisclaimer.className = 'ranking-disclaimer';
+    divDisclaimer.innerHTML = `
+        <span class="material-icons-round" style="font-size: 1rem;">update</span>
+        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
+    `;
+    container.appendChild(divDisclaimer);
+}
+
+/**
+ * ===============================================================
+ * ESTILOS CSS PREMIUM (INYECTADOS)
+ * ===============================================================
+ */
+const rankingStyles = `
+    .ranking-wrapper {
+        padding: 10px;
+        max-width: 800px;
+        margin: 0 auto;
+        animation: fadeIn 0.5s ease;
+    }
+
+    /* --- DISCLAIMER --- */
+    .ranking-disclaimer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px dashed #333;
+    }
+
+    /* --- MI TARJETA --- */
+    .my-stats-card {
+        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+        border: 1px solid #333;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Efecto de brillo superior */
+    .my-stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 4px;
+        background: linear-gradient(90deg, var(--accent), #b721ff);
+    }
+
+    .my-stats-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        opacity: 0.9;
+    }
+
+    .my-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+    
+    .border-left {
+        border-left: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1;
+    }
+    
+    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
+    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+
+    .my-stats-footer {
+        margin-top: 20px;
+        background: rgba(255,255,255,0.03);
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #aaa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* --- LEADERBOARD --- */
+    .leaderboard-container {
+        background: #000;
+        border-radius: 16px;
+        border: 1px solid #222;
+        padding: 20px;
+    }
+
+    .leaderboard-title {
+        text-align: center;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        margin-top: 0;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        background: -webkit-linear-gradient(#fff, #888);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .leaderboard-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .rank-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #111;
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: transform 0.2s;
+    }
+    
+    .rank-item:hover {
+        transform: translateX(5px);
+        background: #161616;
+    }
+
+    .rank-left { display: flex; align-items: center; gap: 15px; }
+    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+
+    .rank-number {
+        font-family: 'Righteous', sans-serif;
+        color: #444;
+        font-size: 1.2rem;
+        width: 30px;
+        text-align: center;
+    }
+
+    .rank-name {
+        font-weight: 600;
+        color: #eee;
+        font-size: 0.95rem;
+    }
+
+    .rank-score {
+        font-weight: 800;
+        color: #fff;
+        font-size: 1.1rem;
+    }
+    
+    .rank-label {
+        font-size: 0.6rem;
+        color: #555;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    /* --- MEDALLAS Y COLORES --- */
+    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
+    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
+    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
+    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
+
+    /* Estilos de fila Top 3 */
+    .rank-gold {
+        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
+        border: 1px solid rgba(255,215,0,0.3);
+    }
+    .rank-silver {
+        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
+        border: 1px solid rgba(192,192,192,0.2);
+    }
+    .rank-bronze {
+        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
+        border: 1px solid rgba(205,127,50,0.2);
+    }
+
+    /* Highlight del propio usuario */
+    .its-me {
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
+    }
+    .its-me .rank-name { color: var(--accent); }
+`;
+
+const styleSheetRanking = document.createElement("style");
+styleSheetRanking.innerText = rankingStyles;
+document.head.appendChild(styleSheetRanking);
+
+// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
+document.addEventListener('DOMContentLoaded', () => {
+    const secRanking = document.getElementById('sec-ranking');
+    
+    if (secRanking) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (!secRanking.classList.contains('hidden')) {
+                        cargarRanking();
+                    }
+                }
+            });
+        });
+        observer.observe(secRanking, { attributes: true });
+    }
+});</script>
 </body>
 </html>
