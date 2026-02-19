@@ -7,6 +7,7 @@
   
   <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -1424,11 +1425,6 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
             <span class="material-icons-round">vpn_key</span>
             <span>CÓDIGOS</span>
         </li>
-
-        <li class="nav-item" onclick="nav('ranking', this)">
-            <span class="material-icons-round">leaderboard</span>
-            <span>RANKING</span>
-        </li>
         
         <li class="nav-item logout-link" onclick="logout()" style="margin-top: auto;">
           <span class="material-icons-round">logout</span>
@@ -1451,14 +1447,14 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
       <span class="material-icons-round">menu</span>
     </button>
 
-    <main class="main-content" style="display: flex; flex-direction: column; min-height: 100vh;">
+    <main class="main-content">
       
       <div id="sec-inicio">
         <div class="hero-container">
             <div class="hero-content">
                 <h1>Entretenimiento Sin Límites</h1>
                 <p>Acceso exclusivo a las mejores plataformas de streaming. Sistema automatizado, garantía inmediata y soporte profesional 24/7.</p>
-                <button onclick="nav('tienda', document.querySelector('.nav-item[onclick*=\'tienda\']'))" class="cta-button">VER CUENTAS DISPONIBLES</button>
+                <button onclick="nav('tienda', document.querySelector('.nav-item[onclick*=\'tienda\']'))" class="cta-button">VER PLANES DISPONIBLES</button>
             </div>
         
             <div class="features-grid">
@@ -1586,19 +1582,7 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
       </div>
 
       <div id="sec-codigos" class="hidden"></div>
-      
-      <div id="sec-ranking" class="hidden"></div>
-      
       <div id="sec-datos" class="hidden"></div>
-
-      <footer style="margin-top: auto; text-align: center; padding: 40px 20px 20px; border-top: 1px solid rgba(255,255,255,0.05);">
-        <p style="color: #666; font-size: 0.85rem; margin: 0; letter-spacing: 0.5px;">
-          &copy; 2026. Todos los derechos reservados.<br>
-          <span style="display: inline-block; margin-top: 5px;">
-            Desarrollado por <strong style="color: var(--accent, #7c3aed); font-weight: 700;">Brallan Ariza</strong>
-          </span>
-        </p>
-      </footer>
 
     </main>
 
@@ -1657,10 +1641,512 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
    
   
   
-  
-  
 
 
+<script id="script-script.js">/* script.js */
+// ============================================
+// ⚠️ URL DE TU API GOOGLE APPS SCRIPT ⚠️
+const API_URL = "https://script.google.com/macros/s/AKfycbxO3Cxp48sMVrhz6nlViSudvJ8GTB1aM_4N91L3kVeLBPuRRmwtYme2Y1d0Yzgw9LCDNA/exec";
+// ============================================
+
+// --- ESTADO GLOBAL ---
+let cart = []; 
+let userBalance = 0;
+
+// --- API FETCH ---
+async function apiCall(params) {
+  const url = new URL(API_URL);
+  Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+  try { 
+    const response = await fetch(url);
+    return await response.json(); 
+  } catch (e) { 
+    console.error("Error API:", e);
+    return { success: false, msg: "Error de conexión con el servidor" }; 
+  }
+}
+
+// --- INICIO / COMPROBACIÓN DE SESIÓN ---
+document.addEventListener('DOMContentLoaded', () => {
+  const t = localStorage.getItem('jeico_token');
+  const u = localStorage.getItem('jeico_user');
+  
+  if(t && u) {
+    mostrarApp(u);
+  } else {
+    document.getElementById('login-view').style.display = 'flex';
+    document.getElementById('app-view').style.display = 'none';
+  }
+
+  // --- CERRAR MENÚ HAMBURGUESA AL HACER CLIC FUERA ---
+  document.addEventListener('click', (e) => {
+    const sidebar = document.querySelector('.sidebar');
+    const btn = document.getElementById('hamburger-btn');
+    
+    // Si el menú está abierto en móvil y el clic no es en el menú ni en el botón de abrir
+    if (window.innerWidth <= 768 && 
+        sidebar && sidebar.classList.contains('open') && 
+        !sidebar.contains(e.target) && 
+        !btn.contains(e.target)) {
+      sidebar.classList.remove('open');
+    }
+  });
+});
+
+// --- LÓGICA DE LOGIN ---
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const u = document.getElementById('user').value;
+  const p = document.getElementById('pass').value;
+  const btn = document.querySelector('.btn-login'); 
+  
+  btn.innerText = "VERIFICANDO...";
+  btn.disabled = true;
+  
+  const res = await apiCall({ accion: 'login', usuario: u, clave: p });
+  
+  btn.innerText = "ENTRAR";
+  btn.disabled = false;
+  
+  if(res.success) {
+    localStorage.setItem('jeico_token', res.token);
+    localStorage.setItem('jeico_user', res.usuario);
+    localStorage.setItem('jeico_saldo', res.saldo); // <-- MEJORA: GUARDAR SALDO INICIAL EN CACHÉ
+    mostrarApp(res.usuario, res.saldo);
+  } else {
+    Swal.fire({
+        title: 'Error',
+        text: res.msg,
+        icon: 'error',
+        background: '#0a0a0a',
+        color: '#fff',
+        confirmButtonColor: '#7c3aed'
+    });
+  }
+});
+
+function mostrarApp(user, saldo) {
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'block';
+  document.getElementById('display-user').innerText = user;
+  
+  // LÓGICA DE CACHÉ DE SALDO
+  if(saldo !== undefined) {
+    userBalance = Number(saldo);
+    localStorage.setItem('jeico_saldo', userBalance);
+  } else {
+    // Si carga desde caché (al recargar la página), muestra rápido y luego sincroniza en silencio
+    userBalance = Number(localStorage.getItem('jeico_saldo')) || 0;
+    sincronizarSaldo(); 
+  }
+  
+  updateBalanceUI();
+  
+  // Siempre iniciar en la sección de INICIO por defecto
+  nav('inicio', document.querySelector('.nav-item[onclick*="inicio"]'));
+}
+
+async function sincronizarSaldo() {
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    if (!u || !t) return;
+
+    try {
+        const res = await apiCall({ accion: 'getSaldo', usuario: u, token: t });
+        if (res.success) {
+            // Si el saldo en la DB es distinto al local, actualiza la UI al instante
+            if (Number(res.saldo) !== userBalance) {
+                userBalance = Number(res.saldo);
+                localStorage.setItem('jeico_saldo', userBalance);
+                updateBalanceUI();
+            }
+        } else if (res.msg === "Sesión inválida") {
+            // Si le cambiaron la clave en la base de datos o el token expiró, lo saca
+            logout();
+        }
+    } catch (e) {
+        console.error("Falla en sincronización de fondo.");
+    }
+}
+
+function updateBalanceUI() {
+    const formatted = `$ ${new Intl.NumberFormat('es-CO').format(userBalance)}`;
+    document.getElementById('display-balance').innerText = formatted;
+    
+    const bigWallet = document.getElementById('wallet-balance-big');
+    if(bigWallet) bigWallet.innerText = formatted;
+}
+
+// --- TOGGLE DEL SIDEBAR ---
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if(sidebar) sidebar.classList.toggle('open');
+}
+
+// --- LÓGICA DE NAVEGACIÓN ---
+/**
+ * Navegación principal de la App Jeico Streaming
+ */
+function nav(sec, el) {
+    // 1. MANEJO DE CLASES ACTIVAS EN EL MENÚ
+    if (el && !el.classList.contains('submenu-item')) {
+        document.querySelectorAll('.nav-links > .nav-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+    }
+    
+    // 2. OCULTAR TODAS LAS SECCIONES (¡AQUÍ AGREGAMOS 'mistickets'!)
+    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets'];
+    secciones.forEach(id => {
+        const elem = document.getElementById('sec-' + id);
+        if(elem) elem.classList.add('hidden');
+    });
+    
+    // 3. MOSTRAR LA SECCIÓN SELECCIONADA
+    const section = document.getElementById('sec-' + sec);
+    if(section) {
+        section.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // --- CERRAR SIDEBAR TRAS NAVEGAR (MÓVIL) ---
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        if(sidebar) sidebar.classList.remove('open');
+    }
+
+    // 4. CONTROL DE VISIBILIDAD DEL CARRITO
+    const cartBtn = document.getElementById('main-cart-btn');
+    const cartDrawer = document.getElementById('cart-drawer');
+    const cartOverlay = document.getElementById('cart-overlay');
+
+    if (sec === 'tienda') {
+        if(cartBtn) cartBtn.classList.remove('hidden');
+        cargarTienda(); 
+    } else {
+        if(cartBtn) cartBtn.classList.add('hidden');
+        if(cartDrawer) cartDrawer.classList.remove('open');
+        if(cartOverlay) cartOverlay.classList.add('hidden');
+    }
+    
+    // 5. INICIALIZACIÓN DE MÓDULOS ESPECÍFICOS
+    if (sec === 'pedidos') cargarPedidos();
+    if (sec === 'billetera') cargarBilletera();
+    if (sec === 'recarga') cargarRecarga();
+    if (sec === 'soporte') cargarSoporte(); 
+    if (sec === 'codigos') cargarCodigos(); 
+    if (sec === 'datos') cargarDatos(); 
+}
+
+// --- LÓGICA DE TIENDA Y STOCK ---
+async function cargarTienda() {
+  const u = localStorage.getItem('jeico_user');
+  const t = localStorage.getItem('jeico_token');
+  const container = document.getElementById('shop-container');
+  
+  container.innerHTML = '<div class="spinner"></div>';
+  
+  const res = await apiCall({ accion: 'getTienda', usuario: u, token: t });
+  
+  if(!res.success) { 
+    logout(); 
+    return; 
+  }
+  
+  userBalance = Number(res.saldo); 
+  updateBalanceUI();
+  container.innerHTML = "";
+
+  if(!res.productos || res.productos.length === 0) {
+    container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#555;'>No hay productos configurados.</p>";
+    return;
+  }
+
+  res.productos.forEach(p => {
+    let img = p.img;
+    if(img && img.includes('drive')) {
+        const id = img.match(/\/d\/([a-zA-Z0-9_-]+)/) || img.match(/id=([a-zA-Z0-9_-]+)/);
+        if(id) img = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w400`;
+    }
+
+    const isSoldOut = p.stock <= 0;
+    const soldOutClass = isSoldOut ? 'sold-out' : '';
+    const btnHtml = isSoldOut 
+        ? `<button class="btn-buy disabled" disabled>AGOTADO</button>`
+        : `<button class="btn-buy" onclick="addToCart('${p.nombre}', ${p.precio}, '${img}')">AGREGAR</button>`;
+    
+    const stockHtml = isSoldOut 
+        ? `<span style="color:#9f1239; font-weight:bold;">SIN STOCK</span>` 
+        : `${p.stock} disponibles`;
+
+    const card = document.createElement('div');
+    card.className = `product-card ${soldOutClass}`;
+    card.innerHTML = `
+      <div class="card-img-container"><img src="${img || ''}" class="card-img" alt="${p.nombre}"></div>
+      <div class="card-body">
+        <div class="card-title">${p.nombre}</div>
+        <div class="price-container">
+            <span class="card-price">$ ${new Intl.NumberFormat('es-CO').format(p.precio)}</span>
+        </div>
+        <div class="card-stock">${stockHtml}</div>
+        ${btnHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// --- LÓGICA DE CARRITO ---
+function addToCart(nombre, precio, img) {
+    const existe = cart.find(item => item.nombre === nombre);
+    if(existe) {
+        existe.cantidad++;
+    } else {
+        cart.push({ nombre, precio, img, cantidad: 1 });
+    }
+    updateCartUI();
+    
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        background: '#0a0a0a',
+        color: '#fff',
+        iconColor: '#7c3aed'
+    });
+    Toast.fire({ icon: 'success', title: 'Añadido al carrito' });
+}
+
+function updateCartUI() {
+    const list = document.getElementById('cart-items-list');
+    const badge = document.getElementById('cart-count');
+    const totalDisplay = document.getElementById('cart-total-display');
+    
+    list.innerHTML = "";
+    let total = 0;
+    let count = 0;
+
+    if(cart.length === 0) {
+        list.innerHTML = '<p style="text-align:center; color:#555; margin-top:20px;">Tu carrito está vacío.</p>';
+    } else {
+        cart.forEach((item, index) => {
+            total += item.precio * item.cantidad;
+            count += item.cantidad;
+            
+            list.innerHTML += `
+                <div class="cart-item-row">
+                    <img src="${item.img}" class="cart-item-img">
+                    <div class="cart-item-info" style="flex-grow:1;">
+                        <h4>${item.nombre}</h4>
+                        <div class="cart-item-price">$ ${new Intl.NumberFormat('es-CO').format(item.precio)}</div>
+                        <span>Cantidad: ${item.cantidad}</span>
+                    </div>
+                    <button class="btn-remove" onclick="removeFromCart(${index})">
+                        <span class="material-icons-round" style="font-size:1.2rem;">delete</span>
+                    </button>
+                </div>
+            `;
+        });
+    }
+
+    badge.innerText = count;
+    totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+}
+
+function removeFromCart(index) {
+    cart.splice(index, 1);
+    updateCartUI();
+}
+
+function toggleCart() {
+    const drawer = document.getElementById('cart-drawer');
+    const overlay = document.getElementById('cart-overlay');
+    drawer.classList.toggle('open');
+    overlay.classList.toggle('hidden');
+}
+
+// --- CHECKOUT & COMPRA ---
+function goToCheckout() {
+    if(cart.length === 0) return;
+    
+    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    const summaryList = document.getElementById('checkout-summary-list');
+    summaryList.innerHTML = "";
+    
+    cart.forEach(item => {
+        summaryList.innerHTML += `
+            <div class="checkout-summary-row">
+                <span>${item.nombre} (x${item.cantidad})</span>
+                <span style="color:var(--accent); font-weight:bold;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+
+    toggleCart(); 
+    document.getElementById('checkout-overlay').classList.remove('hidden');
+    document.getElementById('checkout-modal').classList.add('active');
+}
+
+function closeCheckout() {
+    document.getElementById('checkout-overlay').classList.add('hidden');
+    document.getElementById('checkout-modal').classList.remove('active');
+}
+
+async function finalizePurchase() {
+    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    
+    if(userBalance < total) {
+        return Swal.fire({
+            title: 'Saldo Insuficiente',
+            text: 'No tienes saldo suficiente para esta compra.',
+            icon: 'error',
+            background: '#0a0a0a', color: '#fff'
+        });
+    }
+
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    
+    Swal.fire({ 
+        title: 'PROCESANDO PAGO', 
+        text: 'Generando tus credenciales...',
+        didOpen: () => Swal.showLoading(), 
+        background: '#0a0a0a', color:'#fff',
+        allowOutsideClick: false
+    });
+
+    let errores = [];
+    let exitos = 0;
+
+    for (const item of cart) {
+        for(let i=0; i<item.cantidad; i++) {
+            const res = await apiCall({ accion: 'comprar', usuario: u, token: t, producto: item.nombre });
+            if(res.success) {
+                exitos++;
+                userBalance = res.nuevoSaldo; 
+                // MEJORA: GUARDAMOS EL NUEVO SALDO EN CACHÉ AL INSTANTE
+                localStorage.setItem('jeico_saldo', userBalance); 
+            } else {
+                errores.push(`${item.nombre}: ${res.msg}`);
+            }
+        }
+    }
+
+    closeCheckout();
+    updateBalanceUI();
+    
+    if(exitos > 0) {
+        cart = []; 
+        updateCartUI();
+        cargarTienda(); 
+        
+        if(errores.length > 0) {
+            Swal.fire({
+                title: 'Compra Parcial',
+                text: `Se procesaron ${exitos} cuentas. Fallaron: ${errores.length}`,
+                icon: 'warning',
+                background: '#0a0a0a', color: '#fff'
+            });
+        } else {
+            Swal.fire({
+                title: '¡PAGO COMPLETADO!',
+                text: 'Revisa tus cuentas en la sección "Mis Pedidos"',
+                icon: 'success',
+                background: '#0a0a0a', color:'#fff',
+                confirmButtonColor: '#7c3aed'
+            });
+        }
+    } else {
+        Swal.fire({
+            title: 'Error en la compra',
+            text: errores[0] || "No se pudo procesar la solicitud.",
+            icon: 'error',
+            background: '#0a0a0a', color: '#fff'
+        });
+    }
+}
+
+// --- OTROS MÉTODOS ---
+/**
+ * Alternar Menús Desplegables (Dinámico para múltiples menús)
+ */
+function toggleSubmenu(elemento) {
+    // Busca el elemento que está exactamente debajo del botón clickeado en el HTML
+    const submenu = elemento.nextElementSibling;
+    
+    // Verifica que el elemento de abajo sea realmente un submenú
+    if (submenu && submenu.classList.contains('submenu')) {
+        // Muestra u oculta el submenú
+        submenu.classList.toggle('hidden');
+        
+        // Gira la flechita (añade la clase 'open' al li)
+        elemento.classList.toggle('open');
+    }
+}
+
+function cargarBilletera() {
+    updateBalanceUI();
+}
+
+async function cargarPedidos() {
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    const tbody = document.getElementById('orders-tbody');
+    
+    if(!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px;"><div class="spinner"></div></td></tr>';
+    
+    const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
+    tbody.innerHTML = "";
+    
+    if(res.success && res.datos && res.datos.length > 0) {
+        res.datos.forEach(p => {
+            const fechaVal = p.fecha ? new Date(p.fecha).toLocaleDateString() : 'N/A';
+            tbody.innerHTML += `
+            <tr style="border-bottom:1px solid #1a1a1a;">
+                <td style="padding:20px; color:#fff; font-weight:bold;">${p.servicio}</td>
+                <td style="padding:20px;">
+                    <div style="background:#000; padding:10px; border:1px solid #222; font-family:monospace; color:var(--accent);">
+                        USER: ${p.cuenta}<br>PASS: ${p.clave}
+                    </div>
+                </td>
+                <td style="padding:20px; color:#555;">${fechaVal}</td>
+            </tr>`;
+        });
+    } else {
+        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:40px; color:#444;'>No has realizado compras todavía.</td></tr>";
+    }
+}
+// Lógica para mostrar/ocultar contraseña
+document.addEventListener('DOMContentLoaded', () => {
+    const togglePassword = document.querySelector('#togglePassword');
+    const passwordField = document.querySelector('#pass');
+
+    if (togglePassword && passwordField) {
+        togglePassword.addEventListener('click', function () {
+            // Cambiamos el tipo de input
+            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordField.setAttribute('type', type);
+            
+            // Cambiamos el icono
+            this.textContent = type === 'password' ? 'visibility_off' : 'visibility';
+            
+            // Un pequeño efecto de feedback
+            this.style.transform = 'scale(1.2)';
+            setTimeout(() => this.style.transform = 'scale(1)', 150);
+        });
+    }
+});
+function logout() {
+    // Borramos solo la sesión, pero dejamos la caché de datos intacta
+    localStorage.removeItem('jeico_token');
+    localStorage.removeItem('jeico_user');
+    
+    // Recargamos la página para volver a la pantalla de Login
+    location.reload();
+}</script>
 <script id="script-Tienda.js">/* Tienda.js */
 /**
  * ===============================================================
@@ -2751,1050 +3237,18 @@ const recargaStyles = `
 const styleSheetRecarga = document.createElement("style");
 styleSheetRecarga.innerText = recargaStyles;
 document.head.appendChild(styleSheetRecarga);</script>
-<script id="script-datos.js">/* datos.js */
-/**
- * ===============================================================
- * DATOS.JS - GESTIÓN DE PERFIL (CACHÉ INTELIGENTE 5M / 24H)
- * ===============================================================
- */
-
-const TIEMPO_CACHE_INCOMPLETO = 5 * 60 * 1000; // 5 Minutos
-const TIEMPO_CACHE_COMPLETO = 24 * 60 * 60 * 1000; // 24 Horas
-
-async function cargarDatos() {
-    const container = document.getElementById('sec-datos');
-    if (!container) return;
-
-    // 1. Renderizamos la estructura base
-    container.innerHTML = `
-        <div class="datos-wrapper-premium">
-            <div class="page-header-premium" style="text-align: center; margin-bottom: 30px;">
-                <h1 class="page-title">MI <span>PERFIL</span></h1>
-                <p class="page-subtitle">Gestiona tu información personal y opciones de recuperación.</p>
-            </div>
-
-            <div class="card-datos">
-                <div id="loading-datos" style="text-align:center; padding: 40px;">
-                    <div class="spinner"></div>
-                    <p style="color:#777; margin-top:15px; font-size:0.85rem; letter-spacing:2px;">CARGANDO DATOS...</p>
-                </div>
-
-                <form id="form-datos-perfil" class="hidden" onsubmit="actualizarMisDatos(event)">
-                    
-                    <div class="datos-grid">
-                        <div class="input-group-premium">
-                            <label>NOMBRE</label>
-                            <div class="datos-input-wrapper">
-                                <span class="material-icons-round datos-input-icon">badge</span>
-                                <input type="text" id="perfil-nombre" class="datos-input" placeholder="Tu nombre">
-                            </div>
-                        </div>
-
-                        <div class="input-group-premium">
-                            <label>APELLIDO</label>
-                            <div class="datos-input-wrapper">
-                                <span class="material-icons-round datos-input-icon">badge</span>
-                                <input type="text" id="perfil-apellido" class="datos-input" placeholder="Tu apellido">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="input-group-premium" style="margin-top: 20px;">
-                        <label>CORREO DE RECUPERACIÓN</label>
-                        <div class="datos-input-wrapper">
-                            <span class="material-icons-round datos-input-icon">mark_email_read</span>
-                            <input type="email" id="perfil-correo" class="datos-input" placeholder="correo@alternativo.com">
-                        </div>
-                        <p class="datos-help-text">Se usará para restablecer tu contraseña si la olvidas.</p>
-                    </div>
-
-                    <div class="input-group-premium" style="margin-top: 20px;">
-                        <label>TELÉFONO / WHATSAPP</label>
-                        <div class="datos-input-wrapper">
-                            <span class="material-icons-round datos-input-icon">phone_iphone</span>
-                            <input type="tel" id="perfil-telefono" class="datos-input" placeholder="+57 300 000 0000">
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-submit-datos" id="btn-guardar-datos">
-                        <span class="material-icons-round">save</span> GUARDAR CAMBIOS
-                    </button>
-
-                    <p id="datos-cooldown-msg" class="hidden" style="color: #ff9900; font-size: 0.8rem; text-align: center; margin-top: 15px; font-weight: bold;"></p>
-                </form>
-            </div>
-        </div>
-    `;
-
-    // 2. LÓGICA DE CACHÉ
-    const rawCache = localStorage.getItem('jeico_perfil_datos_v2');
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-    
-    if (rawCache) {
-        try {
-            const cache = JSON.parse(rawCache);
-            const edadCache = Date.now() - cache.timestamp;
-            
-            // Verificamos si los datos están llenos
-            const estaLleno = (cache.datos.nombre && cache.datos.apellido && cache.datos.correo && cache.datos.telefono);
-            const validezNecesaria = estaLleno ? TIEMPO_CACHE_COMPLETO : TIEMPO_CACHE_INCOMPLETO;
-
-            if (edadCache < validezNecesaria) {
-                document.getElementById('perfil-nombre').value = cache.datos.nombre || "";
-                document.getElementById('perfil-apellido').value = cache.datos.apellido || "";
-                document.getElementById('perfil-correo').value = cache.datos.correo || "";
-                document.getElementById('perfil-telefono').value = cache.datos.telefono || "";
-                
-                document.getElementById('loading-datos').classList.add('hidden');
-                document.getElementById('form-datos-perfil').classList.remove('hidden');
-                
-                console.log(`Carga offline. Perfil ${estaLleno ? 'Completo (24h)' : 'Incompleto (5m)'}.`);
-                return; // Cortamos ejecución: CERO peticiones al servidor
-            }
-        } catch (e) {
-            localStorage.removeItem('jeico_perfil_datos_v2');
-        }
-    }
-
-    // 3. CONSULTA AL SERVIDOR (Solo si no hay caché o ya expiró)
-    try {
-        console.log("Consultando servidor para sincronizar perfil...");
-        const res = await apiCall({ accion: 'getDatosPerfil', usuario: u, token: t });
-        
-        document.getElementById('loading-datos').classList.add('hidden');
-        document.getElementById('form-datos-perfil').classList.remove('hidden');
-
-        if (res.success && res.datos) {
-            document.getElementById('perfil-nombre').value = res.datos.nombre || "";
-            document.getElementById('perfil-apellido').value = res.datos.apellido || "";
-            document.getElementById('perfil-correo').value = res.datos.correo || "";
-            document.getElementById('perfil-telefono').value = res.datos.telefono || "";
-
-            // Guardamos en LocalStorage
-            localStorage.setItem('jeico_perfil_datos_v2', JSON.stringify({
-                timestamp: Date.now(),
-                datos: res.datos
-            }));
-        }
-    } catch (e) {
-        if (!rawCache) {
-            document.getElementById('loading-datos').innerHTML = "<p style='color:#ff0055;'>Error de conexión al cargar datos.</p>";
-        }
-    }
-}
-
-async function actualizarMisDatos(e) {
-    e.preventDefault();
-
-    const nombre = document.getElementById('perfil-nombre').value.trim();
-    const apellido = document.getElementById('perfil-apellido').value.trim();
-    const correo = document.getElementById('perfil-correo').value.trim();
-    const telefono = document.getElementById('perfil-telefono').value.trim();
-
-    // 1. VALIDACIÓN ESTRICTA: Todos los campos requeridos
-    if (!nombre || !apellido || !correo || !telefono) {
-        return Swal.fire({
-            icon: 'warning',
-            title: 'Faltan Datos',
-            text: 'Debes completar todos los campos para poder guardar los cambios.',
-            background: '#0a0a0a', color: '#fff', confirmButtonColor: 'var(--accent)'
-        });
-    }
-
-    const btn = document.getElementById('btn-guardar-datos');
-    btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> GUARDANDO...';
-    btn.disabled = true;
-
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-
-    try {
-        const res = await apiCall({ 
-            accion: 'setDatosPerfil', 
-            usuario: u, 
-            token: t,
-            nombre, apellido, correo, telefono
-        });
-
-        if (res.success) {
-            // ACTUALIZAMOS LOCALSTORAGE E INICIAMOS ENFRIAMIENTO DE 1 DÍA
-            localStorage.setItem('jeico_perfil_datos_v2', JSON.stringify({
-                timestamp: Date.now(),
-                datos: { nombre, apellido, correo, telefono }
-            }));
-
-            Swal.fire({
-                toast: true, position: 'top-end', icon: 'success',
-                title: 'Perfil Guardado',
-                text: 'Los datos se sincronizaron correctamente.',
-                showConfirmButton: false, timer: 3000,
-                background: '#0a0a0a', color: '#fff'
-            });
-        } else {
-            Swal.fire({ icon: 'error', title: 'Error', text: res.msg, background: '#0a0a0a', color: '#fff' });
-        }
-    } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No se pudo conectar con el servidor.', background: '#0a0a0a', color: '#fff' });
-    } finally {
-        btn.innerHTML = '<span class="material-icons-round">save</span> GUARDAR CAMBIOS';
-        btn.disabled = false;
-    }
-}
-
-/**
- * ESTILOS INTEGRADOS
- */
-const datosStyles = `
-    .datos-wrapper-premium {
-        max-width: 650px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .card-datos {
-        background: linear-gradient(145deg, #0a0a0a 0%, #050505 100%);
-        border: 1px solid #1a1a1a;
-        padding: 40px;
-        border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-    }
-
-    .datos-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .input-group-premium {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .input-group-premium label {
-        color: var(--accent);
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-    }
-
-    .datos-input-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-    }
-
-    .datos-input-icon {
-        position: absolute;
-        left: 15px;
-        color: #777;
-        font-size: 20px;
-        pointer-events: none;
-    }
-
-    .datos-input {
-        width: 100%;
-        background: #0d0d0d;
-        border: 1px solid #222;
-        color: #fff;
-        padding: 16px 15px 16px 45px;
-        border-radius: 12px;
-        font-size: 0.95rem;
-        outline: none;
-        transition: 0.3s;
-    }
-
-    .datos-input:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
-    }
-
-    .btn-submit-datos {
-        width: 100%;
-        background: var(--accent);
-        color: #fff;
-        border: none;
-        padding: 18px;
-        border-radius: 12px;
-        font-weight: 800;
-        letter-spacing: 1px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        transition: 0.3s;
-        margin-top: 30px;
-    }
-
-    .btn-submit-datos:hover {
-        background: #6d28d9;
-        transform: translateY(-3px);
-    }
-
-    .fa-spin { animation: spin 1s infinite linear; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    @media (max-width: 600px) {
-        .datos-grid { grid-template-columns: 1fr; }
-    }
-`;
-
-const styleSheetDatos = document.createElement("style");
-styleSheetDatos.innerText = datosStyles;
-document.head.appendChild(styleSheetDatos);</script>
-<script id="script-contra.js">/* contra.js */
-/**
- * ===============================================================
- * CONTRA.JS - SISTEMA DE RECUPERACIÓN BLINDADO (CON CONTADOR)
- * ===============================================================
- */
-
-// Variables temporales para la sesión de recuperación
-let usuarioRecuperacionTemp = "";
-let correoRecuperacionTemp = "";
-let telRecuperacionTemp = "";
-let recuEnCooldown = false;
-
-/**
- * 1. MUESTRA LA PANTALLA PARA PEDIR EL CORREO Y TELÉFONO
- */
-function mostrarRecuperacionPaso1() {
-    document.getElementById('login-box-main').classList.add('hidden');
-    document.getElementById('recover-step-1').classList.remove('hidden');
-}
-
-/**
- * 2. REGRESA AL LOGIN PRINCIPAL CANCELANDO LA RECUPERACIÓN
- */
-function volverLogin() {
-    document.getElementById('recover-step-1').classList.add('hidden');
-    document.getElementById('recover-step-2').classList.add('hidden');
-    document.getElementById('login-box-main').classList.remove('hidden');
-}
-
-/**
- * 3. PASO 1: VALIDA SI EL CORREO Y TELÉFONO COINCIDEN EN LA DB
- */
-async function enviarSolicitudRecuperacion(e) {
-    e.preventDefault();
-
-    if (recuEnCooldown) return; // Si ya está bloqueado, no hace nada
-
-    correoRecuperacionTemp = document.getElementById('rec-correo').value.trim();
-    telRecuperacionTemp = document.getElementById('rec-tel').value.trim();
-    const btn = document.getElementById('btn-recover-1');
-
-    // VALIDACIÓN PREVIA
-    if (!correoRecuperacionTemp.includes('@') || telRecuperacionTemp.length < 7) {
-        return Swal.fire({ 
-            icon: 'warning', title: 'Datos Inválidos', 
-            text: 'Por favor ingresa un correo real y un teléfono válido.',
-            background: '#0a0a0a', color: '#fff' 
-        });
-    }
-
-    btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> VERIFICANDO...';
-    btn.disabled = true;
-
-    try {
-        const res = await apiCall({ 
-            accion: 'validarDatosRecuperacion', 
-            correo: correoRecuperacionTemp, 
-            telefono: telRecuperacionTemp 
-        });
-
-        if (res.success) {
-            usuarioRecuperacionTemp = res.usuario; 
-            
-            document.getElementById('recover-step-1').classList.add('hidden');
-            document.getElementById('recover-step-2').classList.remove('hidden');
-            
-            Swal.fire({ 
-                icon: 'success', title: 'Identidad Verificada', 
-                text: `Hola ${res.usuario}, ya puedes asignar tu nueva clave.`, 
-                background: '#0a0a0a', color: '#fff', 
-                confirmButtonColor: '#10b981', timer: 3000
-            });
-            
-            btn.innerText = "ENVIAR DATOS";
-            btn.disabled = false;
-        } else {
-            // FALLO: Activamos el candado visual de 1 minuto
-            activarCooldownRecu(btn, "ENVIAR DATOS");
-            
-            Swal.fire({ 
-                icon: 'error', title: 'No encontrado', 
-                text: res.msg, 
-                background: '#0a0a0a', color: '#fff' 
-            });
-        }
-    } catch (err) {
-        btn.innerText = "ENVIAR DATOS";
-        btn.disabled = false;
-        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No pudimos conectar con la base de datos.', background: '#0a0a0a', color: '#fff' });
-    }
-}
-
-/**
- * LÓGICA DE CONTADOR DINÁMICO
- * Bloquea el botón y muestra los segundos restantes
- */
-function activarCooldownRecu(btn, textoOriginal) {
-    recuEnCooldown = true;
-    btn.disabled = true;
-    btn.classList.add('btn-locked');
-    
-    let segundos = 60;
-
-    const interval = setInterval(() => {
-        segundos--;
-        btn.innerHTML = `<span class="material-icons-round">lock</span> ESPERA ${segundos}s`;
-
-        if (segundos <= 0) {
-            clearInterval(interval);
-            recuEnCooldown = false;
-            btn.disabled = false;
-            btn.innerText = textoOriginal;
-            btn.classList.remove('btn-locked');
-        }
-    }, 1000);
-}
-
-/**
- * 4. PASO 2: ENVÍA LA NUEVA CLAVE
- */
-async function procesarNuevaClave(e) {
-  e.preventDefault();
-  
-  const nuevaClave = document.getElementById('rec-nueva-clave').value.trim();
-  const btn = document.getElementById('btn-recover-2');
-
-  if(nuevaClave.length < 4) {
-      return Swal.fire({ icon: 'warning', title: 'Clave muy corta', text: 'Mínimo 4 caracteres.', background: '#0a0a0a', color: '#fff' });
-  }
-
-  btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> ACTUALIZANDO...';
-  btn.disabled = true;
-
-  try {
-      const res = await apiCall({ 
-          accion: 'cambiarClaveOlvidada', 
-          usuario: usuarioRecuperacionTemp, 
-          correo: correoRecuperacionTemp,
-          telefono: telRecuperacionTemp,
-          nuevaClave: nuevaClave 
-      });
-
-      if (res.success) {
-          Swal.fire({ 
-              icon: 'success', title: '¡Proceso Exitoso!', 
-              text: 'Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.', 
-              background: '#0a0a0a', color: '#fff', confirmButtonColor: '#7c3aed' 
-          }).then(() => {
-              document.getElementById('rec-correo').value = "";
-              document.getElementById('rec-tel').value = "";
-              document.getElementById('rec-nueva-clave').value = "";
-              usuarioRecuperacionTemp = "";
-              volverLogin();
-          });
-      } else {
-          activarCooldownRecu(btn, "ACTUALIZAR CLAVE");
-          Swal.fire({ icon: 'error', title: 'Error', text: res.msg, background: '#0a0a0a', color: '#fff' });
-      }
-  } catch (err) {
-      btn.innerText = "ACTUALIZAR CLAVE";
-      btn.disabled = false;
-      Swal.fire({ icon: 'error', title: 'Falla Técnica', text: 'No se pudo actualizar.', background: '#0a0a0a', color: '#fff' });
-  }
-}
-
-/**
- * ===============================================================
- * ESTILOS CSS PARA RECUPERACIÓN (ACTUALIZADOS CON ESTADO BLOQUEADO)
- * ===============================================================
- */
-const contraStyles = `
-    #recover-step-1 .input-field, 
-    #recover-step-2 .input-field {
-        width: 100%;
-        background: #0d0d0d;
-        border: 1px solid #222;
-        color: #fff;
-        padding: 15px;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        outline: none;
-        margin-bottom: 10px;
-    }
-
-    #recover-step-1 .input-field:focus, 
-    #recover-step-2 .input-field:focus {
-        border-color: var(--accent);
-        box-shadow: 0 0 15px rgba(124, 58, 237, 0.15);
-        background: #000;
-    }
-
-    .btn-recover {
-        width: 100%;
-        padding: 16px;
-        border-radius: 12px;
-        border: none;
-        font-weight: 800;
-        letter-spacing: 1px;
-        cursor: pointer;
-        transition: 0.3s;
-        margin-top: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-    }
-
-    /* Estilo cuando el botón está bloqueado por el cronómetro */
-    .btn-recover.btn-locked {
-        background: #1a1a1a !important;
-        color: #444 !important;
-        border: 1px solid #222 !important;
-        cursor: not-allowed;
-    }
-
-    .fa-spin { animation: spin 1s infinite linear; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    .back-to-login {
-        display: block;
-        text-align: center;
-        margin-top: 20px;
-        color: #555;
-        font-size: 0.75rem;
-        text-decoration: none;
-        font-weight: 600;
-        letter-spacing: 1px;
-        cursor: pointer;
-        transition: 0.3s;
-    }
-    .back-to-login:hover { color: var(--accent); }
-`;
-
-const styleSheetContra = document.createElement("style");
-styleSheetContra.innerText = contraStyles;
-document.head.appendChild(styleSheetContra);</script>
-<script id="script-script.js">/* script.js */
-// ============================================
-// ⚠️ URL DE TU API GOOGLE APPS SCRIPT ⚠️
-const API_URL = "https://script.google.com/macros/s/AKfycbxO3Cxp48sMVrhz6nlViSudvJ8GTB1aM_4N91L3kVeLBPuRRmwtYme2Y1d0Yzgw9LCDNA/exec";
-// ============================================
-
-// --- ESTADO GLOBAL ---
-let cart = []; 
-let userBalance = 0;
-
-// --- API FETCH ---
-async function apiCall(params) {
-  const url = new URL(API_URL);
-  Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
-  try { 
-    const response = await fetch(url);
-    return await response.json(); 
-  } catch (e) { 
-    console.error("Error API:", e);
-    return { success: false, msg: "Error de conexión con el servidor" }; 
-  }
-}
-
-// --- INICIO / COMPROBACIÓN DE SESIÓN ---
-document.addEventListener('DOMContentLoaded', () => {
-  const t = localStorage.getItem('jeico_token');
-  const u = localStorage.getItem('jeico_user');
-  
-  if(t && u) {
-    mostrarApp(u);
-  } else {
-    document.getElementById('login-view').style.display = 'flex';
-    document.getElementById('app-view').style.display = 'none';
-  }
-
-  // --- CERRAR MENÚ HAMBURGUESA AL HACER CLIC FUERA ---
-  document.addEventListener('click', (e) => {
-    const sidebar = document.querySelector('.sidebar');
-    const btn = document.getElementById('hamburger-btn');
-    
-    // Si el menú está abierto en móvil y el clic no es en el menú ni en el botón de abrir
-    if (window.innerWidth <= 768 && 
-        sidebar && sidebar.classList.contains('open') && 
-        !sidebar.contains(e.target) && 
-        !btn.contains(e.target)) {
-      sidebar.classList.remove('open');
-    }
-  });
-});
-
-// --- LÓGICA DE LOGIN ---
-document.getElementById('login-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const u = document.getElementById('user').value;
-  const p = document.getElementById('pass').value;
-  const btn = document.querySelector('.btn-login'); 
-  
-  btn.innerText = "VERIFICANDO...";
-  btn.disabled = true;
-  
-  const res = await apiCall({ accion: 'login', usuario: u, clave: p });
-  
-  btn.innerText = "ENTRAR";
-  btn.disabled = false;
-  
-  if(res.success) {
-    localStorage.setItem('jeico_token', res.token);
-    localStorage.setItem('jeico_user', res.usuario);
-    localStorage.setItem('jeico_saldo', res.saldo); // <-- MEJORA: GUARDAR SALDO INICIAL EN CACHÉ
-    mostrarApp(res.usuario, res.saldo);
-  } else {
-    Swal.fire({
-        title: 'Error',
-        text: res.msg,
-        icon: 'error',
-        background: '#0a0a0a',
-        color: '#fff',
-        confirmButtonColor: '#7c3aed'
-    });
-  }
-});
-
-function mostrarApp(user, saldo) {
-  document.getElementById('login-view').style.display = 'none';
-  document.getElementById('app-view').style.display = 'block';
-  document.getElementById('display-user').innerText = user;
-  
-  // LÓGICA DE CACHÉ DE SALDO
-  if(saldo !== undefined) {
-    userBalance = Number(saldo);
-    localStorage.setItem('jeico_saldo', userBalance);
-  } else {
-    // Si carga desde caché (al recargar la página), muestra rápido y luego sincroniza en silencio
-    userBalance = Number(localStorage.getItem('jeico_saldo')) || 0;
-    sincronizarSaldo(); 
-  }
-  
-  updateBalanceUI();
-  
-  // Siempre iniciar en la sección de INICIO por defecto
-  nav('inicio', document.querySelector('.nav-item[onclick*="inicio"]'));
-}
-
-async function sincronizarSaldo() {
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-    if (!u || !t) return;
-
-    try {
-        const res = await apiCall({ accion: 'getSaldo', usuario: u, token: t });
-        if (res.success) {
-            // Si el saldo en la DB es distinto al local, actualiza la UI al instante
-            if (Number(res.saldo) !== userBalance) {
-                userBalance = Number(res.saldo);
-                localStorage.setItem('jeico_saldo', userBalance);
-                updateBalanceUI();
-            }
-        } else if (res.msg === "Sesión inválida") {
-            // Si le cambiaron la clave en la base de datos o el token expiró, lo saca
-            logout();
-        }
-    } catch (e) {
-        console.error("Falla en sincronización de fondo.");
-    }
-}
-
-function updateBalanceUI() {
-    const formatted = `$ ${new Intl.NumberFormat('es-CO').format(userBalance)}`;
-    document.getElementById('display-balance').innerText = formatted;
-    
-    const bigWallet = document.getElementById('wallet-balance-big');
-    if(bigWallet) bigWallet.innerText = formatted;
-}
-
-// --- TOGGLE DEL SIDEBAR ---
-function toggleSidebar() {
-    const sidebar = document.querySelector('.sidebar');
-    if(sidebar) sidebar.classList.toggle('open');
-}
-
-// --- LÓGICA DE NAVEGACIÓN ---
-/**
- * Navegación principal de la App Jeico Streaming
- */
-function nav(sec, el) {
-    // 1. MANEJO DE CLASES ACTIVAS EN EL MENÚ
-    if (el && !el.classList.contains('submenu-item')) {
-        document.querySelectorAll('.nav-links > .nav-item').forEach(e => e.classList.remove('active'));
-        el.classList.add('active');
-    }
-    
-    // 2. OCULTAR TODAS LAS SECCIONES (¡AQUÍ AGREGAMOS 'mistickets'!)
-    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets'];
-    secciones.forEach(id => {
-        const elem = document.getElementById('sec-' + id);
-        if(elem) elem.classList.add('hidden');
-    });
-    
-    // 3. MOSTRAR LA SECCIÓN SELECCIONADA
-    const section = document.getElementById('sec-' + sec);
-    if(section) {
-        section.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    // --- CERRAR SIDEBAR TRAS NAVEGAR (MÓVIL) ---
-    if (window.innerWidth <= 768) {
-        const sidebar = document.querySelector('.sidebar');
-        if(sidebar) sidebar.classList.remove('open');
-    }
-
-    // 4. CONTROL DE VISIBILIDAD DEL CARRITO
-    const cartBtn = document.getElementById('main-cart-btn');
-    const cartDrawer = document.getElementById('cart-drawer');
-    const cartOverlay = document.getElementById('cart-overlay');
-
-    if (sec === 'tienda') {
-        if(cartBtn) cartBtn.classList.remove('hidden');
-        cargarTienda(); 
-    } else {
-        if(cartBtn) cartBtn.classList.add('hidden');
-        if(cartDrawer) cartDrawer.classList.remove('open');
-        if(cartOverlay) cartOverlay.classList.add('hidden');
-    }
-    
-    // 5. INICIALIZACIÓN DE MÓDULOS ESPECÍFICOS
-    if (sec === 'pedidos') cargarPedidos();
-    if (sec === 'billetera') cargarBilletera();
-    if (sec === 'recarga') cargarRecarga();
-    if (sec === 'soporte') cargarSoporte(); 
-    if (sec === 'codigos') cargarCodigos(); 
-    if (sec === 'datos') cargarDatos(); 
-}
-
-// --- LÓGICA DE TIENDA Y STOCK ---
-async function cargarTienda() {
-  const u = localStorage.getItem('jeico_user');
-  const t = localStorage.getItem('jeico_token');
-  const container = document.getElementById('shop-container');
-  
-  container.innerHTML = '<div class="spinner"></div>';
-  
-  const res = await apiCall({ accion: 'getTienda', usuario: u, token: t });
-  
-  if(!res.success) { 
-    logout(); 
-    return; 
-  }
-  
-  userBalance = Number(res.saldo); 
-  updateBalanceUI();
-  container.innerHTML = "";
-
-  if(!res.productos || res.productos.length === 0) {
-    container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#555;'>No hay productos configurados.</p>";
-    return;
-  }
-
-  res.productos.forEach(p => {
-    let img = p.img;
-    if(img && img.includes('drive')) {
-        const id = img.match(/\/d\/([a-zA-Z0-9_-]+)/) || img.match(/id=([a-zA-Z0-9_-]+)/);
-        if(id) img = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w400`;
-    }
-
-    const isSoldOut = p.stock <= 0;
-    const soldOutClass = isSoldOut ? 'sold-out' : '';
-    const btnHtml = isSoldOut 
-        ? `<button class="btn-buy disabled" disabled>AGOTADO</button>`
-        : `<button class="btn-buy" onclick="addToCart('${p.nombre}', ${p.precio}, '${img}')">AGREGAR</button>`;
-    
-    const stockHtml = isSoldOut 
-        ? `<span style="color:#9f1239; font-weight:bold;">SIN STOCK</span>` 
-        : `${p.stock} disponibles`;
-
-    const card = document.createElement('div');
-    card.className = `product-card ${soldOutClass}`;
-    card.innerHTML = `
-      <div class="card-img-container"><img src="${img || ''}" class="card-img" alt="${p.nombre}"></div>
-      <div class="card-body">
-        <div class="card-title">${p.nombre}</div>
-        <div class="price-container">
-            <span class="card-price">$ ${new Intl.NumberFormat('es-CO').format(p.precio)}</span>
-        </div>
-        <div class="card-stock">${stockHtml}</div>
-        ${btnHtml}
-      </div>
-    `;
-    container.appendChild(card);
-  });
-}
-
-// --- LÓGICA DE CARRITO ---
-function addToCart(nombre, precio, img) {
-    const existe = cart.find(item => item.nombre === nombre);
-    if(existe) {
-        existe.cantidad++;
-    } else {
-        cart.push({ nombre, precio, img, cantidad: 1 });
-    }
-    updateCartUI();
-    
-    const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 1500,
-        background: '#0a0a0a',
-        color: '#fff',
-        iconColor: '#7c3aed'
-    });
-    Toast.fire({ icon: 'success', title: 'Añadido al carrito' });
-}
-
-function updateCartUI() {
-    const list = document.getElementById('cart-items-list');
-    const badge = document.getElementById('cart-count');
-    const totalDisplay = document.getElementById('cart-total-display');
-    
-    list.innerHTML = "";
-    let total = 0;
-    let count = 0;
-
-    if(cart.length === 0) {
-        list.innerHTML = '<p style="text-align:center; color:#555; margin-top:20px;">Tu carrito está vacío.</p>';
-    } else {
-        cart.forEach((item, index) => {
-            total += item.precio * item.cantidad;
-            count += item.cantidad;
-            
-            list.innerHTML += `
-                <div class="cart-item-row">
-                    <img src="${item.img}" class="cart-item-img">
-                    <div class="cart-item-info" style="flex-grow:1;">
-                        <h4>${item.nombre}</h4>
-                        <div class="cart-item-price">$ ${new Intl.NumberFormat('es-CO').format(item.precio)}</div>
-                        <span>Cantidad: ${item.cantidad}</span>
-                    </div>
-                    <button class="btn-remove" onclick="removeFromCart(${index})">
-                        <span class="material-icons-round" style="font-size:1.2rem;">delete</span>
-                    </button>
-                </div>
-            `;
-        });
-    }
-
-    badge.innerText = count;
-    totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
-}
-
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    updateCartUI();
-}
-
-function toggleCart() {
-    const drawer = document.getElementById('cart-drawer');
-    const overlay = document.getElementById('cart-overlay');
-    drawer.classList.toggle('open');
-    overlay.classList.toggle('hidden');
-}
-
-// --- CHECKOUT & COMPRA ---
-function goToCheckout() {
-    if(cart.length === 0) return;
-    
-    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-    const summaryList = document.getElementById('checkout-summary-list');
-    summaryList.innerHTML = "";
-    
-    cart.forEach(item => {
-        summaryList.innerHTML += `
-            <div class="checkout-summary-row">
-                <span>${item.nombre} (x${item.cantidad})</span>
-                <span style="color:var(--accent); font-weight:bold;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</span>
-            </div>
-        `;
-    });
-
-    document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
-
-    toggleCart(); 
-    document.getElementById('checkout-overlay').classList.remove('hidden');
-    document.getElementById('checkout-modal').classList.add('active');
-}
-
-function closeCheckout() {
-    document.getElementById('checkout-overlay').classList.add('hidden');
-    document.getElementById('checkout-modal').classList.remove('active');
-}
-
-async function finalizePurchase() {
-    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-    
-    if(userBalance < total) {
-        return Swal.fire({
-            title: 'Saldo Insuficiente',
-            text: 'No tienes saldo suficiente para esta compra.',
-            icon: 'error',
-            background: '#0a0a0a', color: '#fff'
-        });
-    }
-
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-    
-    Swal.fire({ 
-        title: 'PROCESANDO PAGO', 
-        text: 'Generando tus credenciales...',
-        didOpen: () => Swal.showLoading(), 
-        background: '#0a0a0a', color:'#fff',
-        allowOutsideClick: false
-    });
-
-    let errores = [];
-    let exitos = 0;
-
-    for (const item of cart) {
-        for(let i=0; i<item.cantidad; i++) {
-            const res = await apiCall({ accion: 'comprar', usuario: u, token: t, producto: item.nombre });
-            if(res.success) {
-                exitos++;
-                userBalance = res.nuevoSaldo; 
-                // MEJORA: GUARDAMOS EL NUEVO SALDO EN CACHÉ AL INSTANTE
-                localStorage.setItem('jeico_saldo', userBalance); 
-            } else {
-                errores.push(`${item.nombre}: ${res.msg}`);
-            }
-        }
-    }
-
-    closeCheckout();
-    updateBalanceUI();
-    
-    if(exitos > 0) {
-        cart = []; 
-        updateCartUI();
-        cargarTienda(); 
-        
-        if(errores.length > 0) {
-            Swal.fire({
-                title: 'Compra Parcial',
-                text: `Se procesaron ${exitos} cuentas. Fallaron: ${errores.length}`,
-                icon: 'warning',
-                background: '#0a0a0a', color: '#fff'
-            });
-        } else {
-            Swal.fire({
-                title: '¡PAGO COMPLETADO!',
-                text: 'Revisa tus cuentas en la sección "Mis Pedidos"',
-                icon: 'success',
-                background: '#0a0a0a', color:'#fff',
-                confirmButtonColor: '#7c3aed'
-            });
-        }
-    } else {
-        Swal.fire({
-            title: 'Error en la compra',
-            text: errores[0] || "No se pudo procesar la solicitud.",
-            icon: 'error',
-            background: '#0a0a0a', color: '#fff'
-        });
-    }
-}
-
-// --- OTROS MÉTODOS ---
-/**
- * Alternar Menús Desplegables (Dinámico para múltiples menús)
- */
-function toggleSubmenu(elemento) {
-    // Busca el elemento que está exactamente debajo del botón clickeado en el HTML
-    const submenu = elemento.nextElementSibling;
-    
-    // Verifica que el elemento de abajo sea realmente un submenú
-    if (submenu && submenu.classList.contains('submenu')) {
-        // Muestra u oculta el submenú
-        submenu.classList.toggle('hidden');
-        
-        // Gira la flechita (añade la clase 'open' al li)
-        elemento.classList.toggle('open');
-    }
-}
-
-function cargarBilletera() {
-    updateBalanceUI();
-}
-
-async function cargarPedidos() {
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-    const tbody = document.getElementById('orders-tbody');
-    
-    if(!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px;"><div class="spinner"></div></td></tr>';
-    
-    const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
-    tbody.innerHTML = "";
-    
-    if(res.success && res.datos && res.datos.length > 0) {
-        res.datos.forEach(p => {
-            const fechaVal = p.fecha ? new Date(p.fecha).toLocaleDateString() : 'N/A';
-            tbody.innerHTML += `
-            <tr style="border-bottom:1px solid #1a1a1a;">
-                <td style="padding:20px; color:#fff; font-weight:bold;">${p.servicio}</td>
-                <td style="padding:20px;">
-                    <div style="background:#000; padding:10px; border:1px solid #222; font-family:monospace; color:var(--accent);">
-                        USER: ${p.cuenta}<br>PASS: ${p.clave}
-                    </div>
-                </td>
-                <td style="padding:20px; color:#555;">${fechaVal}</td>
-            </tr>`;
-        });
-    } else {
-        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:40px; color:#444;'>No has realizado compras todavía.</td></tr>";
-    }
-}
-// Lógica para mostrar/ocultar contraseña
-document.addEventListener('DOMContentLoaded', () => {
-    const togglePassword = document.querySelector('#togglePassword');
-    const passwordField = document.querySelector('#pass');
-
-    if (togglePassword && passwordField) {
-        togglePassword.addEventListener('click', function () {
-            // Cambiamos el tipo de input
-            const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordField.setAttribute('type', type);
-            
-            // Cambiamos el icono
-            this.textContent = type === 'password' ? 'visibility_off' : 'visibility';
-            
-            // Un pequeño efecto de feedback
-            this.style.transform = 'scale(1.2)';
-            setTimeout(() => this.style.transform = 'scale(1)', 150);
-        });
-    }
-});
-function logout() {
-    // Borramos solo la sesión, pero dejamos la caché de datos intacta
-    localStorage.removeItem('jeico_token');
-    localStorage.removeItem('jeico_user');
-    
-    // Recargamos la página para volver a la pantalla de Login
-    location.reload();
-}</script>
 <script id="script-soporte.js">/* soporte.js */
 /**
  * ===============================================================
- * SOPORTE.JS - CENTRO DE AYUDA PREMIUM (FAQ & TICKETS MANUAL)
+ * SOPORTE.JS - CENTRO DE AYUDA PREMIUM (FAQ, TICKETS & AUTOCOMPLETE)
  * ===============================================================
  */
 
-// Icono de WhatsApp (Opcional)
+// Icono de WhatsApp desde Drive
 const WSP_SOPORTE_ICON_URL = `https://drive.google.com/thumbnail?id=12_hw1hRhhGNGv1UY7CX-YJajITFtrY-S&sz=w200`;
+
+// Memoria caché para las cuentas del usuario (usado en el filtro buscador)
+let cuentasSoporteCache = [];
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA
@@ -3834,7 +3288,7 @@ function cargarSoporte() {
                     
                     <div class="warranty-info">
                         <span class="material-icons-round">verified</span>
-                        <span>¿Tienes algún inconveniente? Cuentas con nuestro <b>respaldo y atención</b>.</span>
+                        <span>Todas tus compras están protegidas por nuestra <b>Garantía Total</b>.</span>
                     </div>
                 </div>
 
@@ -3857,7 +3311,7 @@ function cargarSoporte() {
                             <span class="material-icons-round arrow">expand_more</span>
                         </div>
                         <div class="faq-answer">
-                            No te preocupes. Usa el botón de la pestaña "codigos" alli podras solicitar un codigo y cambiar la clave de tu cuenta de no ser posible puedes optar por "Reportar Falla de Acceso" desde esta pantalla y nuestro equipo te reestablecerá el servicio rápidamente.
+                            No te preocupes. Usa el botón "Reportar Falla de Acceso" desde esta pantalla y nuestro equipo te reestablecerá el servicio rápidamente.
                         </div>
                     </div>
 
@@ -3910,9 +3364,12 @@ function cargarSoporte() {
                         <input type="text" id="ticket-tipo" class="ticket-input readonly" readonly>
                     </div>
 
-                    <div class="input-group-premium">
+                    <div class="input-group-premium" style="position: relative;">
                         <label>CUENTA A REPORTAR (Opcional)</label>
-                        <input type="text" id="ticket-cuenta-input" class="ticket-input" placeholder="Ej: Disney+ o micorreo@gmail.com" autocomplete="off">
+                        <input type="text" id="ticket-cuenta-input" class="ticket-input custom-select-premium" placeholder="Buscar servicio o correo..." autocomplete="off" oninput="filtrarCuentasSoporte()" onclick="abrirDropdownSoporte(event)" onfocus="abrirDropdownSoporte(event)">
+                        <ul id="ticket-cuentas-list" class="ticket-dropdown-list hidden">
+                            <li class="dropdown-msg">Buscando en tu bóveda...</li>
+                        </ul>
                     </div>
 
                     <div class="input-group-premium">
@@ -3929,6 +3386,15 @@ function cargarSoporte() {
     `;
 }
 
+// Control global para cerrar el buscador al hacer clic en cualquier parte
+document.addEventListener('click', function(e) {
+    const input = document.getElementById('ticket-cuenta-input');
+    const list = document.getElementById('ticket-cuentas-list');
+    if (input && list && !input.contains(e.target) && !list.contains(e.target)) {
+        list.classList.add('hidden');
+    }
+});
+
 /**
  * 2. LÓGICA DE ACORDEÓN PARA FAQ
  */
@@ -3940,22 +3406,44 @@ function toggleFAQ(element) {
 }
 
 /**
- * 3. LÓGICA DEL MODAL (SIN CARGA DE DATOS)
+ * 3. LÓGICA DEL MODAL Y BUSCADOR INTELIGENTE
  */
-function abrirModalTicket(tipo) {
+async function abrirModalTicket(tipo) {
     const modal = document.getElementById('ticket-modal-overlay');
     const inputTipo = document.getElementById('ticket-tipo');
     const inputCuenta = document.getElementById('ticket-cuenta-input');
+    const listaCuentas = document.getElementById('ticket-cuentas-list');
     
     if (modal && inputTipo && inputCuenta) {
-        // Reset de campos
         inputTipo.value = tipo;
         document.getElementById('ticket-contexto').value = "";
         inputCuenta.value = "";
         
-        // Mostrar modal
+        // Lo ocultamos por defecto, sin mostrar mensajes de carga.
+        listaCuentas.classList.add('hidden'); 
+        
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('show'), 10);
+
+        const u = localStorage.getItem('jeico_user');
+        const t = localStorage.getItem('jeico_token');
+        
+        try {
+            // Obtenemos las cuentas en silencio
+            const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
+            
+            if (res.success && res.datos && res.datos.length > 0) {
+                // Guardamos en caché y renderizamos la lista oculta para que esté lista al clic
+                cuentasSoporteCache = res.datos.map(p => `${p.servicio} | ${p.cuenta}`);
+                renderizarListaCuentasSoporte(cuentasSoporteCache);
+            } else {
+                cuentasSoporteCache = [];
+                listaCuentas.innerHTML = '<li class="dropdown-msg">No tienes compras registradas</li>';
+            }
+        } catch (e) {
+            cuentasSoporteCache = [];
+            listaCuentas.innerHTML = '<li class="dropdown-msg">Ocurrió un error al cargar.</li>';
+        }
     }
 }
 
@@ -3967,8 +3455,50 @@ function cerrarModalTicket() {
     }
 }
 
+// Muestra la lista de inmediato al hacer clic o dar foco
+function abrirDropdownSoporte(e) {
+    if (e) e.stopPropagation();
+    const list = document.getElementById('ticket-cuentas-list');
+    // Ya no restringe la apertura. Si hay contenido (sea caché o mensaje de error), lo muestra.
+    if (list) {
+        list.classList.remove('hidden');
+    }
+}
+
+// Renderiza la lista desplegable
+function renderizarListaCuentasSoporte(cuentas) {
+    const list = document.getElementById('ticket-cuentas-list');
+    if(!list) return;
+    list.innerHTML = "";
+    
+    if (cuentas.length === 0) {
+        list.innerHTML = '<li class="dropdown-msg">No se encontraron coincidencias</li>';
+        return;
+    }
+
+    cuentas.forEach(c => {
+        const li = document.createElement('li');
+        li.className = 'dropdown-item';
+        li.innerText = c;
+        li.onclick = (e) => {
+            e.stopPropagation(); // Evita que el evento global lo cierre de golpe
+            document.getElementById('ticket-cuenta-input').value = c;
+            list.classList.add('hidden');
+        };
+        list.appendChild(li);
+    });
+}
+
+// Filtra la lista mientras el usuario escribe
+function filtrarCuentasSoporte() {
+    const input = document.getElementById('ticket-cuenta-input').value.toLowerCase();
+    const filtradas = cuentasSoporteCache.filter(c => c.toLowerCase().includes(input));
+    renderizarListaCuentasSoporte(filtradas);
+    abrirDropdownSoporte();
+}
+
 /**
- * 4. ENVÍO DEL TICKET Y ACTUALIZACIÓN DE CACHÉ LOCAL
+ * 4. ENVÍO DEL TICKET A GOOGLE SHEETS (HOJA 5)
  */
 async function enviarTicketBD() {
     const u = localStorage.getItem('jeico_user');
@@ -3986,9 +3516,9 @@ async function enviarTicketBD() {
         });
     }
 
-    // Unimos la cuenta manual con el mensaje del usuario
+    // Unimos la cuenta seleccionada con el mensaje del usuario
     const contextoFinal = (cuentaSeleccionada && cuentaSeleccionada !== "") 
-        ? `[Sobre: ${cuentaSeleccionada}] \n\nDetalle: ${contextoRaw}` 
+        ? `[Reporte sobre: ${cuentaSeleccionada}] \n\nDetalle: ${contextoRaw}` 
         : contextoRaw;
 
     Swal.fire({ 
@@ -4012,42 +3542,7 @@ async function enviarTicketBD() {
         if (res.success) {
             cerrarModalTicket();
             
-            // --- INYECCIÓN EN CACHÉ DE MISTICKETS CON ID REAL ---
-            
-            // IMPORTANTE: Asegúrate de que tu Google Script devuelva "fila" en el JSON
-            // Si el script no devuelve fila, usamos 0 (pero 0 dará error al cerrar si no se actualiza)
-            const idFilaReal = res.fila ? res.fila : 0;
-
-            const nuevoTicketVirtual = {
-                tipo: tipo,
-                fecha: new Date().toISOString(), // Fecha actual
-                estado: 'Abierto',
-                contexto: contextoFinal,
-                respuesta: '',
-                fila: idFilaReal // <--- AQUI GUARDAMOS LA FILA REAL QUE VINO DEL SERVER
-            };
-
-            const cacheKey = 'jeico_tickets_cache_v30min';
-            let cachedData = { timestamp: Date.now(), datos: [] };
-            const rawCache = localStorage.getItem(cacheKey);
-
-            if (rawCache) {
-                try {
-                    cachedData = JSON.parse(rawCache);
-                    if (!Array.isArray(cachedData.datos)) cachedData.datos = [];
-                } catch (e) { }
-            }
-
-            // Agregamos al inicio
-            cachedData.datos.unshift(nuevoTicketVirtual);
-            
-            // RESETEAMOS EL RELOJ DE 30 MINUTOS
-            cachedData.timestamp = Date.now();
-
-            // Guardamos
-            localStorage.setItem(cacheKey, JSON.stringify(cachedData));
-            // ----------------------------------------
-
+            // Confirmación Elegante sin ir a WhatsApp
             Swal.fire({
                 icon: 'success',
                 title: 'TICKET CREADO',
@@ -4067,7 +3562,7 @@ async function enviarTicketBD() {
 }
 
 /**
- * 5. ESTILOS DE SOPORTE PREMIUM (LIMPIOS)
+ * 5. ESTILOS DE SOPORTE PREMIUM Y BUSCADOR INTELIGENTE
  */
 const soporteStyles = `
     .soporte-wrapper-premium {
@@ -4129,7 +3624,7 @@ const soporteStyles = `
     .faq-item.active .faq-answer { max-height: 200px; padding: 0 20px 20px 20px; opacity: 1; }
 
     /* =========================================
-       DISEÑO MODAL DE TICKET
+       DISEÑO MODAL DE TICKET Y BUSCADOR INTELIGENTE
        ========================================= */
     .ticket-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -4170,6 +3665,28 @@ const soporteStyles = `
     
     .ticket-textarea { height: 100px; resize: none; }
 
+    /* ESTILOS DEL BUSCADOR DESPLEGABLE */
+    .custom-select-premium {
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%237c3aed" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 40px;
+    }
+    .ticket-dropdown-list {
+        position: absolute; top: 100%; left: 0; width: 100%; background: #080808;
+        border: 1px solid #333; border-radius: 8px; max-height: 180px; overflow-y: auto;
+        z-index: 10000; list-style: none; padding: 0; margin: 5px 0 0 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    }
+    .ticket-dropdown-list.hidden { display: none; }
+    .dropdown-item {
+        padding: 12px 15px; color: #ccc; font-size: 0.85rem;
+        cursor: pointer; border-bottom: 1px solid #111; transition: 0.2s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: rgba(124, 58, 237, 0.15); color: #fff; border-left: 3px solid var(--accent); }
+    .dropdown-msg { padding: 15px; color: #666; font-size: 0.85rem; text-align: center; }
+
     .btn-submit-ticket {
         width: 100%; background: var(--success); color: #fff; border: none;
         padding: 16px; border-radius: 8px; font-weight: 800; letter-spacing: 1px;
@@ -4187,7 +3704,7 @@ document.head.appendChild(styleSheetSoporte);</script>
 <script id="script-codigo.js">/* codigo.js */
 /**
  * ===============================================================
- * CODIGOS.JS - PORTAL DE ACCESO SEGURO (MANUAL / SIN AUTOCOMPLETE)
+ * CODIGOS.JS - PORTAL DE ACCESO SEGURO (INTEGRACIÓN PREMIUM)
  * ===============================================================
  */
 
@@ -4205,6 +3722,7 @@ const LISTA_OBREROS = [
 
 const COOLDOWN_CODIGOS = 20; // Segundos
 let enCooldownCodigos = false;
+let cuentasCodigosCache = []; // Caché para el autocompletado
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA DE LA VISTA
@@ -4213,7 +3731,6 @@ function cargarCodigos() {
     const container = document.getElementById('sec-codigos');
     if (!container) return;
 
-    // Se eliminó la lista UL y los eventos oninput/onclick del input de correo
     container.innerHTML = `
         <div class="codigos-wrapper-premium">
             <div class="page-header-premium" style="text-align: center; margin-bottom: 30px;">
@@ -4228,8 +3745,10 @@ function cargarCodigos() {
                         <label>Correo de la Cuenta</label>
                         <div class="input-wrapper">
                             <span class="material-icons-round input-icon">email</span>
-                            <input type="email" id="txtUserCod" class="ticket-input" placeholder="ejemplo@gmail.com" autocomplete="off">
+                            <input type="email" id="txtUserCod" class="ticket-input custom-select-premium" placeholder="ejemplo@gmail.com" autocomplete="off" oninput="filtrarCuentasCodigos()" onclick="abrirDropdownCodigos(event)" onfocus="abrirDropdownCodigos(event)">
                         </div>
+                        <ul id="codigos-cuentas-list" class="ticket-dropdown-list hidden">
+                            </ul>
                     </div>
 
                     <div class="input-group-premium" style="margin-bottom: 20px;">
@@ -4287,11 +3806,20 @@ function cargarCodigos() {
         </div>
     `;
 
-    // Inicializar lógica de la vista (Botones de servicio)
+    // Inicializar lógica de la vista
     initServiceButtonsCodigos();
     
-    // NOTA: Se ha eliminado la llamada a cargarCuentasParaAutocomplete()
-    // y los EventListeners del dropdown.
+    // MEJORA: Cargamos las cuentas silenciosamente en el fondo ANTES de que el usuario haga clic
+    cargarCuentasParaAutocomplete();
+
+    // Evento para cerrar dropdown con clic fuera
+    document.addEventListener('click', function(e) {
+        const input = document.getElementById('txtUserCod');
+        const list = document.getElementById('codigos-cuentas-list');
+        if (input && list && !input.contains(e.target) && !list.contains(e.target)) {
+            list.classList.add('hidden');
+        }
+    });
 
     // Enter para ejecutar
     document.getElementById("txtPassCod").addEventListener("keydown", e => {
@@ -4300,7 +3828,90 @@ function cargarCodigos() {
 }
 
 /**
- * 2. LÓGICA DE INTERFAZ (BOTONES, TOGGLE PASS)
+ * 2. LÓGICA DE AUTOCOMPLETADO (INTELIGENTE Y PRE-CARGADO)
+ */
+async function cargarCuentasParaAutocomplete() {
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    const list = document.getElementById('codigos-cuentas-list');
+    
+    // Mostramos estado de carga solo dentro de la lista oculta por si el usuario es muy rápido
+    if(list) list.innerHTML = '<li class="dropdown-msg">Cargando tus cuentas...</li>';
+
+    try {
+        const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
+        if (res.success && res.datos && res.datos.length > 0) {
+            // Guardamos el objeto completo en memoria
+            cuentasCodigosCache = res.datos;
+            // Pre-renderizamos la lista para que esté lista al primer clic
+            renderListaAutocompleteCodigos(cuentasCodigosCache);
+        } else {
+            cuentasCodigosCache = [];
+            if(list) list.innerHTML = '<li class="dropdown-msg">No tienes compras registradas. Ingresa manual.</li>';
+        }
+    } catch (e) {
+        console.error("Error cargando cuentas para autocompletado.");
+        if(list) list.innerHTML = '<li class="dropdown-msg">Error de conexión. Ingresa manual.</li>';
+    }
+}
+
+function abrirDropdownCodigos(e) {
+    if (e) e.stopPropagation();
+    const list = document.getElementById('codigos-cuentas-list');
+    // Ya no evalúa si hay caché, simplemente la abre para mostrar los resultados pre-cargados
+    if (list) list.classList.remove('hidden');
+}
+
+function renderListaAutocompleteCodigos(cuentas) {
+    const list = document.getElementById('codigos-cuentas-list');
+    if(!list) return;
+    list.innerHTML = "";
+    
+    if (cuentas.length === 0) {
+        list.innerHTML = '<li class="dropdown-msg">Escribe tu correo manualmente</li>';
+        return;
+    }
+
+    cuentas.forEach(c => {
+        const li = document.createElement('li');
+        li.className = 'dropdown-item';
+        li.innerHTML = `<strong>${c.servicio}</strong> - ${c.cuenta}`;
+        
+        li.onclick = (e) => {
+            e.stopPropagation();
+            seleccionarCuentaCodigo(c.cuenta, c.clave, c.servicio);
+            list.classList.add('hidden');
+        };
+        list.appendChild(li);
+    });
+}
+
+function filtrarCuentasCodigos() {
+    const input = document.getElementById('txtUserCod').value.toLowerCase();
+    const filtradas = cuentasCodigosCache.filter(c => 
+        c.cuenta.toLowerCase().includes(input) || c.servicio.toLowerCase().includes(input)
+    );
+    renderListaAutocompleteCodigos(filtradas);
+    abrirDropdownCodigos();
+}
+
+function seleccionarCuentaCodigo(correo, clave, servicioNombre) {
+    // 1. Rellenar inputs
+    document.getElementById('txtUserCod').value = correo;
+    document.getElementById('txtPassCod').value = clave;
+
+    // 2. Autoseleccionar el botón del servicio correcto
+    const botones = document.querySelectorAll('.btn-service-brand');
+    botones.forEach(btn => {
+        const brand = btn.getAttribute('data-brand').toLowerCase();
+        if (servicioNombre.toLowerCase().includes(brand)) {
+            btn.click(); // Disparamos el clic para que se active y actualice el Asunto
+        }
+    });
+}
+
+/**
+ * 3. LÓGICA DE INTERFAZ (BOTONES, TOGGLE PASS)
  */
 function togglePasswordVisibilidad() {
     const passInput = document.getElementById("txtPassCod");
@@ -4323,6 +3934,8 @@ function initServiceButtonsCodigos() {
     const btnVerificar = document.getElementById("btnVerificarCod");
     const btnText = document.getElementById("btnTextCod");
     
+    let toastTimeout;
+
     botones.forEach(boton => {
         boton.addEventListener("click", () => {
             if(boton.disabled) return;
@@ -4357,7 +3970,7 @@ function initServiceButtonsCodigos() {
 }
 
 /**
- * 3. NÚCLEO DE EXTRACCIÓN Y API
+ * 4. NÚCLEO DE EXTRACCIÓN Y API
  */
 async function faseIA(texto, icono, delay = 700) {
     const status = document.getElementById("statusAreaCod");
@@ -4525,7 +4138,7 @@ async function ejecutarAccesoCodigos() {
 }
 
 /**
- * 4. MOTOR DE EXTRACCIÓN DE TEXTO
+ * 5. MOTOR DE EXTRACCIÓN DE TEXTO
  */
 function extraerDatosCorreo(asunto, cuerpoOriginal) {
     let codigoFinal = null;
@@ -4577,7 +4190,7 @@ function extraerDatosCorreo(asunto, cuerpoOriginal) {
 }
 
 /**
- * 5. ESTILOS INTEGRADOS (GOTH PREMIUM + BRAND COLORS)
+ * 6. ESTILOS INTEGRADOS (GOTH PREMIUM + BRAND COLORS)
  */
 const codigosStyles = `
     .codigos-wrapper-premium {
@@ -4609,6 +4222,28 @@ const codigosStyles = `
     #txtUserCod, #txtPassCod {
         padding-left: 45px; padding-right: 45px;
     }
+
+    /* BUSCADOR DESPLEGABLE */
+    .custom-select-premium {
+        background-image: url('data:image/svg+xml;utf8,<svg fill="%237c3aed" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 40px;
+    }
+    .ticket-dropdown-list {
+        position: absolute; top: 100%; left: 0; width: 100%; background: #080808;
+        border: 1px solid #333; border-radius: 8px; max-height: 180px; overflow-y: auto;
+        z-index: 10000; list-style: none; padding: 0; margin: 5px 0 0 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+    }
+    .ticket-dropdown-list.hidden { display: none; }
+    .dropdown-item {
+        padding: 12px 15px; color: #ccc; font-size: 0.85rem;
+        cursor: pointer; border-bottom: 1px solid #111; transition: 0.2s;
+    }
+    .dropdown-item:last-child { border-bottom: none; }
+    .dropdown-item:hover { background: rgba(124, 58, 237, 0.15); color: #fff; border-left: 3px solid var(--accent); }
+    .dropdown-msg { padding: 15px; color: #666; font-size: 0.85rem; text-align: center; }
 
     /* GRID DE MARCAS */
     .services-grid {
@@ -4692,30 +4327,539 @@ const codigosStyles = `
 const styleSheetCodigos = document.createElement("style");
 styleSheetCodigos.innerText = codigosStyles;
 document.head.appendChild(styleSheetCodigos);</script>
+<script id="script-datos.js">/* datos.js */
+/**
+ * ===============================================================
+ * DATOS.JS - GESTIÓN DE PERFIL Y SEGURIDAD (CACHÉ LOCAL INSTANTÁNEO)
+ * ===============================================================
+ */
+
+async function cargarDatos() {
+    const container = document.getElementById('sec-datos');
+    if (!container) return;
+
+    // 1. Renderizamos la estructura base
+    container.innerHTML = `
+        <div class="datos-wrapper-premium">
+            <div class="page-header-premium" style="text-align: center; margin-bottom: 30px;">
+                <h1 class="page-title">MI <span>PERFIL</span></h1>
+                <p class="page-subtitle">Gestiona tu información personal y opciones de recuperación.</p>
+            </div>
+
+            <div class="card-datos">
+                <div id="loading-datos" style="text-align:center; padding: 40px;">
+                    <div class="spinner"></div>
+                    <p style="color:#777; margin-top:15px; font-size:0.85rem; letter-spacing:2px;">CARGANDO DATOS...</p>
+                </div>
+
+                <form id="form-datos-perfil" class="hidden" onsubmit="actualizarMisDatos(event)">
+                    
+                    <div class="datos-grid">
+                        <div class="input-group-premium">
+                            <label>NOMBRE</label>
+                            <div class="datos-input-wrapper">
+                                <span class="material-icons-round datos-input-icon">badge</span>
+                                <input type="text" id="perfil-nombre" class="datos-input" placeholder="Tu nombre" required>
+                            </div>
+                        </div>
+
+                        <div class="input-group-premium">
+                            <label>APELLIDO</label>
+                            <div class="datos-input-wrapper">
+                                <span class="material-icons-round datos-input-icon">badge</span>
+                                <input type="text" id="perfil-apellido" class="datos-input" placeholder="Tu apellido" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="input-group-premium" style="margin-top: 20px;">
+                        <label>CORREO DE RECUPERACIÓN</label>
+                        <div class="datos-input-wrapper">
+                            <span class="material-icons-round datos-input-icon">mark_email_read</span>
+                            <input type="email" id="perfil-correo" class="datos-input" placeholder="correo@alternativo.com" required>
+                        </div>
+                        <p class="datos-help-text">Se usará para restablecer tu contraseña si la olvidas.</p>
+                    </div>
+
+                    <div class="input-group-premium" style="margin-top: 20px;">
+                        <label>TELÉFONO / WHATSAPP</label>
+                        <div class="datos-input-wrapper">
+                            <span class="material-icons-round datos-input-icon">phone_iphone</span>
+                            <input type="tel" id="perfil-telefono" class="datos-input" placeholder="+57 300 000 0000" required>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-submit-datos" id="btn-guardar-datos">
+                        <span class="material-icons-round">save</span> GUARDAR CAMBIOS
+                    </button>
+                </form>
+            </div>
+        </div>
+    `;
+
+    // 2. MEJORA: CARGA INSTANTÁNEA DESDE LOCALSTORAGE
+    const cachedDatos = localStorage.getItem('jeico_perfil_datos');
+    if (cachedDatos) {
+        try {
+            const datos = JSON.parse(cachedDatos);
+            document.getElementById('perfil-nombre').value = datos.nombre || "";
+            document.getElementById('perfil-apellido').value = datos.apellido || "";
+            document.getElementById('perfil-correo').value = datos.correo || "";
+            document.getElementById('perfil-telefono').value = datos.telefono || "";
+            
+            // Ocultar spinner y mostrar form de inmediato
+            document.getElementById('loading-datos').classList.add('hidden');
+            document.getElementById('form-datos-perfil').classList.remove('hidden');
+        } catch (e) {
+            console.error("Error leyendo caché de datos", e);
+        }
+    }
+
+    // 3. CONSULTA SILENCIOSA A LA BASE DE DATOS (Para sincronizar por si hubo cambios)
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+
+    try {
+        const res = await apiCall({ accion: 'getDatosPerfil', usuario: u, token: t });
+        
+        // Si el formulario no se mostró con caché, lo mostramos ahora
+        if (!cachedDatos) {
+            document.getElementById('loading-datos').classList.add('hidden');
+            document.getElementById('form-datos-perfil').classList.remove('hidden');
+        }
+
+        if (res.success && res.datos) {
+            // Actualizamos visualmente con lo que venga del servidor
+            document.getElementById('perfil-nombre').value = res.datos.nombre || "";
+            document.getElementById('perfil-apellido').value = res.datos.apellido || "";
+            document.getElementById('perfil-correo').value = res.datos.correo || "";
+            document.getElementById('perfil-telefono').value = res.datos.telefono || "";
+
+            // Guardamos el nuevo estado en caché local
+            localStorage.setItem('jeico_perfil_datos', JSON.stringify(res.datos));
+        }
+    } catch (e) {
+        if (!cachedDatos) {
+            document.getElementById('loading-datos').innerHTML = "<p style='color:#ff0055;'>Error de conexión al cargar el perfil.</p>";
+        }
+    }
+}
+
+async function actualizarMisDatos(e) {
+    e.preventDefault();
+
+    const btn = document.getElementById('btn-guardar-datos');
+    btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> GUARDANDO...';
+    btn.disabled = true;
+
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    
+    const nombre = document.getElementById('perfil-nombre').value.trim();
+    const apellido = document.getElementById('perfil-apellido').value.trim();
+    const correo = document.getElementById('perfil-correo').value.trim();
+    const telefono = document.getElementById('perfil-telefono').value.trim();
+
+    try {
+        const res = await apiCall({ 
+            accion: 'setDatosPerfil', 
+            usuario: u, 
+            token: t,
+            nombre: nombre,
+            apellido: apellido,
+            correo: correo,
+            telefono: telefono
+        });
+
+        if (res.success) {
+            // MEJORA: GUARDAR EN LOCALSTORAGE PERMANENTEMENTE
+            const nuevosDatos = { nombre, apellido, correo, telefono };
+            localStorage.setItem('jeico_perfil_datos', JSON.stringify(nuevosDatos));
+
+            Swal.fire({
+                toast: true, position: 'top-end', icon: 'success',
+                title: 'Perfil Actualizado',
+                text: 'Tus datos han sido guardados correctamente.',
+                showConfirmButton: false, timer: 3000,
+                background: '#0a0a0a', color: '#fff', iconColor: '#10b981'
+            });
+        } else {
+            Swal.fire({ icon: 'error', title: 'Error', text: res.msg, background: '#0a0a0a', color: '#fff' });
+        }
+    } catch (error) {
+        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No se pudieron guardar los cambios.', background: '#0a0a0a', color: '#fff' });
+    } finally {
+        btn.innerHTML = '<span class="material-icons-round">save</span> GUARDAR CAMBIOS';
+        btn.disabled = false;
+    }
+}
+
+/**
+ * ESTILOS INTEGRADOS (EXCLUSIVOS PARA PERFIL, SIN CONFLICTOS)
+ */
+const datosStyles = `
+    .datos-wrapper-premium {
+        max-width: 650px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .card-datos {
+        background: linear-gradient(145deg, #0a0a0a 0%, #050505 100%);
+        border: 1px solid #1a1a1a;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(124, 58, 237, 0.05);
+    }
+
+    .datos-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .input-group-premium {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .input-group-premium label {
+        color: var(--accent);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        margin-left: 5px;
+    }
+
+    .datos-help-text {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 6px;
+        margin-left: 5px;
+    }
+
+    /* CONTENEDOR DEL ÍCONO E INPUT */
+    .datos-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+    }
+
+    /* EL ÍCONO FLOTANTE */
+    .datos-input-icon {
+        position: absolute;
+        left: 15px;
+        color: #777;
+        font-size: 20px;
+        transition: 0.3s ease;
+        pointer-events: none;
+    }
+
+    /* EL CAMPO DE TEXTO */
+    .datos-input {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #222;
+        color: #fff;
+        padding: 16px 15px 16px 45px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-family: 'Inter', sans-serif;
+        transition: all 0.3s ease;
+        outline: none;
+    }
+
+    /* EFECTOS HOVER Y FOCUS */
+    .datos-input:hover {
+        border-color: #333;
+    }
+
+    .datos-input:focus {
+        border-color: var(--accent);
+        background: #000;
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
+    }
+
+    /* Ilumina el ícono al hacer focus */
+    .datos-input:focus + .datos-input-icon,
+    .datos-input-wrapper:focus-within .datos-input-icon {
+        color: var(--accent);
+        transform: scale(1.1);
+    }
+
+    /* BOTÓN DE GUARDAR */
+    .btn-submit-datos {
+        width: 100%;
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        padding: 18px;
+        border-radius: 12px;
+        font-weight: 800;
+        letter-spacing: 1px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: 0.3s;
+        margin-top: 30px;
+        box-shadow: 0 10px 20px rgba(124, 58, 237, 0.2);
+    }
+
+    .btn-submit-datos:hover:not(:disabled) {
+        background: #6d28d9;
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px rgba(124, 58, 237, 0.4);
+    }
+
+    .btn-submit-datos:disabled {
+        background: #222;
+        color: #666;
+        box-shadow: none;
+        cursor: not-allowed;
+    }
+
+    .fa-spin { animation: spin 1s infinite linear; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* RESPONSIVE MÓVIL */
+    @media (max-width: 600px) {
+        .datos-grid { grid-template-columns: 1fr; gap: 20px; }
+        .card-datos { padding: 30px 20px; }
+    }
+`;
+
+const styleSheetDatos = document.createElement("style");
+styleSheetDatos.innerText = datosStyles;
+document.head.appendChild(styleSheetDatos);</script>
+<script id="script-contra.js">/* contra.js */
+/**
+ * ===============================================================
+ * CONTRA.JS - SISTEMA DE RECUPERACIÓN SIMPLIFICADO (PREMIUM CSS)
+ * ===============================================================
+ */
+
+// Variables temporales para la sesión de recuperación
+let usuarioRecuperacionTemp = "";
+let correoRecuperacionTemp = "";
+let telRecuperacionTemp = "";
+
+/**
+ * 1. MUESTRA LA PANTALLA PARA PEDIR EL CORREO Y TELÉFONO
+ */
+function mostrarRecuperacionPaso1() {
+    document.getElementById('login-box-main').classList.add('hidden');
+    document.getElementById('recover-step-1').classList.remove('hidden');
+}
+
+/**
+ * 2. REGRESA AL LOGIN PRINCIPAL CANCELANDO LA RECUPERACIÓN
+ */
+function volverLogin() {
+    document.getElementById('recover-step-1').classList.add('hidden');
+    document.getElementById('recover-step-2').classList.add('hidden');
+    document.getElementById('login-box-main').classList.remove('hidden');
+}
+
+/**
+ * 3. PASO 1: VALIDA SI EL CORREO Y TELÉFONO COINCIDEN EN LA DB
+ */
+async function enviarSolicitudRecuperacion(e) {
+    e.preventDefault();
+    
+    correoRecuperacionTemp = document.getElementById('rec-correo').value.trim();
+    telRecuperacionTemp = document.getElementById('rec-tel').value.trim();
+    const btn = document.getElementById('btn-recover-1');
+
+    btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> VERIFICANDO...';
+    btn.disabled = true;
+
+    // Llamada a la nueva ruta simplificada en el GS
+    const res = await apiCall({ 
+        accion: 'validarDatosRecuperacion', 
+        correo: correoRecuperacionTemp, 
+        telefono: telRecuperacionTemp 
+    });
+
+    btn.innerText = "ENVIAR DATOS";
+    btn.disabled = false;
+
+    if (res.success) {
+        usuarioRecuperacionTemp = res.usuario; // Obtenemos el usuario de la DB
+        
+        // Saltamos al paso 2 (Nueva Contraseña)
+        document.getElementById('recover-step-1').classList.add('hidden');
+        document.getElementById('recover-step-2').classList.remove('hidden');
+        
+        Swal.fire({ 
+            icon: 'success', 
+            title: 'Identidad Verificada', 
+            text: `Hola ${res.usuario}, ya puedes asignar tu nueva clave.`, 
+            background: '#0a0a0a', color: '#fff', 
+            confirmButtonColor: '#10b981',
+            timer: 3000
+        });
+    } else {
+        Swal.fire({ 
+            icon: 'error', 
+            title: 'Acceso Denegado', 
+            text: res.msg, 
+            background: '#0a0a0a', 
+            color: '#fff' 
+        });
+    }
+}
+
+/**
+ * 4. PASO 2: ENVÍA LA NUEVA CLAVE PARA SOBREESCRIBIR LA ANTERIOR
+ */
+async function procesarNuevaClave(e) {
+  e.preventDefault();
+  
+  const nuevaClave = document.getElementById('rec-nueva-clave').value.trim();
+  const btn = document.getElementById('btn-recover-2');
+
+  if(nuevaClave.length < 4) {
+      return Swal.fire({ icon: 'warning', title: 'Clave muy corta', text: 'Mínimo 4 caracteres.', background: '#0a0a0a', color: '#fff' });
+  }
+
+  btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> ACTUALIZANDO...';
+  btn.disabled = true;
+
+  // Enviamos todos los datos para que el backend haga una última validación de seguridad
+  const res = await apiCall({ 
+      accion: 'cambiarClaveOlvidada', 
+      usuario: usuarioRecuperacionTemp, 
+      correo: correoRecuperacionTemp,
+      telefono: telRecuperacionTemp,
+      nuevaClave: nuevaClave 
+  });
+
+  btn.innerText = "ACTUALIZAR CLAVE";
+  btn.disabled = false;
+
+  if (res.success) {
+      Swal.fire({ 
+          icon: 'success', 
+          title: '¡Proceso Exitoso!', 
+          text: 'Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.', 
+          background: '#0a0a0a', 
+          color: '#fff', 
+          confirmButtonColor: '#7c3aed' 
+      }).then(() => {
+          // Limpiamos todo
+          document.getElementById('rec-correo').value = "";
+          document.getElementById('rec-tel').value = "";
+          document.getElementById('rec-nueva-clave').value = "";
+          volverLogin();
+      });
+  } else {
+      Swal.fire({ 
+          icon: 'error', 
+          title: 'Error Crítico', 
+          text: res.msg, 
+          background: '#0a0a0a', 
+          color: '#fff' 
+      });
+  }
+}
+
+/**
+ * ===============================================================
+ * ESTILOS CSS PARA RECUPERACIÓN (INYECTADOS)
+ * ===============================================================
+ */
+const contraStyles = `
+    /* Estilos para los inputs de recuperación (estilo Premium) */
+    #recover-step-1 .input-field, 
+    #recover-step-2 .input-field {
+        width: 100%;
+        background: #0d0d0d;
+        border: 1px solid #222;
+        color: #fff;
+        padding: 15px;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        outline: none;
+        margin-bottom: 5px;
+    }
+
+    #recover-step-1 .input-field:focus, 
+    #recover-step-2 .input-field:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.15);
+        background: #000;
+    }
+
+    /* Botón de recuperación */
+    .btn-recover {
+        width: 100%;
+        padding: 16px;
+        border-radius: 12px;
+        border: none;
+        font-weight: 800;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: 0.3s;
+        margin-top: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    /* Animación de carga */
+    .fa-spin {
+        animation: spin 1s infinite linear;
+    }
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    /* Enlaces de retorno */
+    .back-to-login {
+        display: block;
+        text-align: center;
+        margin-top: 20px;
+        color: #555;
+        font-size: 0.75rem;
+        text-decoration: none;
+        font-weight: 600;
+        letter-spacing: 1px;
+        cursor: pointer;
+        transition: 0.3s;
+    }
+    .back-to-login:hover {
+        color: var(--accent);
+    }
+`;
+
+// Inyección automática del CSS al cargar el script
+const styleSheetContra = document.createElement("style");
+styleSheetContra.innerText = contraStyles;
+document.head.appendChild(styleSheetContra);</script>
 <script id="script-mistickets.js">/* mistickets.js */
 /**
  * ===============================================================
- * MISTICKETS.JS - SISTEMA OPTIMIZADO (CACHE 30 MIN - SINCRONIZABLE)
+ * MISTICKETS.JS - HISTORIAL Y GESTIÓN DE SOPORTE DEL CLIENTE (V2 - MODAL & CACHÉ & RESPUESTAS)
  * ===============================================================
  */
 
 let cargandoTickets = false;
-// CONFIGURACIÓN: 30 Minutos de validez para el caché de lectura
-const TIEMPO_VALIDEZ_CACHE_TICKETS = 30 * 60 * 1000; 
 
 /**
- * 1. FUNCIÓN PRINCIPAL: Obtener y renderizar los tickets
- * @param {boolean} forzarRecarga - Si es true, ignora el caché y pide datos nuevos.
+ * 1. FUNCIÓN PRINCIPAL: Obtener y renderizar los tickets (Con sistema de Caché)
  */
-async function cargarMisTickets(forzarRecarga = false) {
+async function cargarMisTickets() {
     if (cargandoTickets) return;
     cargandoTickets = true;
 
     const container = document.getElementById('tickets-container');
-    if (!container) {
-        cargandoTickets = false;
-        return;
-    }
     
     // CREDENCIALES
     const u = localStorage.getItem('jeico_user');
@@ -4731,41 +4875,23 @@ async function cargarMisTickets(forzarRecarga = false) {
         return;
     }
 
-    // --- LÓGICA DE CACHÉ DE 30 MINUTOS ---
-    const cacheRaw = localStorage.getItem('jeico_tickets_cache_v30min'); 
-    
-    if (cacheRaw && !forzarRecarga) {
-        try {
-            const cache = JSON.parse(cacheRaw);
-            const edadCache = Date.now() - cache.timestamp;
-
-            // SI LA CACHÉ TIENE MENOS DE 30 MINUTOS, LA USAMOS Y PARAMOS.
-            if (edadCache < TIEMPO_VALIDEZ_CACHE_TICKETS) {
-                console.log(`♻️ Usando caché local de tickets (Edad: ${Math.round(edadCache/60000)} min).`);
-                
-                renderMisTickets(cache.datos);
-                
-                cargandoTickets = false;
-                return; // <--- ESCUDO DE ENFRIAMIENTO ACTIVO
-            }
-        } catch (e) {
-            console.warn("Error leyendo caché de tickets, se procederá a descargar de nuevo.");
-        }
-    }
-
-    // Solo mostramos spinner si el contenedor está vacío para evitar parpadeos feos
-    if (!container.querySelector('.ticket-card-premium')) {
+    // --- SISTEMA DE CACHÉ (VELOCIDAD INSTANTÁNEA) ---
+    const ticketsCacheados = localStorage.getItem('jeico_tickets_cache');
+    if (ticketsCacheados) {
+        // Renderizamos inmediatamente lo que hay en memoria
+        renderMisTickets(JSON.parse(ticketsCacheados));
+    } else {
+        // Solo mostramos el spinner si es la primera vez que entra y no hay caché
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:60px;">
                 <div class="spinner"></div>
-                <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">Conectando con soporte...</p>
+                <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">Sincronizando con la central...</p>
             </div>
         `;
     }
 
     try {
-        console.log("📡 Sincronizando historial de tickets con el servidor...");
-        // Llamada al backend
+        // Llamada silenciosa al backend para buscar nuevos datos
         const res = await apiCall({ 
             accion: 'getMisTickets', 
             usuario: u, 
@@ -4773,36 +4899,30 @@ async function cargarMisTickets(forzarRecarga = false) {
         });
 
         if (res && res.success) {
-            // Guardamos datos + TIMESTAMP actual para la próxima vez (Activa los 30 min de enfriamiento)
-            const objetoCache = {
-                timestamp: Date.now(),
-                datos: res.datos
-            };
-            localStorage.setItem('jeico_tickets_cache_v30min', JSON.stringify(objetoCache));
-            
+            // Si hubo éxito, actualizamos la memoria caché
+            localStorage.setItem('jeico_tickets_cache', JSON.stringify(res.datos));
             // Renderizamos los datos frescos
             renderMisTickets(res.datos);
         } else {
-            // Si falla y no hay nada mostrado, mostramos error
-            if (!container.querySelector('.ticket-card-premium')) {
+            // Solo mostramos error si ni siquiera había caché
+            if (!ticketsCacheados) {
                 container.innerHTML = `
                     <div style="grid-column: 1/-1; text-align:center; padding:40px;">
                         <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">dns</span>
                         <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Error del servidor: ${res ? res.msg : 'Respuesta vacía'}</p>
-                        <button onclick="cargarMisTickets(true)" class="btn-retry" style="margin-top:10px; padding:8px 15px; border-radius:5px; border:1px solid #333; background:transparent; color:#fff; cursor:pointer;">Reintentar</button>
                     </div>
                 `;
             }
         }
     } catch (error) {
-        console.error("Error crítico en Mis Tickets:", error);
-        container.innerHTML = `
-            <div style="grid-column: 1/-1; text-align:center; padding:40px;">
-                <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">wifi_off</span>
-                <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Fallo en la conexión</p>
-                <button onclick="cargarMisTickets(true)" class="btn-retry" style="margin-top:10px; padding:8px 15px; border-radius:5px; border:1px solid #333; background:transparent; color:#fff; cursor:pointer;">Reintentar</button>
-            </div>
-        `;
+        if (!ticketsCacheados) {
+            container.innerHTML = `
+                <div style="grid-column: 1/-1; text-align:center; padding:40px;">
+                    <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">wifi_off</span>
+                    <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Fallo en la conexión: ${error.message}</p>
+                </div>
+            `;
+        }
     } finally {
         cargandoTickets = false;
     }
@@ -4813,7 +4933,6 @@ async function cargarMisTickets(forzarRecarga = false) {
  */
 function renderMisTickets(tickets) {
     const container = document.getElementById('tickets-container');
-    if (!container) return;
     
     try {
         container.innerHTML = ""; 
@@ -4834,9 +4953,9 @@ function renderMisTickets(tickets) {
             const esAbierto = estadoSeguro.toLowerCase() === 'abierto';
             
             // Colores más vibrantes para el estado
-            const colorEstado = esAbierto ? '#ff9900' : '#10b981'; 
-            const bgEstado = esAbierto ? 'rgba(255, 153, 0, 0.1)' : 'rgba(16, 185, 129, 0.1)';
-            const iconEstado = esAbierto ? 'hourglass_empty' : 'check_circle';
+            const colorEstado = esAbierto ? '#10b981' : '#6b7280'; 
+            const bgEstado = esAbierto ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.05)';
+            const iconEstado = esAbierto ? 'radio_button_checked' : 'check_circle';
             
             let fechaStr = "Fecha no disponible";
             if (ticket.fecha) {
@@ -4844,19 +4963,13 @@ function renderMisTickets(tickets) {
                 fechaStr = fechaObj.toLocaleDateString() + ' - ' + fechaObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             }
 
-            let mensajeEstadoFooter = "";
-            
-            if (esAbierto) {
-                mensajeEstadoFooter = `
-                    <div class="ticket-closed-badge" style="color: #ff9900;">
-                        <span class="material-icons-round" style="font-size:16px;">support_agent</span> EN REVISIÓN
-                    </div>`;
-            } else {
-                mensajeEstadoFooter = `
-                    <div class="ticket-closed-badge" style="color: #10b981;">
-                        <span class="material-icons-round" style="font-size:16px;">lock</span> SOLUCIONADO
-                    </div>`;
-            }
+            const botonAccion = esAbierto 
+                ? `<button class="btn-cerrar-ticket" onclick="cerrarTicketCliente(${ticket.fila})">
+                     <span class="material-icons-round">task_alt</span> Marcar Resuelto
+                   </button>` 
+                : `<div class="ticket-closed-badge">
+                     <span class="material-icons-round">lock</span> SOLUCIONADO
+                   </div>`;
 
             // Codificamos los textos de forma segura
             const textoCodificado = encodeURIComponent((ticket.contexto || 'Sin detalles.').replace(/'/g, "%27"));
@@ -4865,6 +4978,7 @@ function renderMisTickets(tickets) {
             const card = document.createElement('div');
             card.className = 'ticket-card-premium'; 
             
+            // Estructura HTML mejorada
             card.innerHTML = `
                 <div class="ticket-header">
                     <div>
@@ -4881,14 +4995,14 @@ function renderMisTickets(tickets) {
                     <div class="ticket-detail-btn" onclick="mostrarDetalleModal('${textoCodificado}', '${respCodificada}')">
                         <div class="ticket-detail-label">
                             <span class="material-icons-round">visibility</span> 
-                            <span>LEER REPORTE Y RESPUESTA</span>
+                            <span>LEER REPORTE COMPLETO</span>
                         </div>
                         <span class="material-icons-round detail-icon">open_in_new</span>
                     </div>
                 </div>
 
                 <div class="ticket-footer">
-                    ${mensajeEstadoFooter}
+                    ${botonAccion}
                 </div>
             `;
             container.appendChild(card);
@@ -4930,15 +5044,6 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
                 <div class="modal-ticket-text">${textoRespuesta}</div>
             </div>
         `;
-    } else {
-        htmlModal += `
-            <div class="modal-ticket-section admin-msg" style="opacity: 0.7;">
-                <div class="modal-ticket-title" style="color: #ff9900;">
-                    <span class="material-icons-round">hourglass_empty</span> EN ESPERA:
-                </div>
-                <div class="modal-ticket-text" style="color: #aaa; font-style: italic;">Tu ticket está siendo revisado por nuestro equipo. Te responderemos por este medio.</div>
-            </div>
-        `;
     }
 
     Swal.fire({
@@ -4946,7 +5051,7 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
         html: htmlModal,
         background: '#0a0a0a',
         color: '#fff',
-        confirmButtonColor: 'var(--accent)', 
+        confirmButtonColor: 'var(--accent)', // Usa el morado de tu tema
         confirmButtonText: 'CERRAR',
         customClass: {
             popup: 'modal-ticket-premium'
@@ -4955,12 +5060,65 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
 };
 
 /**
+ * 4. ACCIÓN: Cerrar un ticket específico
+ */
+async function cerrarTicketCliente(fila) {
+    const confirmar = await Swal.fire({
+        title: '¿Marcar como Resuelto?',
+        text: "Al cerrar el ticket nos confirmas que tu incidencia fue solucionada.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#10b981',
+        cancelButtonColor: '#222',
+        confirmButtonText: 'Sí, solucionado',
+        cancelButtonText: 'Cancelar',
+        background: '#0a0a0a',
+        color: '#fff'
+    });
+
+    if (!confirmar.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Actualizando...', text: 'Cerrando tu incidencia.',
+        allowOutsideClick: false, background: '#0a0a0a', color: '#fff',
+        didOpen: () => { Swal.showLoading() }
+    });
+
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+
+    const res = await apiCall({ 
+        accion: 'cerrarTicket', 
+        usuario: u, 
+        token: t, 
+        fila: fila 
+    });
+
+    if (res && res.success) {
+        Swal.fire({
+            icon: 'success', title: '¡Ticket Cerrado!', text: 'Gracias por avisarnos.',
+            background: '#0a0a0a', color: '#fff', timer: 2000, showConfirmButton: false
+        });
+        
+        // Al cerrar un ticket, limpiamos el caché viejo para forzar que baje el nuevo estado
+        localStorage.removeItem('jeico_tickets_cache');
+        cargarMisTickets(); 
+    } else {
+        Swal.fire({
+            icon: 'error', title: 'Error', text: res ? res.msg : 'Error desconocido',
+            background: '#0a0a0a', color: '#fff'
+        });
+    }
+}
+
+/**
  * ===============================================================
  * ESTILOS CSS INYECTADOS VÍA JS (DISEÑO PREMIUM GOTH)
  * ===============================================================
  */
 
 const ticketStyles = `
+    /* --- TARJETA PRINCIPAL DEL TICKET --- */
     .ticket-card-premium {
         background: #0d0d0d;
         border: 1px solid #1a1a1a;
@@ -4977,9 +5135,10 @@ const ticketStyles = `
     .ticket-card-premium:hover {
         border-color: #333;
         transform: translateY(-4px);
-        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.08);
+        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.08); /* Brillo morado sutil */
     }
 
+    /* --- CABECERA DE LA TARJETA --- */
     .ticket-header {
         display: flex;
         justify-content: space-between;
@@ -5012,10 +5171,23 @@ const ticketStyles = `
         border: 1px solid transparent;
     }
     
-    .ticket-status-pill span:first-child { font-size: 1rem; }
-    .ticket-status-pill span:last-child { font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; }
+    .ticket-status-pill span:first-child {
+        font-size: 1rem;
+    }
+    
+    .ticket-status-pill span:last-child {
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
 
-    .ticket-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
+    /* --- CUERPO DE LA TARJETA (BOTÓN DE LEER) --- */
+    .ticket-body {
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
 
     .ticket-detail-btn {
         background: #111;
@@ -5030,53 +5202,165 @@ const ticketStyles = `
         user-select: none;
     }
 
-    .ticket-detail-btn:hover { background: rgba(124, 58, 237, 0.1); border-color: rgba(124, 58, 237, 0.4); }
+    .ticket-detail-btn:hover {
+        background: rgba(124, 58, 237, 0.1);
+        border-color: rgba(124, 58, 237, 0.4);
+    }
 
-    .ticket-detail-label { display: flex; align-items: center; gap: 8px; color: #ccc; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; }
+    .ticket-detail-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #ccc;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 1px;
+    }
 
-    .ticket-detail-btn:hover .ticket-detail-label, .ticket-detail-btn:hover .detail-icon { color: var(--accent, #7c3aed); }
+    .ticket-detail-btn:hover .ticket-detail-label,
+    .ticket-detail-btn:hover .detail-icon {
+        color: var(--accent, #7c3aed);
+    }
 
-    .detail-icon { color: #555; font-size: 1.2rem; transition: color 0.2s; }
+    .detail-icon {
+        color: #555;
+        font-size: 1.2rem;
+        transition: color 0.2s;
+    }
 
-    .ticket-footer { margin-top: 20px; display: flex; justify-content: flex-end; align-items: center; }
+    /* --- PIE DE LA TARJETA (BOTONES ACCIÓN) --- */
+    .ticket-footer {
+        margin-top: 20px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+
+    .btn-cerrar-ticket {
+        background: transparent;
+        border: 1px solid var(--success, #10b981);
+        color: var(--success, #10b981);
+        padding: 10px 18px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-cerrar-ticket span {
+        font-size: 1.1rem;
+    }
+
+    .btn-cerrar-ticket:hover {
+        background: var(--success, #10b981);
+        color: #000;
+        box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
+    }
 
     .ticket-closed-badge {
+        color: #666;
         font-size: 0.8rem;
         font-weight: 800;
         letter-spacing: 2px;
         display: flex;
         align-items: center;
         gap: 6px;
-        background: transparent;
-        padding: 5px 0;
+        background: #111;
+        padding: 10px 18px;
+        border-radius: 8px;
+        border: 1px dashed #222;
     }
     
-    .ticket-closed-badge span { font-size: 1.1rem; }
+    .ticket-closed-badge span {
+        font-size: 1.1rem;
+    }
 
-    .modal-ticket-premium { border: 1px solid #222; border-radius: 16px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important; }
+    /* --- DISEÑO DEL MODAL DE SWEETALERT --- */
+    .modal-ticket-premium {
+        border: 1px solid #222;
+        border-radius: 16px !important;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(124, 58, 237, 0.2) !important;
+    }
 
-    .modal-ticket-section { text-align: left; padding: 18px; border-radius: 12px; margin-bottom: 15px; }
+    .modal-ticket-section {
+        text-align: left;
+        padding: 18px;
+        border-radius: 12px;
+        margin-bottom: 15px;
+    }
 
-    .modal-ticket-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.8rem; letter-spacing: 1.5px; margin-bottom: 10px; }
+    .modal-ticket-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        letter-spacing: 1.5px;
+        margin-bottom: 10px;
+    }
 
-    .modal-ticket-text { font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; max-height: 30vh; overflow-y: auto; }
+    .modal-ticket-title span {
+        font-size: 1.1rem;
+    }
 
-    .client-msg { background: #050505; border: 1px solid #1a1a1a; }
-    .client-msg .modal-ticket-title { color: var(--accent, #7c3aed); }
-    .client-msg .modal-ticket-text { color: #ccc; }
+    .modal-ticket-text {
+        font-size: 0.9rem;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        max-height: 30vh;
+        overflow-y: auto;
+    }
 
-    .admin-msg { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
-    .admin-msg .modal-ticket-title { color: #10b981; }
-    .admin-msg .modal-ticket-text { color: #e5e7eb; }
+    /* Scrollbar estilizada para el modal */
+    .modal-ticket-text::-webkit-scrollbar {
+        width: 6px;
+    }
+    .modal-ticket-text::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    /* Variante: Mensaje del Cliente */
+    .client-msg {
+        background: #050505;
+        border: 1px solid #1a1a1a;
+    }
+    .client-msg .modal-ticket-title {
+        color: var(--accent, #7c3aed);
+    }
+    .client-msg .modal-ticket-text {
+        color: #ccc;
+    }
+    .client-msg .modal-ticket-text::-webkit-scrollbar-thumb {
+        background: #333;
+        border-radius: 10px;
+    }
+
+    /* Variante: Respuesta del Admin */
+    .admin-msg {
+        background: rgba(16, 185, 129, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .admin-msg .modal-ticket-title {
+        color: #10b981;
+    }
+    .admin-msg .modal-ticket-text {
+        color: #e5e7eb;
+    }
+    .admin-msg .modal-ticket-text::-webkit-scrollbar-thumb {
+        background: rgba(16, 185, 129, 0.3);
+        border-radius: 10px;
+    }
 `;
 
 const styleSheetTickets = document.createElement("style");
 styleSheetTickets.innerText = ticketStyles;
 document.head.appendChild(styleSheetTickets);
 
-/**
- * OBSERVADOR DE VISIBILIDAD PARA CARGA AUTOMÁTICA
- */
 document.addEventListener('DOMContentLoaded', () => {
     const secMisTickets = document.getElementById('sec-mistickets');
     
@@ -5091,445 +5375,6 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         observer.observe(secMisTickets, { attributes: true });
-    }
-});</script>
-<script id="script-ranking.js">/* ranking.js */
-/**
- * ===============================================================
- * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
- * ===============================================================
- */
-
-let cargandoRanking = false;
-
-/**
- * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
- */
-async function cargarRanking() {
-    if (cargandoRanking) return;
-    cargandoRanking = true;
-
-    // --- PREPARAR CONTENEDOR ---
-    const mainSection = document.getElementById('sec-ranking');
-    let container = document.getElementById('ranking-content');
-    
-    if (!container && mainSection) {
-        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
-        container = document.getElementById('ranking-content');
-    }
-    
-    if (!container) {
-        cargandoRanking = false;
-        return; 
-    }
-
-    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
-    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
-    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
-    const cacheRanking = localStorage.getItem('jeico_ranking_data');
-    
-    // Verificamos si tenemos datos y si corresponden al día de hoy
-    const datosSonDeHoy = (fechaGuardada === hoy);
-
-    if (cacheRanking && datosSonDeHoy) {
-        console.log("Ranking: Cargando desde caché (Datos de hoy).");
-        const datos = JSON.parse(cacheRanking);
-        renderRankingUI(container, datos.top10, datos.miRanking);
-        cargandoRanking = false;
-        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
-    }
-
-    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
-    
-    // Loader solo si vamos a buscar datos nuevos
-    container.innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
-            <div class="spinner"></div>
-            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
-        </div>
-    `;
-
-    try {
-        const u = localStorage.getItem('jeico_user');
-        const t = localStorage.getItem('jeico_token');
-
-        if (!u || !t) {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
-            cargandoRanking = false;
-            return;
-        }
-
-        const res = await apiCall({ 
-            accion: 'getRanking', 
-            usuario: u, 
-            token: t 
-        });
-
-        if (res && res.success) {
-            // Guardamos datos y LA FECHA DE HOY
-            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
-            localStorage.setItem('jeico_ranking_date', hoy);
-            
-            renderRankingUI(container, res.top10, res.miRanking);
-        } else {
-            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
-            if (cacheRanking) {
-                const datosViejos = JSON.parse(cacheRanking);
-                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
-            } else {
-                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
-            }
-        }
-
-    } catch (error) {
-        if (cacheRanking) {
-            const datosViejos = JSON.parse(cacheRanking);
-            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-        } else {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
-        }
-    } finally {
-        cargandoRanking = false;
-    }
-}
-
-/**
- * 2. RENDERIZADO UI: Construir la interfaz épica
- */
-function renderRankingUI(container, top10, miData) {
-    container.innerHTML = "";
-
-    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
-    const divMiStats = document.createElement('div');
-    divMiStats.className = 'my-stats-card';
-    
-    // Determinar mensaje según posición
-    let mensajeAnimo = "¡Sigue comprando para subir!";
-    let iconoPosicion = "trending_up";
-    let clasePosicion = "";
-
-    if (miData.posicion === 1) { 
-        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
-        iconoPosicion = "emoji_events";
-        clasePosicion = "rank-1-text";
-    } else if (miData.posicion > 0 && miData.posicion <= 3) {
-        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
-        iconoPosicion = "military_tech";
-    } else if (miData.posicion > 0 && miData.posicion <= 10) {
-        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
-        iconoPosicion = "star";
-    } else if (miData.posicion === -1) {
-        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
-    }
-
-    divMiStats.innerHTML = `
-        <div class="my-stats-header">
-            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
-            <span>TU RENDIMIENTO</span>
-        </div>
-        <div class="my-stats-grid">
-            <div class="stat-item">
-                <div class="stat-label">POSICIÓN GLOBAL</div>
-                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
-            </div>
-            <div class="stat-item border-left">
-                <div class="stat-label">CUENTAS COMPRADAS</div>
-                <div class="stat-value text-accent">${miData.compras}</div>
-            </div>
-        </div>
-        <div class="my-stats-footer">
-            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
-        </div>
-    `;
-    container.appendChild(divMiStats);
-
-    // --- B. LISTA DEL TOP 10 ---
-    const divLeaderboard = document.createElement('div');
-    divLeaderboard.className = 'leaderboard-container';
-    
-    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
-
-    if(top10.length === 0) {
-        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
-    } else {
-        top10.forEach((user, index) => {
-            const rank = index + 1;
-            let rankClass = "rank-item";
-            let iconHtml = `<span class="rank-number">#${rank}</span>`;
-            
-            // Estilos especiales para el podio
-            if (rank === 1) {
-                rankClass += " rank-gold";
-                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
-            } else if (rank === 2) {
-                rankClass += " rank-silver";
-                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
-            } else if (rank === 3) {
-                rankClass += " rank-bronze";
-                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
-            }
-
-            // Resaltar si soy yo
-            if (user.usuario === miData.usuario) {
-                rankClass += " its-me";
-            }
-
-            htmlList += `
-                <div class="${rankClass}">
-                    <div class="rank-left">
-                        ${iconHtml}
-                        <span class="rank-name">${user.usuario}</span>
-                    </div>
-                    <div class="rank-right">
-                        <span class="rank-score">${user.compras}</span>
-                        <span class="rank-label">Ventas</span>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    htmlList += `</div>`;
-    divLeaderboard.innerHTML = htmlList;
-    container.appendChild(divLeaderboard);
-
-    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
-    const divDisclaimer = document.createElement('div');
-    divDisclaimer.className = 'ranking-disclaimer';
-    divDisclaimer.innerHTML = `
-        <span class="material-icons-round" style="font-size: 1rem;">update</span>
-        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
-    `;
-    container.appendChild(divDisclaimer);
-}
-
-/**
- * ===============================================================
- * ESTILOS CSS PREMIUM (INYECTADOS)
- * ===============================================================
- */
-const rankingStyles = `
-    .ranking-wrapper {
-        padding: 10px;
-        max-width: 800px;
-        margin: 0 auto;
-        animation: fadeIn 0.5s ease;
-    }
-
-    /* --- DISCLAIMER --- */
-    .ranking-disclaimer {
-        margin-top: 20px;
-        text-align: center;
-        font-size: 0.75rem;
-        color: #666;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px dashed #333;
-    }
-
-    /* --- MI TARJETA --- */
-    .my-stats-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-        border: 1px solid #333;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    /* Efecto de brillo superior */
-    .my-stats-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 4px;
-        background: linear-gradient(90deg, var(--accent), #b721ff);
-    }
-
-    .my-stats-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        font-size: 1.2rem;
-        margin-bottom: 20px;
-        opacity: 0.9;
-    }
-
-    .my-stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .stat-item {
-        text-align: center;
-    }
-    
-    .border-left {
-        border-left: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .stat-label {
-        color: #666;
-        font-size: 0.7rem;
-        font-weight: 800;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
-    }
-
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        color: #fff;
-        line-height: 1;
-    }
-    
-    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
-    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
-
-    .my-stats-footer {
-        margin-top: 20px;
-        background: rgba(255,255,255,0.03);
-        padding: 10px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 0.85rem;
-        color: #aaa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    /* --- LEADERBOARD --- */
-    .leaderboard-container {
-        background: #000;
-        border-radius: 16px;
-        border: 1px solid #222;
-        padding: 20px;
-    }
-
-    .leaderboard-title {
-        text-align: center;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        margin-top: 0;
-        margin-bottom: 20px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        background: -webkit-linear-gradient(#fff, #888);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .leaderboard-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .rank-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #111;
-        padding: 12px 15px;
-        border-radius: 10px;
-        border: 1px solid transparent;
-        transition: transform 0.2s;
-    }
-    
-    .rank-item:hover {
-        transform: translateX(5px);
-        background: #161616;
-    }
-
-    .rank-left { display: flex; align-items: center; gap: 15px; }
-    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-
-    .rank-number {
-        font-family: 'Righteous', sans-serif;
-        color: #444;
-        font-size: 1.2rem;
-        width: 30px;
-        text-align: center;
-    }
-
-    .rank-name {
-        font-weight: 600;
-        color: #eee;
-        font-size: 0.95rem;
-    }
-
-    .rank-score {
-        font-weight: 800;
-        color: #fff;
-        font-size: 1.1rem;
-    }
-    
-    .rank-label {
-        font-size: 0.6rem;
-        color: #555;
-        text-transform: uppercase;
-        font-weight: 700;
-    }
-
-    /* --- MEDALLAS Y COLORES --- */
-    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
-    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
-    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
-    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
-
-    /* Estilos de fila Top 3 */
-    .rank-gold {
-        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
-        border: 1px solid rgba(255,215,0,0.3);
-    }
-    .rank-silver {
-        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
-        border: 1px solid rgba(192,192,192,0.2);
-    }
-    .rank-bronze {
-        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
-        border: 1px solid rgba(205,127,50,0.2);
-    }
-
-    /* Highlight del propio usuario */
-    .its-me {
-        border: 1px solid var(--accent);
-        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
-    }
-    .its-me .rank-name { color: var(--accent); }
-`;
-
-const styleSheetRanking = document.createElement("style");
-styleSheetRanking.innerText = rankingStyles;
-document.head.appendChild(styleSheetRanking);
-
-// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
-document.addEventListener('DOMContentLoaded', () => {
-    const secRanking = document.getElementById('sec-ranking');
-    
-    if (secRanking) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    if (!secRanking.classList.contains('hidden')) {
-                        cargarRanking();
-                    }
-                }
-            });
-        });
-        observer.observe(secRanking, { attributes: true });
     }
 });</script>
 </body>
