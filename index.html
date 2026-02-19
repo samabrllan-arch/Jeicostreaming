@@ -1295,6 +1295,8 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
     user-select: none;
 }
 </style>
+
+
 </head>
 <body>
 
@@ -1583,6 +1585,12 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
 
       <div id="sec-codigos" class="hidden"></div>
       <div id="sec-datos" class="hidden"></div>
+      <div id="sec-ranking" class="hidden">
+        <div class="page-header-premium">
+            <h1 class="page-title">SALÓN DE LA FAMA</h1>
+            <p class="page-subtitle">Descubre a los mayores líderes de la bóveda.</p>
+        </div>
+        </div>
 
     </main>
 
@@ -1795,7 +1803,8 @@ function nav(sec, el) {
     }
     
     // 2. OCULTAR TODAS LAS SECCIONES (¡AQUÍ AGREGAMOS 'mistickets'!)
-    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets'];
+    // 2. OCULTAR TODAS LAS SECCIONES
+    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets', 'ranking'];
     secciones.forEach(id => {
         const elem = document.getElementById('sec-' + id);
         if(elem) elem.classList.add('hidden');
@@ -1829,12 +1838,14 @@ function nav(sec, el) {
     }
     
     // 5. INICIALIZACIÓN DE MÓDULOS ESPECÍFICOS
-    if (sec === 'pedidos') cargarPedidos();
-    if (sec === 'billetera') cargarBilletera();
-    if (sec === 'recarga') cargarRecarga();
-    if (sec === 'soporte') cargarSoporte(); 
-    if (sec === 'codigos') cargarCodigos(); 
-    if (sec === 'datos') cargarDatos(); 
+    if (sec === 'pedidos') if(typeof cargarPedidos === 'function') cargarPedidos();
+    if (sec === 'billetera') if(typeof cargarBilletera === 'function') cargarBilletera();
+    if (sec === 'recarga') if(typeof cargarRecarga === 'function') cargarRecarga();
+    if (sec === 'soporte') if(typeof cargarSoporte === 'function') cargarSoporte(); 
+    if (sec === 'codigos') if(typeof cargarCodigos === 'function') cargarCodigos(); 
+    if (sec === 'datos') if(typeof cargarDatos === 'function') cargarDatos(); 
+    if (sec === 'mistickets') if(typeof cargarMisTickets === 'function') cargarMisTickets();
+    if (sec === 'ranking') if(typeof cargarRanking === 'function') cargarRanking();
 }
 
 // --- LÓGICA DE TIENDA Y STOCK ---
@@ -3237,18 +3248,15 @@ const recargaStyles = `
 const styleSheetRecarga = document.createElement("style");
 styleSheetRecarga.innerText = recargaStyles;
 document.head.appendChild(styleSheetRecarga);</script>
-<script id="script-soporte.js">/* soporte.js */
-/**
+<script id="script-soporte.js">
+    /**
  * ===============================================================
- * SOPORTE.JS - CENTRO DE AYUDA PREMIUM (FAQ, TICKETS & AUTOCOMPLETE)
+ * SOPORTE.JS - CENTRO DE AYUDA PREMIUM (FAQ & TICKETS MANUAL)
  * ===============================================================
  */
 
-// Icono de WhatsApp desde Drive
+// Icono de WhatsApp (Opcional)
 const WSP_SOPORTE_ICON_URL = `https://drive.google.com/thumbnail?id=12_hw1hRhhGNGv1UY7CX-YJajITFtrY-S&sz=w200`;
-
-// Memoria caché para las cuentas del usuario (usado en el filtro buscador)
-let cuentasSoporteCache = [];
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA
@@ -3288,7 +3296,7 @@ function cargarSoporte() {
                     
                     <div class="warranty-info">
                         <span class="material-icons-round">verified</span>
-                        <span>Todas tus compras están protegidas por nuestra <b>Garantía Total</b>.</span>
+                        <span>¿Tienes algún inconveniente? Cuentas con nuestro <b>respaldo y atención</b>.</span>
                     </div>
                 </div>
 
@@ -3311,7 +3319,7 @@ function cargarSoporte() {
                             <span class="material-icons-round arrow">expand_more</span>
                         </div>
                         <div class="faq-answer">
-                            No te preocupes. Usa el botón "Reportar Falla de Acceso" desde esta pantalla y nuestro equipo te reestablecerá el servicio rápidamente.
+                            No te preocupes. Usa el botón de la pestaña "codigos" alli podras solicitar un codigo y cambiar la clave de tu cuenta de no ser posible puedes optar por "Reportar Falla de Acceso" desde esta pantalla y nuestro equipo te reestablecerá el servicio rápidamente.
                         </div>
                     </div>
 
@@ -3364,12 +3372,9 @@ function cargarSoporte() {
                         <input type="text" id="ticket-tipo" class="ticket-input readonly" readonly>
                     </div>
 
-                    <div class="input-group-premium" style="position: relative;">
+                    <div class="input-group-premium">
                         <label>CUENTA A REPORTAR (Opcional)</label>
-                        <input type="text" id="ticket-cuenta-input" class="ticket-input custom-select-premium" placeholder="Buscar servicio o correo..." autocomplete="off" oninput="filtrarCuentasSoporte()" onclick="abrirDropdownSoporte(event)" onfocus="abrirDropdownSoporte(event)">
-                        <ul id="ticket-cuentas-list" class="ticket-dropdown-list hidden">
-                            <li class="dropdown-msg">Buscando en tu bóveda...</li>
-                        </ul>
+                        <input type="text" id="ticket-cuenta-input" class="ticket-input" placeholder="Ej: Disney+ o micorreo@gmail.com" autocomplete="off">
                     </div>
 
                     <div class="input-group-premium">
@@ -3386,15 +3391,6 @@ function cargarSoporte() {
     `;
 }
 
-// Control global para cerrar el buscador al hacer clic en cualquier parte
-document.addEventListener('click', function(e) {
-    const input = document.getElementById('ticket-cuenta-input');
-    const list = document.getElementById('ticket-cuentas-list');
-    if (input && list && !input.contains(e.target) && !list.contains(e.target)) {
-        list.classList.add('hidden');
-    }
-});
-
 /**
  * 2. LÓGICA DE ACORDEÓN PARA FAQ
  */
@@ -3406,44 +3402,22 @@ function toggleFAQ(element) {
 }
 
 /**
- * 3. LÓGICA DEL MODAL Y BUSCADOR INTELIGENTE
+ * 3. LÓGICA DEL MODAL (SIN CARGA DE DATOS)
  */
-async function abrirModalTicket(tipo) {
+function abrirModalTicket(tipo) {
     const modal = document.getElementById('ticket-modal-overlay');
     const inputTipo = document.getElementById('ticket-tipo');
     const inputCuenta = document.getElementById('ticket-cuenta-input');
-    const listaCuentas = document.getElementById('ticket-cuentas-list');
     
     if (modal && inputTipo && inputCuenta) {
+        // Reset de campos
         inputTipo.value = tipo;
         document.getElementById('ticket-contexto').value = "";
         inputCuenta.value = "";
         
-        // Lo ocultamos por defecto, sin mostrar mensajes de carga.
-        listaCuentas.classList.add('hidden'); 
-        
+        // Mostrar modal
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('show'), 10);
-
-        const u = localStorage.getItem('jeico_user');
-        const t = localStorage.getItem('jeico_token');
-        
-        try {
-            // Obtenemos las cuentas en silencio
-            const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
-            
-            if (res.success && res.datos && res.datos.length > 0) {
-                // Guardamos en caché y renderizamos la lista oculta para que esté lista al clic
-                cuentasSoporteCache = res.datos.map(p => `${p.servicio} | ${p.cuenta}`);
-                renderizarListaCuentasSoporte(cuentasSoporteCache);
-            } else {
-                cuentasSoporteCache = [];
-                listaCuentas.innerHTML = '<li class="dropdown-msg">No tienes compras registradas</li>';
-            }
-        } catch (e) {
-            cuentasSoporteCache = [];
-            listaCuentas.innerHTML = '<li class="dropdown-msg">Ocurrió un error al cargar.</li>';
-        }
     }
 }
 
@@ -3455,50 +3429,8 @@ function cerrarModalTicket() {
     }
 }
 
-// Muestra la lista de inmediato al hacer clic o dar foco
-function abrirDropdownSoporte(e) {
-    if (e) e.stopPropagation();
-    const list = document.getElementById('ticket-cuentas-list');
-    // Ya no restringe la apertura. Si hay contenido (sea caché o mensaje de error), lo muestra.
-    if (list) {
-        list.classList.remove('hidden');
-    }
-}
-
-// Renderiza la lista desplegable
-function renderizarListaCuentasSoporte(cuentas) {
-    const list = document.getElementById('ticket-cuentas-list');
-    if(!list) return;
-    list.innerHTML = "";
-    
-    if (cuentas.length === 0) {
-        list.innerHTML = '<li class="dropdown-msg">No se encontraron coincidencias</li>';
-        return;
-    }
-
-    cuentas.forEach(c => {
-        const li = document.createElement('li');
-        li.className = 'dropdown-item';
-        li.innerText = c;
-        li.onclick = (e) => {
-            e.stopPropagation(); // Evita que el evento global lo cierre de golpe
-            document.getElementById('ticket-cuenta-input').value = c;
-            list.classList.add('hidden');
-        };
-        list.appendChild(li);
-    });
-}
-
-// Filtra la lista mientras el usuario escribe
-function filtrarCuentasSoporte() {
-    const input = document.getElementById('ticket-cuenta-input').value.toLowerCase();
-    const filtradas = cuentasSoporteCache.filter(c => c.toLowerCase().includes(input));
-    renderizarListaCuentasSoporte(filtradas);
-    abrirDropdownSoporte();
-}
-
 /**
- * 4. ENVÍO DEL TICKET A GOOGLE SHEETS (HOJA 5)
+ * 4. ENVÍO DEL TICKET Y ACTUALIZACIÓN DE CACHÉ LOCAL
  */
 async function enviarTicketBD() {
     const u = localStorage.getItem('jeico_user');
@@ -3516,9 +3448,9 @@ async function enviarTicketBD() {
         });
     }
 
-    // Unimos la cuenta seleccionada con el mensaje del usuario
+    // Unimos la cuenta manual con el mensaje del usuario
     const contextoFinal = (cuentaSeleccionada && cuentaSeleccionada !== "") 
-        ? `[Reporte sobre: ${cuentaSeleccionada}] \n\nDetalle: ${contextoRaw}` 
+        ? `[Sobre: ${cuentaSeleccionada}] \n\nDetalle: ${contextoRaw}` 
         : contextoRaw;
 
     Swal.fire({ 
@@ -3542,7 +3474,42 @@ async function enviarTicketBD() {
         if (res.success) {
             cerrarModalTicket();
             
-            // Confirmación Elegante sin ir a WhatsApp
+            // --- INYECCIÓN EN CACHÉ DE MISTICKETS CON ID REAL ---
+            
+            // IMPORTANTE: Asegúrate de que tu Google Script devuelva "fila" en el JSON
+            // Si el script no devuelve fila, usamos 0 (pero 0 dará error al cerrar si no se actualiza)
+            const idFilaReal = res.fila ? res.fila : 0;
+
+            const nuevoTicketVirtual = {
+                tipo: tipo,
+                fecha: new Date().toISOString(), // Fecha actual
+                estado: 'Abierto',
+                contexto: contextoFinal,
+                respuesta: '',
+                fila: idFilaReal // <--- AQUI GUARDAMOS LA FILA REAL QUE VINO DEL SERVER
+            };
+
+            const cacheKey = 'jeico_tickets_cache_v30min';
+            let cachedData = { timestamp: Date.now(), datos: [] };
+            const rawCache = localStorage.getItem(cacheKey);
+
+            if (rawCache) {
+                try {
+                    cachedData = JSON.parse(rawCache);
+                    if (!Array.isArray(cachedData.datos)) cachedData.datos = [];
+                } catch (e) { }
+            }
+
+            // Agregamos al inicio
+            cachedData.datos.unshift(nuevoTicketVirtual);
+            
+            // RESETEAMOS EL RELOJ DE 30 MINUTOS
+            cachedData.timestamp = Date.now();
+
+            // Guardamos
+            localStorage.setItem(cacheKey, JSON.stringify(cachedData));
+            // ----------------------------------------
+
             Swal.fire({
                 icon: 'success',
                 title: 'TICKET CREADO',
@@ -3562,7 +3529,7 @@ async function enviarTicketBD() {
 }
 
 /**
- * 5. ESTILOS DE SOPORTE PREMIUM Y BUSCADOR INTELIGENTE
+ * 5. ESTILOS DE SOPORTE PREMIUM (LIMPIOS)
  */
 const soporteStyles = `
     .soporte-wrapper-premium {
@@ -3624,7 +3591,7 @@ const soporteStyles = `
     .faq-item.active .faq-answer { max-height: 200px; padding: 0 20px 20px 20px; opacity: 1; }
 
     /* =========================================
-       DISEÑO MODAL DE TICKET Y BUSCADOR INTELIGENTE
+       DISEÑO MODAL DE TICKET
        ========================================= */
     .ticket-overlay {
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -3665,28 +3632,6 @@ const soporteStyles = `
     
     .ticket-textarea { height: 100px; resize: none; }
 
-    /* ESTILOS DEL BUSCADOR DESPLEGABLE */
-    .custom-select-premium {
-        background-image: url('data:image/svg+xml;utf8,<svg fill="%237c3aed" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        padding-right: 40px;
-    }
-    .ticket-dropdown-list {
-        position: absolute; top: 100%; left: 0; width: 100%; background: #080808;
-        border: 1px solid #333; border-radius: 8px; max-height: 180px; overflow-y: auto;
-        z-index: 10000; list-style: none; padding: 0; margin: 5px 0 0 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.9);
-    }
-    .ticket-dropdown-list.hidden { display: none; }
-    .dropdown-item {
-        padding: 12px 15px; color: #ccc; font-size: 0.85rem;
-        cursor: pointer; border-bottom: 1px solid #111; transition: 0.2s;
-    }
-    .dropdown-item:last-child { border-bottom: none; }
-    .dropdown-item:hover { background: rgba(124, 58, 237, 0.15); color: #fff; border-left: 3px solid var(--accent); }
-    .dropdown-msg { padding: 15px; color: #666; font-size: 0.85rem; text-align: center; }
-
     .btn-submit-ticket {
         width: 100%; background: var(--success); color: #fff; border: none;
         padding: 16px; border-radius: 8px; font-weight: 800; letter-spacing: 1px;
@@ -3700,11 +3645,12 @@ const soporteStyles = `
 
 const styleSheetSoporte = document.createElement("style");
 styleSheetSoporte.innerText = soporteStyles;
-document.head.appendChild(styleSheetSoporte);</script>
-<script id="script-codigo.js">/* codigo.js */
-/**
+document.head.appendChild(styleSheetSoporte);
+</script>
+<script id="script-codigo.js">
+    /**
  * ===============================================================
- * CODIGOS.JS - PORTAL DE ACCESO SEGURO (INTEGRACIÓN PREMIUM)
+ * CODIGOS.JS - PORTAL DE ACCESO SEGURO (MANUAL / SIN AUTOCOMPLETE)
  * ===============================================================
  */
 
@@ -3722,7 +3668,6 @@ const LISTA_OBREROS = [
 
 const COOLDOWN_CODIGOS = 20; // Segundos
 let enCooldownCodigos = false;
-let cuentasCodigosCache = []; // Caché para el autocompletado
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA DE LA VISTA
@@ -3731,6 +3676,7 @@ function cargarCodigos() {
     const container = document.getElementById('sec-codigos');
     if (!container) return;
 
+    // Se eliminó la lista UL y los eventos oninput/onclick del input de correo
     container.innerHTML = `
         <div class="codigos-wrapper-premium">
             <div class="page-header-premium" style="text-align: center; margin-bottom: 30px;">
@@ -3745,10 +3691,8 @@ function cargarCodigos() {
                         <label>Correo de la Cuenta</label>
                         <div class="input-wrapper">
                             <span class="material-icons-round input-icon">email</span>
-                            <input type="email" id="txtUserCod" class="ticket-input custom-select-premium" placeholder="ejemplo@gmail.com" autocomplete="off" oninput="filtrarCuentasCodigos()" onclick="abrirDropdownCodigos(event)" onfocus="abrirDropdownCodigos(event)">
+                            <input type="email" id="txtUserCod" class="ticket-input" placeholder="ejemplo@gmail.com" autocomplete="off">
                         </div>
-                        <ul id="codigos-cuentas-list" class="ticket-dropdown-list hidden">
-                            </ul>
                     </div>
 
                     <div class="input-group-premium" style="margin-bottom: 20px;">
@@ -3806,20 +3750,11 @@ function cargarCodigos() {
         </div>
     `;
 
-    // Inicializar lógica de la vista
+    // Inicializar lógica de la vista (Botones de servicio)
     initServiceButtonsCodigos();
     
-    // MEJORA: Cargamos las cuentas silenciosamente en el fondo ANTES de que el usuario haga clic
-    cargarCuentasParaAutocomplete();
-
-    // Evento para cerrar dropdown con clic fuera
-    document.addEventListener('click', function(e) {
-        const input = document.getElementById('txtUserCod');
-        const list = document.getElementById('codigos-cuentas-list');
-        if (input && list && !input.contains(e.target) && !list.contains(e.target)) {
-            list.classList.add('hidden');
-        }
-    });
+    // NOTA: Se ha eliminado la llamada a cargarCuentasParaAutocomplete()
+    // y los EventListeners del dropdown.
 
     // Enter para ejecutar
     document.getElementById("txtPassCod").addEventListener("keydown", e => {
@@ -3828,90 +3763,7 @@ function cargarCodigos() {
 }
 
 /**
- * 2. LÓGICA DE AUTOCOMPLETADO (INTELIGENTE Y PRE-CARGADO)
- */
-async function cargarCuentasParaAutocomplete() {
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-    const list = document.getElementById('codigos-cuentas-list');
-    
-    // Mostramos estado de carga solo dentro de la lista oculta por si el usuario es muy rápido
-    if(list) list.innerHTML = '<li class="dropdown-msg">Cargando tus cuentas...</li>';
-
-    try {
-        const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
-        if (res.success && res.datos && res.datos.length > 0) {
-            // Guardamos el objeto completo en memoria
-            cuentasCodigosCache = res.datos;
-            // Pre-renderizamos la lista para que esté lista al primer clic
-            renderListaAutocompleteCodigos(cuentasCodigosCache);
-        } else {
-            cuentasCodigosCache = [];
-            if(list) list.innerHTML = '<li class="dropdown-msg">No tienes compras registradas. Ingresa manual.</li>';
-        }
-    } catch (e) {
-        console.error("Error cargando cuentas para autocompletado.");
-        if(list) list.innerHTML = '<li class="dropdown-msg">Error de conexión. Ingresa manual.</li>';
-    }
-}
-
-function abrirDropdownCodigos(e) {
-    if (e) e.stopPropagation();
-    const list = document.getElementById('codigos-cuentas-list');
-    // Ya no evalúa si hay caché, simplemente la abre para mostrar los resultados pre-cargados
-    if (list) list.classList.remove('hidden');
-}
-
-function renderListaAutocompleteCodigos(cuentas) {
-    const list = document.getElementById('codigos-cuentas-list');
-    if(!list) return;
-    list.innerHTML = "";
-    
-    if (cuentas.length === 0) {
-        list.innerHTML = '<li class="dropdown-msg">Escribe tu correo manualmente</li>';
-        return;
-    }
-
-    cuentas.forEach(c => {
-        const li = document.createElement('li');
-        li.className = 'dropdown-item';
-        li.innerHTML = `<strong>${c.servicio}</strong> - ${c.cuenta}`;
-        
-        li.onclick = (e) => {
-            e.stopPropagation();
-            seleccionarCuentaCodigo(c.cuenta, c.clave, c.servicio);
-            list.classList.add('hidden');
-        };
-        list.appendChild(li);
-    });
-}
-
-function filtrarCuentasCodigos() {
-    const input = document.getElementById('txtUserCod').value.toLowerCase();
-    const filtradas = cuentasCodigosCache.filter(c => 
-        c.cuenta.toLowerCase().includes(input) || c.servicio.toLowerCase().includes(input)
-    );
-    renderListaAutocompleteCodigos(filtradas);
-    abrirDropdownCodigos();
-}
-
-function seleccionarCuentaCodigo(correo, clave, servicioNombre) {
-    // 1. Rellenar inputs
-    document.getElementById('txtUserCod').value = correo;
-    document.getElementById('txtPassCod').value = clave;
-
-    // 2. Autoseleccionar el botón del servicio correcto
-    const botones = document.querySelectorAll('.btn-service-brand');
-    botones.forEach(btn => {
-        const brand = btn.getAttribute('data-brand').toLowerCase();
-        if (servicioNombre.toLowerCase().includes(brand)) {
-            btn.click(); // Disparamos el clic para que se active y actualice el Asunto
-        }
-    });
-}
-
-/**
- * 3. LÓGICA DE INTERFAZ (BOTONES, TOGGLE PASS)
+ * 2. LÓGICA DE INTERFAZ (BOTONES, TOGGLE PASS)
  */
 function togglePasswordVisibilidad() {
     const passInput = document.getElementById("txtPassCod");
@@ -3934,8 +3786,6 @@ function initServiceButtonsCodigos() {
     const btnVerificar = document.getElementById("btnVerificarCod");
     const btnText = document.getElementById("btnTextCod");
     
-    let toastTimeout;
-
     botones.forEach(boton => {
         boton.addEventListener("click", () => {
             if(boton.disabled) return;
@@ -3970,7 +3820,7 @@ function initServiceButtonsCodigos() {
 }
 
 /**
- * 4. NÚCLEO DE EXTRACCIÓN Y API
+ * 3. NÚCLEO DE EXTRACCIÓN Y API
  */
 async function faseIA(texto, icono, delay = 700) {
     const status = document.getElementById("statusAreaCod");
@@ -4138,7 +3988,7 @@ async function ejecutarAccesoCodigos() {
 }
 
 /**
- * 5. MOTOR DE EXTRACCIÓN DE TEXTO
+ * 4. MOTOR DE EXTRACCIÓN DE TEXTO
  */
 function extraerDatosCorreo(asunto, cuerpoOriginal) {
     let codigoFinal = null;
@@ -4190,7 +4040,7 @@ function extraerDatosCorreo(asunto, cuerpoOriginal) {
 }
 
 /**
- * 6. ESTILOS INTEGRADOS (GOTH PREMIUM + BRAND COLORS)
+ * 5. ESTILOS INTEGRADOS (GOTH PREMIUM + BRAND COLORS)
  */
 const codigosStyles = `
     .codigos-wrapper-premium {
@@ -4222,28 +4072,6 @@ const codigosStyles = `
     #txtUserCod, #txtPassCod {
         padding-left: 45px; padding-right: 45px;
     }
-
-    /* BUSCADOR DESPLEGABLE */
-    .custom-select-premium {
-        background-image: url('data:image/svg+xml;utf8,<svg fill="%237c3aed" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/><path d="M0 0h24v24H0z" fill="none"/></svg>');
-        background-repeat: no-repeat;
-        background-position: right 12px center;
-        padding-right: 40px;
-    }
-    .ticket-dropdown-list {
-        position: absolute; top: 100%; left: 0; width: 100%; background: #080808;
-        border: 1px solid #333; border-radius: 8px; max-height: 180px; overflow-y: auto;
-        z-index: 10000; list-style: none; padding: 0; margin: 5px 0 0 0;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.9);
-    }
-    .ticket-dropdown-list.hidden { display: none; }
-    .dropdown-item {
-        padding: 12px 15px; color: #ccc; font-size: 0.85rem;
-        cursor: pointer; border-bottom: 1px solid #111; transition: 0.2s;
-    }
-    .dropdown-item:last-child { border-bottom: none; }
-    .dropdown-item:hover { background: rgba(124, 58, 237, 0.15); color: #fff; border-left: 3px solid var(--accent); }
-    .dropdown-msg { padding: 15px; color: #666; font-size: 0.85rem; text-align: center; }
 
     /* GRID DE MARCAS */
     .services-grid {
@@ -4326,13 +4154,455 @@ const codigosStyles = `
 
 const styleSheetCodigos = document.createElement("style");
 styleSheetCodigos.innerText = codigosStyles;
-document.head.appendChild(styleSheetCodigos);</script>
-<script id="script-datos.js">/* datos.js */
-/**
+document.head.appendChild(styleSheetCodigos);
+</script>
+<script src="ranking.js">/**
  * ===============================================================
- * DATOS.JS - GESTIÓN DE PERFIL Y SEGURIDAD (CACHÉ LOCAL INSTANTÁNEO)
+ * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
  * ===============================================================
  */
+
+let cargandoRanking = false;
+
+/**
+ * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
+ */
+async function cargarRanking() {
+    if (cargandoRanking) return;
+    cargandoRanking = true;
+
+    // --- PREPARAR CONTENEDOR ---
+    const mainSection = document.getElementById('sec-ranking');
+    let container = document.getElementById('ranking-content');
+    
+    if (!container && mainSection) {
+        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
+        container = document.getElementById('ranking-content');
+    }
+    
+    if (!container) {
+        cargandoRanking = false;
+        return; 
+    }
+
+    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
+    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
+    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
+    const cacheRanking = localStorage.getItem('jeico_ranking_data');
+    
+    // Verificamos si tenemos datos y si corresponden al día de hoy
+    const datosSonDeHoy = (fechaGuardada === hoy);
+
+    if (cacheRanking && datosSonDeHoy) {
+        console.log("Ranking: Cargando desde caché (Datos de hoy).");
+        const datos = JSON.parse(cacheRanking);
+        renderRankingUI(container, datos.top10, datos.miRanking);
+        cargandoRanking = false;
+        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
+    }
+
+    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
+    
+    // Loader solo si vamos a buscar datos nuevos
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
+            <div class="spinner"></div>
+            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
+        </div>
+    `;
+
+    try {
+        const u = localStorage.getItem('jeico_user');
+        const t = localStorage.getItem('jeico_token');
+
+        if (!u || !t) {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
+            cargandoRanking = false;
+            return;
+        }
+
+        const res = await apiCall({ 
+            accion: 'getRanking', 
+            usuario: u, 
+            token: t 
+        });
+
+        if (res && res.success) {
+            // Guardamos datos y LA FECHA DE HOY
+            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
+            localStorage.setItem('jeico_ranking_date', hoy);
+            
+            renderRankingUI(container, res.top10, res.miRanking);
+        } else {
+            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
+            if (cacheRanking) {
+                const datosViejos = JSON.parse(cacheRanking);
+                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
+            } else {
+                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
+            }
+        }
+
+    } catch (error) {
+        if (cacheRanking) {
+            const datosViejos = JSON.parse(cacheRanking);
+            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+        } else {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
+        }
+    } finally {
+        cargandoRanking = false;
+    }
+}
+
+/**
+ * 2. RENDERIZADO UI: Construir la interfaz épica
+ */
+function renderRankingUI(container, top10, miData) {
+    container.innerHTML = "";
+
+    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
+    const divMiStats = document.createElement('div');
+    divMiStats.className = 'my-stats-card';
+    
+    // Determinar mensaje según posición
+    let mensajeAnimo = "¡Sigue comprando para subir!";
+    let iconoPosicion = "trending_up";
+    let clasePosicion = "";
+
+    if (miData.posicion === 1) { 
+        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
+        iconoPosicion = "emoji_events";
+        clasePosicion = "rank-1-text";
+    } else if (miData.posicion > 0 && miData.posicion <= 3) {
+        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
+        iconoPosicion = "military_tech";
+    } else if (miData.posicion > 0 && miData.posicion <= 10) {
+        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
+        iconoPosicion = "star";
+    } else if (miData.posicion === -1) {
+        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
+    }
+
+    divMiStats.innerHTML = `
+        <div class="my-stats-header">
+            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
+            <span>TU RENDIMIENTO</span>
+        </div>
+        <div class="my-stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">POSICIÓN GLOBAL</div>
+                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
+            </div>
+            <div class="stat-item border-left">
+                <div class="stat-label">CUENTAS COMPRADAS</div>
+                <div class="stat-value text-accent">${miData.compras}</div>
+            </div>
+        </div>
+        <div class="my-stats-footer">
+            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
+        </div>
+    `;
+    container.appendChild(divMiStats);
+
+    // --- B. LISTA DEL TOP 10 ---
+    const divLeaderboard = document.createElement('div');
+    divLeaderboard.className = 'leaderboard-container';
+    
+    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
+
+    if(top10.length === 0) {
+        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
+    } else {
+        top10.forEach((user, index) => {
+            const rank = index + 1;
+            let rankClass = "rank-item";
+            let iconHtml = `<span class="rank-number">#${rank}</span>`;
+            
+            // Estilos especiales para el podio
+            if (rank === 1) {
+                rankClass += " rank-gold";
+                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
+            } else if (rank === 2) {
+                rankClass += " rank-silver";
+                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
+            } else if (rank === 3) {
+                rankClass += " rank-bronze";
+                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
+            }
+
+            // Resaltar si soy yo
+            if (user.usuario === miData.usuario) {
+                rankClass += " its-me";
+            }
+
+            htmlList += `
+                <div class="${rankClass}">
+                    <div class="rank-left">
+                        ${iconHtml}
+                        <span class="rank-name">${user.usuario}</span>
+                    </div>
+                    <div class="rank-right">
+                        <span class="rank-score">${user.compras}</span>
+                        <span class="rank-label">Ventas</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    htmlList += `</div>`;
+    divLeaderboard.innerHTML = htmlList;
+    container.appendChild(divLeaderboard);
+
+    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
+    const divDisclaimer = document.createElement('div');
+    divDisclaimer.className = 'ranking-disclaimer';
+    divDisclaimer.innerHTML = `
+        <span class="material-icons-round" style="font-size: 1rem;">update</span>
+        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
+    `;
+    container.appendChild(divDisclaimer);
+}
+
+/**
+ * ===============================================================
+ * ESTILOS CSS PREMIUM (INYECTADOS)
+ * ===============================================================
+ */
+const rankingStyles = `
+    .ranking-wrapper {
+        padding: 10px;
+        max-width: 800px;
+        margin: 0 auto;
+        animation: fadeIn 0.5s ease;
+    }
+
+    /* --- DISCLAIMER --- */
+    .ranking-disclaimer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px dashed #333;
+    }
+
+    /* --- MI TARJETA --- */
+    .my-stats-card {
+        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+        border: 1px solid #333;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Efecto de brillo superior */
+    .my-stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 4px;
+        background: linear-gradient(90deg, var(--accent), #b721ff);
+    }
+
+    .my-stats-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        opacity: 0.9;
+    }
+
+    .my-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+    
+    .border-left {
+        border-left: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1;
+    }
+    
+    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
+    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+
+    .my-stats-footer {
+        margin-top: 20px;
+        background: rgba(255,255,255,0.03);
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #aaa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* --- LEADERBOARD --- */
+    .leaderboard-container {
+        background: #000;
+        border-radius: 16px;
+        border: 1px solid #222;
+        padding: 20px;
+    }
+
+    .leaderboard-title {
+        text-align: center;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        margin-top: 0;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        background: -webkit-linear-gradient(#fff, #888);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .leaderboard-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .rank-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #111;
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: transform 0.2s;
+    }
+    
+    .rank-item:hover {
+        transform: translateX(5px);
+        background: #161616;
+    }
+
+    .rank-left { display: flex; align-items: center; gap: 15px; }
+    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+
+    .rank-number {
+        font-family: 'Righteous', sans-serif;
+        color: #444;
+        font-size: 1.2rem;
+        width: 30px;
+        text-align: center;
+    }
+
+    .rank-name {
+        font-weight: 600;
+        color: #eee;
+        font-size: 0.95rem;
+    }
+
+    .rank-score {
+        font-weight: 800;
+        color: #fff;
+        font-size: 1.1rem;
+    }
+    
+    .rank-label {
+        font-size: 0.6rem;
+        color: #555;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    /* --- MEDALLAS Y COLORES --- */
+    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
+    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
+    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
+    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
+
+    /* Estilos de fila Top 3 */
+    .rank-gold {
+        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
+        border: 1px solid rgba(255,215,0,0.3);
+    }
+    .rank-silver {
+        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
+        border: 1px solid rgba(192,192,192,0.2);
+    }
+    .rank-bronze {
+        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
+        border: 1px solid rgba(205,127,50,0.2);
+    }
+
+    /* Highlight del propio usuario */
+    .its-me {
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
+    }
+    .its-me .rank-name { color: var(--accent); }
+`;
+
+const styleSheetRanking = document.createElement("style");
+styleSheetRanking.innerText = rankingStyles;
+document.head.appendChild(styleSheetRanking);
+
+// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
+document.addEventListener('DOMContentLoaded', () => {
+    const secRanking = document.getElementById('sec-ranking');
+    
+    if (secRanking) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (!secRanking.classList.contains('hidden')) {
+                        cargarRanking();
+                    }
+                }
+            });
+        });
+        observer.observe(secRanking, { attributes: true });
+    }
+});</script>
+<script id="script-datos.js">
+    /**
+ * ===============================================================
+ * DATOS.JS - GESTIÓN DE PERFIL (CACHÉ INTELIGENTE 5M / 24H)
+ * ===============================================================
+ */
+
+const TIEMPO_CACHE_INCOMPLETO = 5 * 60 * 1000; // 5 Minutos
+const TIEMPO_CACHE_COMPLETO = 24 * 60 * 60 * 1000; // 24 Horas
 
 async function cargarDatos() {
     const container = document.getElementById('sec-datos');
@@ -4359,7 +4629,7 @@ async function cargarDatos() {
                             <label>NOMBRE</label>
                             <div class="datos-input-wrapper">
                                 <span class="material-icons-round datos-input-icon">badge</span>
-                                <input type="text" id="perfil-nombre" class="datos-input" placeholder="Tu nombre" required>
+                                <input type="text" id="perfil-nombre" class="datos-input" placeholder="Tu nombre">
                             </div>
                         </div>
 
@@ -4367,7 +4637,7 @@ async function cargarDatos() {
                             <label>APELLIDO</label>
                             <div class="datos-input-wrapper">
                                 <span class="material-icons-round datos-input-icon">badge</span>
-                                <input type="text" id="perfil-apellido" class="datos-input" placeholder="Tu apellido" required>
+                                <input type="text" id="perfil-apellido" class="datos-input" placeholder="Tu apellido">
                             </div>
                         </div>
                     </div>
@@ -4376,7 +4646,7 @@ async function cargarDatos() {
                         <label>CORREO DE RECUPERACIÓN</label>
                         <div class="datos-input-wrapper">
                             <span class="material-icons-round datos-input-icon">mark_email_read</span>
-                            <input type="email" id="perfil-correo" class="datos-input" placeholder="correo@alternativo.com" required>
+                            <input type="email" id="perfil-correo" class="datos-input" placeholder="correo@alternativo.com">
                         </div>
                         <p class="datos-help-text">Se usará para restablecer tu contraseña si la olvidas.</p>
                     </div>
@@ -4385,62 +4655,74 @@ async function cargarDatos() {
                         <label>TELÉFONO / WHATSAPP</label>
                         <div class="datos-input-wrapper">
                             <span class="material-icons-round datos-input-icon">phone_iphone</span>
-                            <input type="tel" id="perfil-telefono" class="datos-input" placeholder="+57 300 000 0000" required>
+                            <input type="tel" id="perfil-telefono" class="datos-input" placeholder="+57 300 000 0000">
                         </div>
                     </div>
 
                     <button type="submit" class="btn-submit-datos" id="btn-guardar-datos">
                         <span class="material-icons-round">save</span> GUARDAR CAMBIOS
                     </button>
+
+                    <p id="datos-cooldown-msg" class="hidden" style="color: #ff9900; font-size: 0.8rem; text-align: center; margin-top: 15px; font-weight: bold;"></p>
                 </form>
             </div>
         </div>
     `;
 
-    // 2. MEJORA: CARGA INSTANTÁNEA DESDE LOCALSTORAGE
-    const cachedDatos = localStorage.getItem('jeico_perfil_datos');
-    if (cachedDatos) {
+    // 2. LÓGICA DE CACHÉ
+    const rawCache = localStorage.getItem('jeico_perfil_datos_v2');
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    
+    if (rawCache) {
         try {
-            const datos = JSON.parse(cachedDatos);
-            document.getElementById('perfil-nombre').value = datos.nombre || "";
-            document.getElementById('perfil-apellido').value = datos.apellido || "";
-            document.getElementById('perfil-correo').value = datos.correo || "";
-            document.getElementById('perfil-telefono').value = datos.telefono || "";
+            const cache = JSON.parse(rawCache);
+            const edadCache = Date.now() - cache.timestamp;
             
-            // Ocultar spinner y mostrar form de inmediato
-            document.getElementById('loading-datos').classList.add('hidden');
-            document.getElementById('form-datos-perfil').classList.remove('hidden');
+            // Verificamos si los datos están llenos
+            const estaLleno = (cache.datos.nombre && cache.datos.apellido && cache.datos.correo && cache.datos.telefono);
+            const validezNecesaria = estaLleno ? TIEMPO_CACHE_COMPLETO : TIEMPO_CACHE_INCOMPLETO;
+
+            if (edadCache < validezNecesaria) {
+                document.getElementById('perfil-nombre').value = cache.datos.nombre || "";
+                document.getElementById('perfil-apellido').value = cache.datos.apellido || "";
+                document.getElementById('perfil-correo').value = cache.datos.correo || "";
+                document.getElementById('perfil-telefono').value = cache.datos.telefono || "";
+                
+                document.getElementById('loading-datos').classList.add('hidden');
+                document.getElementById('form-datos-perfil').classList.remove('hidden');
+                
+                console.log(`Carga offline. Perfil ${estaLleno ? 'Completo (24h)' : 'Incompleto (5m)'}.`);
+                return; // Cortamos ejecución: CERO peticiones al servidor
+            }
         } catch (e) {
-            console.error("Error leyendo caché de datos", e);
+            localStorage.removeItem('jeico_perfil_datos_v2');
         }
     }
 
-    // 3. CONSULTA SILENCIOSA A LA BASE DE DATOS (Para sincronizar por si hubo cambios)
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-
+    // 3. CONSULTA AL SERVIDOR (Solo si no hay caché o ya expiró)
     try {
+        console.log("Consultando servidor para sincronizar perfil...");
         const res = await apiCall({ accion: 'getDatosPerfil', usuario: u, token: t });
         
-        // Si el formulario no se mostró con caché, lo mostramos ahora
-        if (!cachedDatos) {
-            document.getElementById('loading-datos').classList.add('hidden');
-            document.getElementById('form-datos-perfil').classList.remove('hidden');
-        }
+        document.getElementById('loading-datos').classList.add('hidden');
+        document.getElementById('form-datos-perfil').classList.remove('hidden');
 
         if (res.success && res.datos) {
-            // Actualizamos visualmente con lo que venga del servidor
             document.getElementById('perfil-nombre').value = res.datos.nombre || "";
             document.getElementById('perfil-apellido').value = res.datos.apellido || "";
             document.getElementById('perfil-correo').value = res.datos.correo || "";
             document.getElementById('perfil-telefono').value = res.datos.telefono || "";
 
-            // Guardamos el nuevo estado en caché local
-            localStorage.setItem('jeico_perfil_datos', JSON.stringify(res.datos));
+            // Guardamos en LocalStorage
+            localStorage.setItem('jeico_perfil_datos_v2', JSON.stringify({
+                timestamp: Date.now(),
+                datos: res.datos
+            }));
         }
     } catch (e) {
-        if (!cachedDatos) {
-            document.getElementById('loading-datos').innerHTML = "<p style='color:#ff0055;'>Error de conexión al cargar el perfil.</p>";
+        if (!rawCache) {
+            document.getElementById('loading-datos').innerHTML = "<p style='color:#ff0055;'>Error de conexión al cargar datos.</p>";
         }
     }
 }
@@ -4448,46 +4730,55 @@ async function cargarDatos() {
 async function actualizarMisDatos(e) {
     e.preventDefault();
 
+    const nombre = document.getElementById('perfil-nombre').value.trim();
+    const apellido = document.getElementById('perfil-apellido').value.trim();
+    const correo = document.getElementById('perfil-correo').value.trim();
+    const telefono = document.getElementById('perfil-telefono').value.trim();
+
+    // 1. VALIDACIÓN ESTRICTA: Todos los campos requeridos
+    if (!nombre || !apellido || !correo || !telefono) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Faltan Datos',
+            text: 'Debes completar todos los campos para poder guardar los cambios.',
+            background: '#0a0a0a', color: '#fff', confirmButtonColor: 'var(--accent)'
+        });
+    }
+
     const btn = document.getElementById('btn-guardar-datos');
     btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> GUARDANDO...';
     btn.disabled = true;
 
     const u = localStorage.getItem('jeico_user');
     const t = localStorage.getItem('jeico_token');
-    
-    const nombre = document.getElementById('perfil-nombre').value.trim();
-    const apellido = document.getElementById('perfil-apellido').value.trim();
-    const correo = document.getElementById('perfil-correo').value.trim();
-    const telefono = document.getElementById('perfil-telefono').value.trim();
 
     try {
         const res = await apiCall({ 
             accion: 'setDatosPerfil', 
             usuario: u, 
             token: t,
-            nombre: nombre,
-            apellido: apellido,
-            correo: correo,
-            telefono: telefono
+            nombre, apellido, correo, telefono
         });
 
         if (res.success) {
-            // MEJORA: GUARDAR EN LOCALSTORAGE PERMANENTEMENTE
-            const nuevosDatos = { nombre, apellido, correo, telefono };
-            localStorage.setItem('jeico_perfil_datos', JSON.stringify(nuevosDatos));
+            // ACTUALIZAMOS LOCALSTORAGE E INICIAMOS ENFRIAMIENTO DE 1 DÍA
+            localStorage.setItem('jeico_perfil_datos_v2', JSON.stringify({
+                timestamp: Date.now(),
+                datos: { nombre, apellido, correo, telefono }
+            }));
 
             Swal.fire({
                 toast: true, position: 'top-end', icon: 'success',
-                title: 'Perfil Actualizado',
-                text: 'Tus datos han sido guardados correctamente.',
+                title: 'Perfil Guardado',
+                text: 'Los datos se sincronizaron correctamente.',
                 showConfirmButton: false, timer: 3000,
-                background: '#0a0a0a', color: '#fff', iconColor: '#10b981'
+                background: '#0a0a0a', color: '#fff'
             });
         } else {
             Swal.fire({ icon: 'error', title: 'Error', text: res.msg, background: '#0a0a0a', color: '#fff' });
         }
     } catch (error) {
-        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No se pudieron guardar los cambios.', background: '#0a0a0a', color: '#fff' });
+        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No se pudo conectar con el servidor.', background: '#0a0a0a', color: '#fff' });
     } finally {
         btn.innerHTML = '<span class="material-icons-round">save</span> GUARDAR CAMBIOS';
         btn.disabled = false;
@@ -4495,7 +4786,7 @@ async function actualizarMisDatos(e) {
 }
 
 /**
- * ESTILOS INTEGRADOS (EXCLUSIVOS PARA PERFIL, SIN CONFLICTOS)
+ * ESTILOS INTEGRADOS
  */
 const datosStyles = `
     .datos-wrapper-premium {
@@ -4509,7 +4800,7 @@ const datosStyles = `
         border: 1px solid #1a1a1a;
         padding: 40px;
         border-radius: 20px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(124, 58, 237, 0.05);
+        box-shadow: 0 20px 50px rgba(0,0,0,0.8);
     }
 
     .datos-grid {
@@ -4529,34 +4820,22 @@ const datosStyles = `
         font-size: 0.75rem;
         font-weight: 800;
         letter-spacing: 1px;
-        margin-left: 5px;
     }
 
-    .datos-help-text {
-        font-size: 0.75rem;
-        color: #666;
-        margin-top: 6px;
-        margin-left: 5px;
-    }
-
-    /* CONTENEDOR DEL ÍCONO E INPUT */
     .datos-input-wrapper {
         position: relative;
         display: flex;
         align-items: center;
     }
 
-    /* EL ÍCONO FLOTANTE */
     .datos-input-icon {
         position: absolute;
         left: 15px;
         color: #777;
         font-size: 20px;
-        transition: 0.3s ease;
         pointer-events: none;
     }
 
-    /* EL CAMPO DE TEXTO */
     .datos-input {
         width: 100%;
         background: #0d0d0d;
@@ -4565,30 +4844,15 @@ const datosStyles = `
         padding: 16px 15px 16px 45px;
         border-radius: 12px;
         font-size: 0.95rem;
-        font-family: 'Inter', sans-serif;
-        transition: all 0.3s ease;
         outline: none;
-    }
-
-    /* EFECTOS HOVER Y FOCUS */
-    .datos-input:hover {
-        border-color: #333;
+        transition: 0.3s;
     }
 
     .datos-input:focus {
         border-color: var(--accent);
-        background: #000;
         box-shadow: 0 0 15px rgba(124, 58, 237, 0.2);
     }
 
-    /* Ilumina el ícono al hacer focus */
-    .datos-input:focus + .datos-input-icon,
-    .datos-input-wrapper:focus-within .datos-input-icon {
-        color: var(--accent);
-        transform: scale(1.1);
-    }
-
-    /* BOTÓN DE GUARDAR */
     .btn-submit-datos {
         width: 100%;
         background: var(--accent);
@@ -4598,7 +4862,6 @@ const datosStyles = `
         border-radius: 12px;
         font-weight: 800;
         letter-spacing: 1px;
-        font-size: 0.9rem;
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -4606,39 +4869,29 @@ const datosStyles = `
         gap: 10px;
         transition: 0.3s;
         margin-top: 30px;
-        box-shadow: 0 10px 20px rgba(124, 58, 237, 0.2);
     }
 
-    .btn-submit-datos:hover:not(:disabled) {
+    .btn-submit-datos:hover {
         background: #6d28d9;
         transform: translateY(-3px);
-        box-shadow: 0 15px 30px rgba(124, 58, 237, 0.4);
-    }
-
-    .btn-submit-datos:disabled {
-        background: #222;
-        color: #666;
-        box-shadow: none;
-        cursor: not-allowed;
     }
 
     .fa-spin { animation: spin 1s infinite linear; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-    /* RESPONSIVE MÓVIL */
     @media (max-width: 600px) {
-        .datos-grid { grid-template-columns: 1fr; gap: 20px; }
-        .card-datos { padding: 30px 20px; }
+        .datos-grid { grid-template-columns: 1fr; }
     }
 `;
 
 const styleSheetDatos = document.createElement("style");
 styleSheetDatos.innerText = datosStyles;
-document.head.appendChild(styleSheetDatos);</script>
-<script id="script-contra.js">/* contra.js */
-/**
+document.head.appendChild(styleSheetDatos);
+</script>
+<script id="script-contra.js">
+    /**
  * ===============================================================
- * CONTRA.JS - SISTEMA DE RECUPERACIÓN SIMPLIFICADO (PREMIUM CSS)
+ * CONTRA.JS - SISTEMA DE RECUPERACIÓN BLINDADO (CON CONTADOR)
  * ===============================================================
  */
 
@@ -4646,6 +4899,7 @@ document.head.appendChild(styleSheetDatos);</script>
 let usuarioRecuperacionTemp = "";
 let correoRecuperacionTemp = "";
 let telRecuperacionTemp = "";
+let recuEnCooldown = false;
 
 /**
  * 1. MUESTRA LA PANTALLA PARA PEDIR EL CORREO Y TELÉFONO
@@ -4669,52 +4923,91 @@ function volverLogin() {
  */
 async function enviarSolicitudRecuperacion(e) {
     e.preventDefault();
-    
+
+    if (recuEnCooldown) return; // Si ya está bloqueado, no hace nada
+
     correoRecuperacionTemp = document.getElementById('rec-correo').value.trim();
     telRecuperacionTemp = document.getElementById('rec-tel').value.trim();
     const btn = document.getElementById('btn-recover-1');
 
+    // VALIDACIÓN PREVIA
+    if (!correoRecuperacionTemp.includes('@') || telRecuperacionTemp.length < 7) {
+        return Swal.fire({ 
+            icon: 'warning', title: 'Datos Inválidos', 
+            text: 'Por favor ingresa un correo real y un teléfono válido.',
+            background: '#0a0a0a', color: '#fff' 
+        });
+    }
+
     btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> VERIFICANDO...';
     btn.disabled = true;
 
-    // Llamada a la nueva ruta simplificada en el GS
-    const res = await apiCall({ 
-        accion: 'validarDatosRecuperacion', 
-        correo: correoRecuperacionTemp, 
-        telefono: telRecuperacionTemp 
-    });
-
-    btn.innerText = "ENVIAR DATOS";
-    btn.disabled = false;
-
-    if (res.success) {
-        usuarioRecuperacionTemp = res.usuario; // Obtenemos el usuario de la DB
-        
-        // Saltamos al paso 2 (Nueva Contraseña)
-        document.getElementById('recover-step-1').classList.add('hidden');
-        document.getElementById('recover-step-2').classList.remove('hidden');
-        
-        Swal.fire({ 
-            icon: 'success', 
-            title: 'Identidad Verificada', 
-            text: `Hola ${res.usuario}, ya puedes asignar tu nueva clave.`, 
-            background: '#0a0a0a', color: '#fff', 
-            confirmButtonColor: '#10b981',
-            timer: 3000
+    try {
+        const res = await apiCall({ 
+            accion: 'validarDatosRecuperacion', 
+            correo: correoRecuperacionTemp, 
+            telefono: telRecuperacionTemp 
         });
-    } else {
-        Swal.fire({ 
-            icon: 'error', 
-            title: 'Acceso Denegado', 
-            text: res.msg, 
-            background: '#0a0a0a', 
-            color: '#fff' 
-        });
+
+        if (res.success) {
+            usuarioRecuperacionTemp = res.usuario; 
+            
+            document.getElementById('recover-step-1').classList.add('hidden');
+            document.getElementById('recover-step-2').classList.remove('hidden');
+            
+            Swal.fire({ 
+                icon: 'success', title: 'Identidad Verificada', 
+                text: `Hola ${res.usuario}, ya puedes asignar tu nueva clave.`, 
+                background: '#0a0a0a', color: '#fff', 
+                confirmButtonColor: '#10b981', timer: 3000
+            });
+            
+            btn.innerText = "ENVIAR DATOS";
+            btn.disabled = false;
+        } else {
+            // FALLO: Activamos el candado visual de 1 minuto
+            activarCooldownRecu(btn, "ENVIAR DATOS");
+            
+            Swal.fire({ 
+                icon: 'error', title: 'No encontrado', 
+                text: res.msg, 
+                background: '#0a0a0a', color: '#fff' 
+            });
+        }
+    } catch (err) {
+        btn.innerText = "ENVIAR DATOS";
+        btn.disabled = false;
+        Swal.fire({ icon: 'error', title: 'Error de Red', text: 'No pudimos conectar con la base de datos.', background: '#0a0a0a', color: '#fff' });
     }
 }
 
 /**
- * 4. PASO 2: ENVÍA LA NUEVA CLAVE PARA SOBREESCRIBIR LA ANTERIOR
+ * LÓGICA DE CONTADOR DINÁMICO
+ * Bloquea el botón y muestra los segundos restantes
+ */
+function activarCooldownRecu(btn, textoOriginal) {
+    recuEnCooldown = true;
+    btn.disabled = true;
+    btn.classList.add('btn-locked');
+    
+    let segundos = 60;
+
+    const interval = setInterval(() => {
+        segundos--;
+        btn.innerHTML = `<span class="material-icons-round">lock</span> ESPERA ${segundos}s`;
+
+        if (segundos <= 0) {
+            clearInterval(interval);
+            recuEnCooldown = false;
+            btn.disabled = false;
+            btn.innerText = textoOriginal;
+            btn.classList.remove('btn-locked');
+        }
+    }, 1000);
+}
+
+/**
+ * 4. PASO 2: ENVÍA LA NUEVA CLAVE
  */
 async function procesarNuevaClave(e) {
   e.preventDefault();
@@ -4729,51 +5022,44 @@ async function procesarNuevaClave(e) {
   btn.innerHTML = '<span class="material-icons-round fa-spin">sync</span> ACTUALIZANDO...';
   btn.disabled = true;
 
-  // Enviamos todos los datos para que el backend haga una última validación de seguridad
-  const res = await apiCall({ 
-      accion: 'cambiarClaveOlvidada', 
-      usuario: usuarioRecuperacionTemp, 
-      correo: correoRecuperacionTemp,
-      telefono: telRecuperacionTemp,
-      nuevaClave: nuevaClave 
-  });
-
-  btn.innerText = "ACTUALIZAR CLAVE";
-  btn.disabled = false;
-
-  if (res.success) {
-      Swal.fire({ 
-          icon: 'success', 
-          title: '¡Proceso Exitoso!', 
-          text: 'Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.', 
-          background: '#0a0a0a', 
-          color: '#fff', 
-          confirmButtonColor: '#7c3aed' 
-      }).then(() => {
-          // Limpiamos todo
-          document.getElementById('rec-correo').value = "";
-          document.getElementById('rec-tel').value = "";
-          document.getElementById('rec-nueva-clave').value = "";
-          volverLogin();
+  try {
+      const res = await apiCall({ 
+          accion: 'cambiarClaveOlvidada', 
+          usuario: usuarioRecuperacionTemp, 
+          correo: correoRecuperacionTemp,
+          telefono: telRecuperacionTemp,
+          nuevaClave: nuevaClave 
       });
-  } else {
-      Swal.fire({ 
-          icon: 'error', 
-          title: 'Error Crítico', 
-          text: res.msg, 
-          background: '#0a0a0a', 
-          color: '#fff' 
-      });
+
+      if (res.success) {
+          Swal.fire({ 
+              icon: 'success', title: '¡Proceso Exitoso!', 
+              text: 'Tu contraseña ha sido actualizada. Ya puedes iniciar sesión.', 
+              background: '#0a0a0a', color: '#fff', confirmButtonColor: '#7c3aed' 
+          }).then(() => {
+              document.getElementById('rec-correo').value = "";
+              document.getElementById('rec-tel').value = "";
+              document.getElementById('rec-nueva-clave').value = "";
+              usuarioRecuperacionTemp = "";
+              volverLogin();
+          });
+      } else {
+          activarCooldownRecu(btn, "ACTUALIZAR CLAVE");
+          Swal.fire({ icon: 'error', title: 'Error', text: res.msg, background: '#0a0a0a', color: '#fff' });
+      }
+  } catch (err) {
+      btn.innerText = "ACTUALIZAR CLAVE";
+      btn.disabled = false;
+      Swal.fire({ icon: 'error', title: 'Falla Técnica', text: 'No se pudo actualizar.', background: '#0a0a0a', color: '#fff' });
   }
 }
 
 /**
  * ===============================================================
- * ESTILOS CSS PARA RECUPERACIÓN (INYECTADOS)
+ * ESTILOS CSS PARA RECUPERACIÓN (ACTUALIZADOS CON ESTADO BLOQUEADO)
  * ===============================================================
  */
 const contraStyles = `
-    /* Estilos para los inputs de recuperación (estilo Premium) */
     #recover-step-1 .input-field, 
     #recover-step-2 .input-field {
         width: 100%;
@@ -4785,7 +5071,7 @@ const contraStyles = `
         font-size: 0.9rem;
         transition: all 0.3s ease;
         outline: none;
-        margin-bottom: 5px;
+        margin-bottom: 10px;
     }
 
     #recover-step-1 .input-field:focus, 
@@ -4795,7 +5081,6 @@ const contraStyles = `
         background: #000;
     }
 
-    /* Botón de recuperación */
     .btn-recover {
         width: 100%;
         padding: 16px;
@@ -4812,16 +5097,17 @@ const contraStyles = `
         gap: 10px;
     }
 
-    /* Animación de carga */
-    .fa-spin {
-        animation: spin 1s infinite linear;
-    }
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
+    /* Estilo cuando el botón está bloqueado por el cronómetro */
+    .btn-recover.btn-locked {
+        background: #1a1a1a !important;
+        color: #444 !important;
+        border: 1px solid #222 !important;
+        cursor: not-allowed;
     }
 
-    /* Enlaces de retorno */
+    .fa-spin { animation: spin 1s infinite linear; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
     .back-to-login {
         display: block;
         text-align: center;
@@ -4834,32 +5120,37 @@ const contraStyles = `
         cursor: pointer;
         transition: 0.3s;
     }
-    .back-to-login:hover {
-        color: var(--accent);
-    }
+    .back-to-login:hover { color: var(--accent); }
 `;
 
-// Inyección automática del CSS al cargar el script
 const styleSheetContra = document.createElement("style");
 styleSheetContra.innerText = contraStyles;
-document.head.appendChild(styleSheetContra);</script>
-<script id="script-mistickets.js">/* mistickets.js */
-/**
+document.head.appendChild(styleSheetContra);
+</script>
+<script id="script-mistickets.js">
+    /**
  * ===============================================================
- * MISTICKETS.JS - HISTORIAL Y GESTIÓN DE SOPORTE DEL CLIENTE (V2 - MODAL & CACHÉ & RESPUESTAS)
+ * MISTICKETS.JS - SISTEMA OPTIMIZADO (CACHE 30 MIN - SINCRONIZABLE)
  * ===============================================================
  */
 
 let cargandoTickets = false;
+// CONFIGURACIÓN: 30 Minutos de validez para el caché de lectura
+const TIEMPO_VALIDEZ_CACHE_TICKETS = 30 * 60 * 1000; 
 
 /**
- * 1. FUNCIÓN PRINCIPAL: Obtener y renderizar los tickets (Con sistema de Caché)
+ * 1. FUNCIÓN PRINCIPAL: Obtener y renderizar los tickets
+ * @param {boolean} forzarRecarga - Si es true, ignora el caché y pide datos nuevos.
  */
-async function cargarMisTickets() {
+async function cargarMisTickets(forzarRecarga = false) {
     if (cargandoTickets) return;
     cargandoTickets = true;
 
     const container = document.getElementById('tickets-container');
+    if (!container) {
+        cargandoTickets = false;
+        return;
+    }
     
     // CREDENCIALES
     const u = localStorage.getItem('jeico_user');
@@ -4875,23 +5166,41 @@ async function cargarMisTickets() {
         return;
     }
 
-    // --- SISTEMA DE CACHÉ (VELOCIDAD INSTANTÁNEA) ---
-    const ticketsCacheados = localStorage.getItem('jeico_tickets_cache');
-    if (ticketsCacheados) {
-        // Renderizamos inmediatamente lo que hay en memoria
-        renderMisTickets(JSON.parse(ticketsCacheados));
-    } else {
-        // Solo mostramos el spinner si es la primera vez que entra y no hay caché
+    // --- LÓGICA DE CACHÉ DE 30 MINUTOS ---
+    const cacheRaw = localStorage.getItem('jeico_tickets_cache_v30min'); 
+    
+    if (cacheRaw && !forzarRecarga) {
+        try {
+            const cache = JSON.parse(cacheRaw);
+            const edadCache = Date.now() - cache.timestamp;
+
+            // SI LA CACHÉ TIENE MENOS DE 30 MINUTOS, LA USAMOS Y PARAMOS.
+            if (edadCache < TIEMPO_VALIDEZ_CACHE_TICKETS) {
+                console.log(`♻️ Usando caché local de tickets (Edad: ${Math.round(edadCache/60000)} min).`);
+                
+                renderMisTickets(cache.datos);
+                
+                cargandoTickets = false;
+                return; // <--- ESCUDO DE ENFRIAMIENTO ACTIVO
+            }
+        } catch (e) {
+            console.warn("Error leyendo caché de tickets, se procederá a descargar de nuevo.");
+        }
+    }
+
+    // Solo mostramos spinner si el contenedor está vacío para evitar parpadeos feos
+    if (!container.querySelector('.ticket-card-premium')) {
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:60px;">
                 <div class="spinner"></div>
-                <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">Sincronizando con la central...</p>
+                <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">Conectando con soporte...</p>
             </div>
         `;
     }
 
     try {
-        // Llamada silenciosa al backend para buscar nuevos datos
+        console.log("📡 Sincronizando historial de tickets con el servidor...");
+        // Llamada al backend
         const res = await apiCall({ 
             accion: 'getMisTickets', 
             usuario: u, 
@@ -4899,30 +5208,36 @@ async function cargarMisTickets() {
         });
 
         if (res && res.success) {
-            // Si hubo éxito, actualizamos la memoria caché
-            localStorage.setItem('jeico_tickets_cache', JSON.stringify(res.datos));
+            // Guardamos datos + TIMESTAMP actual para la próxima vez (Activa los 30 min de enfriamiento)
+            const objetoCache = {
+                timestamp: Date.now(),
+                datos: res.datos
+            };
+            localStorage.setItem('jeico_tickets_cache_v30min', JSON.stringify(objetoCache));
+            
             // Renderizamos los datos frescos
             renderMisTickets(res.datos);
         } else {
-            // Solo mostramos error si ni siquiera había caché
-            if (!ticketsCacheados) {
+            // Si falla y no hay nada mostrado, mostramos error
+            if (!container.querySelector('.ticket-card-premium')) {
                 container.innerHTML = `
                     <div style="grid-column: 1/-1; text-align:center; padding:40px;">
                         <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">dns</span>
                         <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Error del servidor: ${res ? res.msg : 'Respuesta vacía'}</p>
+                        <button onclick="cargarMisTickets(true)" class="btn-retry" style="margin-top:10px; padding:8px 15px; border-radius:5px; border:1px solid #333; background:transparent; color:#fff; cursor:pointer;">Reintentar</button>
                     </div>
                 `;
             }
         }
     } catch (error) {
-        if (!ticketsCacheados) {
-            container.innerHTML = `
-                <div style="grid-column: 1/-1; text-align:center; padding:40px;">
-                    <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">wifi_off</span>
-                    <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Fallo en la conexión: ${error.message}</p>
-                </div>
-            `;
-        }
+        console.error("Error crítico en Mis Tickets:", error);
+        container.innerHTML = `
+            <div style="grid-column: 1/-1; text-align:center; padding:40px;">
+                <span class="material-icons-round" style="font-size:3rem; color:var(--danger);">wifi_off</span>
+                <p style="color: var(--danger); font-weight: bold; margin-top: 15px;">Fallo en la conexión</p>
+                <button onclick="cargarMisTickets(true)" class="btn-retry" style="margin-top:10px; padding:8px 15px; border-radius:5px; border:1px solid #333; background:transparent; color:#fff; cursor:pointer;">Reintentar</button>
+            </div>
+        `;
     } finally {
         cargandoTickets = false;
     }
@@ -4933,6 +5248,7 @@ async function cargarMisTickets() {
  */
 function renderMisTickets(tickets) {
     const container = document.getElementById('tickets-container');
+    if (!container) return;
     
     try {
         container.innerHTML = ""; 
@@ -4953,9 +5269,9 @@ function renderMisTickets(tickets) {
             const esAbierto = estadoSeguro.toLowerCase() === 'abierto';
             
             // Colores más vibrantes para el estado
-            const colorEstado = esAbierto ? '#10b981' : '#6b7280'; 
-            const bgEstado = esAbierto ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.05)';
-            const iconEstado = esAbierto ? 'radio_button_checked' : 'check_circle';
+            const colorEstado = esAbierto ? '#ff9900' : '#10b981'; 
+            const bgEstado = esAbierto ? 'rgba(255, 153, 0, 0.1)' : 'rgba(16, 185, 129, 0.1)';
+            const iconEstado = esAbierto ? 'hourglass_empty' : 'check_circle';
             
             let fechaStr = "Fecha no disponible";
             if (ticket.fecha) {
@@ -4963,13 +5279,19 @@ function renderMisTickets(tickets) {
                 fechaStr = fechaObj.toLocaleDateString() + ' - ' + fechaObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             }
 
-            const botonAccion = esAbierto 
-                ? `<button class="btn-cerrar-ticket" onclick="cerrarTicketCliente(${ticket.fila})">
-                     <span class="material-icons-round">task_alt</span> Marcar Resuelto
-                   </button>` 
-                : `<div class="ticket-closed-badge">
-                     <span class="material-icons-round">lock</span> SOLUCIONADO
-                   </div>`;
+            let mensajeEstadoFooter = "";
+            
+            if (esAbierto) {
+                mensajeEstadoFooter = `
+                    <div class="ticket-closed-badge" style="color: #ff9900;">
+                        <span class="material-icons-round" style="font-size:16px;">support_agent</span> EN REVISIÓN
+                    </div>`;
+            } else {
+                mensajeEstadoFooter = `
+                    <div class="ticket-closed-badge" style="color: #10b981;">
+                        <span class="material-icons-round" style="font-size:16px;">lock</span> SOLUCIONADO
+                    </div>`;
+            }
 
             // Codificamos los textos de forma segura
             const textoCodificado = encodeURIComponent((ticket.contexto || 'Sin detalles.').replace(/'/g, "%27"));
@@ -4978,7 +5300,6 @@ function renderMisTickets(tickets) {
             const card = document.createElement('div');
             card.className = 'ticket-card-premium'; 
             
-            // Estructura HTML mejorada
             card.innerHTML = `
                 <div class="ticket-header">
                     <div>
@@ -4995,14 +5316,14 @@ function renderMisTickets(tickets) {
                     <div class="ticket-detail-btn" onclick="mostrarDetalleModal('${textoCodificado}', '${respCodificada}')">
                         <div class="ticket-detail-label">
                             <span class="material-icons-round">visibility</span> 
-                            <span>LEER REPORTE COMPLETO</span>
+                            <span>LEER REPORTE Y RESPUESTA</span>
                         </div>
                         <span class="material-icons-round detail-icon">open_in_new</span>
                     </div>
                 </div>
 
                 <div class="ticket-footer">
-                    ${botonAccion}
+                    ${mensajeEstadoFooter}
                 </div>
             `;
             container.appendChild(card);
@@ -5044,6 +5365,15 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
                 <div class="modal-ticket-text">${textoRespuesta}</div>
             </div>
         `;
+    } else {
+        htmlModal += `
+            <div class="modal-ticket-section admin-msg" style="opacity: 0.7;">
+                <div class="modal-ticket-title" style="color: #ff9900;">
+                    <span class="material-icons-round">hourglass_empty</span> EN ESPERA:
+                </div>
+                <div class="modal-ticket-text" style="color: #aaa; font-style: italic;">Tu ticket está siendo revisado por nuestro equipo. Te responderemos por este medio.</div>
+            </div>
+        `;
     }
 
     Swal.fire({
@@ -5051,7 +5381,7 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
         html: htmlModal,
         background: '#0a0a0a',
         color: '#fff',
-        confirmButtonColor: 'var(--accent)', // Usa el morado de tu tema
+        confirmButtonColor: 'var(--accent)', 
         confirmButtonText: 'CERRAR',
         customClass: {
             popup: 'modal-ticket-premium'
@@ -5060,65 +5390,12 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada) {
 };
 
 /**
- * 4. ACCIÓN: Cerrar un ticket específico
- */
-async function cerrarTicketCliente(fila) {
-    const confirmar = await Swal.fire({
-        title: '¿Marcar como Resuelto?',
-        text: "Al cerrar el ticket nos confirmas que tu incidencia fue solucionada.",
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#10b981',
-        cancelButtonColor: '#222',
-        confirmButtonText: 'Sí, solucionado',
-        cancelButtonText: 'Cancelar',
-        background: '#0a0a0a',
-        color: '#fff'
-    });
-
-    if (!confirmar.isConfirmed) return;
-
-    Swal.fire({
-        title: 'Actualizando...', text: 'Cerrando tu incidencia.',
-        allowOutsideClick: false, background: '#0a0a0a', color: '#fff',
-        didOpen: () => { Swal.showLoading() }
-    });
-
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-
-    const res = await apiCall({ 
-        accion: 'cerrarTicket', 
-        usuario: u, 
-        token: t, 
-        fila: fila 
-    });
-
-    if (res && res.success) {
-        Swal.fire({
-            icon: 'success', title: '¡Ticket Cerrado!', text: 'Gracias por avisarnos.',
-            background: '#0a0a0a', color: '#fff', timer: 2000, showConfirmButton: false
-        });
-        
-        // Al cerrar un ticket, limpiamos el caché viejo para forzar que baje el nuevo estado
-        localStorage.removeItem('jeico_tickets_cache');
-        cargarMisTickets(); 
-    } else {
-        Swal.fire({
-            icon: 'error', title: 'Error', text: res ? res.msg : 'Error desconocido',
-            background: '#0a0a0a', color: '#fff'
-        });
-    }
-}
-
-/**
  * ===============================================================
  * ESTILOS CSS INYECTADOS VÍA JS (DISEÑO PREMIUM GOTH)
  * ===============================================================
  */
 
 const ticketStyles = `
-    /* --- TARJETA PRINCIPAL DEL TICKET --- */
     .ticket-card-premium {
         background: #0d0d0d;
         border: 1px solid #1a1a1a;
@@ -5135,10 +5412,9 @@ const ticketStyles = `
     .ticket-card-premium:hover {
         border-color: #333;
         transform: translateY(-4px);
-        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.08); /* Brillo morado sutil */
+        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.08);
     }
 
-    /* --- CABECERA DE LA TARJETA --- */
     .ticket-header {
         display: flex;
         justify-content: space-between;
@@ -5171,23 +5447,10 @@ const ticketStyles = `
         border: 1px solid transparent;
     }
     
-    .ticket-status-pill span:first-child {
-        font-size: 1rem;
-    }
-    
-    .ticket-status-pill span:last-child {
-        font-size: 0.75rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-    }
+    .ticket-status-pill span:first-child { font-size: 1rem; }
+    .ticket-status-pill span:last-child { font-size: 0.75rem; font-weight: 800; letter-spacing: 1px; }
 
-    /* --- CUERPO DE LA TARJETA (BOTÓN DE LEER) --- */
-    .ticket-body {
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    }
+    .ticket-body { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; }
 
     .ticket-detail-btn {
         background: #111;
@@ -5202,165 +5465,53 @@ const ticketStyles = `
         user-select: none;
     }
 
-    .ticket-detail-btn:hover {
-        background: rgba(124, 58, 237, 0.1);
-        border-color: rgba(124, 58, 237, 0.4);
-    }
+    .ticket-detail-btn:hover { background: rgba(124, 58, 237, 0.1); border-color: rgba(124, 58, 237, 0.4); }
 
-    .ticket-detail-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #ccc;
-        font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 1px;
-    }
+    .ticket-detail-label { display: flex; align-items: center; gap: 8px; color: #ccc; font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; }
 
-    .ticket-detail-btn:hover .ticket-detail-label,
-    .ticket-detail-btn:hover .detail-icon {
-        color: var(--accent, #7c3aed);
-    }
+    .ticket-detail-btn:hover .ticket-detail-label, .ticket-detail-btn:hover .detail-icon { color: var(--accent, #7c3aed); }
 
-    .detail-icon {
-        color: #555;
-        font-size: 1.2rem;
-        transition: color 0.2s;
-    }
+    .detail-icon { color: #555; font-size: 1.2rem; transition: color 0.2s; }
 
-    /* --- PIE DE LA TARJETA (BOTONES ACCIÓN) --- */
-    .ticket-footer {
-        margin-top: 20px;
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-    }
-
-    .btn-cerrar-ticket {
-        background: transparent;
-        border: 1px solid var(--success, #10b981);
-        color: var(--success, #10b981);
-        padding: 10px 18px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 800;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-    }
-
-    .btn-cerrar-ticket span {
-        font-size: 1.1rem;
-    }
-
-    .btn-cerrar-ticket:hover {
-        background: var(--success, #10b981);
-        color: #000;
-        box-shadow: 0 0 15px rgba(16, 185, 129, 0.25);
-    }
+    .ticket-footer { margin-top: 20px; display: flex; justify-content: flex-end; align-items: center; }
 
     .ticket-closed-badge {
-        color: #666;
         font-size: 0.8rem;
         font-weight: 800;
         letter-spacing: 2px;
         display: flex;
         align-items: center;
         gap: 6px;
-        background: #111;
-        padding: 10px 18px;
-        border-radius: 8px;
-        border: 1px dashed #222;
+        background: transparent;
+        padding: 5px 0;
     }
     
-    .ticket-closed-badge span {
-        font-size: 1.1rem;
-    }
+    .ticket-closed-badge span { font-size: 1.1rem; }
 
-    /* --- DISEÑO DEL MODAL DE SWEETALERT --- */
-    .modal-ticket-premium {
-        border: 1px solid #222;
-        border-radius: 16px !important;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(124, 58, 237, 0.2) !important;
-    }
+    .modal-ticket-premium { border: 1px solid #222; border-radius: 16px !important; box-shadow: 0 20px 50px rgba(0,0,0,0.5) !important; }
 
-    .modal-ticket-section {
-        text-align: left;
-        padding: 18px;
-        border-radius: 12px;
-        margin-bottom: 15px;
-    }
+    .modal-ticket-section { text-align: left; padding: 18px; border-radius: 12px; margin-bottom: 15px; }
 
-    .modal-ticket-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 800;
-        font-size: 0.8rem;
-        letter-spacing: 1.5px;
-        margin-bottom: 10px;
-    }
+    .modal-ticket-title { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.8rem; letter-spacing: 1.5px; margin-bottom: 10px; }
 
-    .modal-ticket-title span {
-        font-size: 1.1rem;
-    }
+    .modal-ticket-text { font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; max-height: 30vh; overflow-y: auto; }
 
-    .modal-ticket-text {
-        font-size: 0.9rem;
-        line-height: 1.6;
-        white-space: pre-wrap;
-        max-height: 30vh;
-        overflow-y: auto;
-    }
+    .client-msg { background: #050505; border: 1px solid #1a1a1a; }
+    .client-msg .modal-ticket-title { color: var(--accent, #7c3aed); }
+    .client-msg .modal-ticket-text { color: #ccc; }
 
-    /* Scrollbar estilizada para el modal */
-    .modal-ticket-text::-webkit-scrollbar {
-        width: 6px;
-    }
-    .modal-ticket-text::-webkit-scrollbar-track {
-        background: transparent;
-    }
-
-    /* Variante: Mensaje del Cliente */
-    .client-msg {
-        background: #050505;
-        border: 1px solid #1a1a1a;
-    }
-    .client-msg .modal-ticket-title {
-        color: var(--accent, #7c3aed);
-    }
-    .client-msg .modal-ticket-text {
-        color: #ccc;
-    }
-    .client-msg .modal-ticket-text::-webkit-scrollbar-thumb {
-        background: #333;
-        border-radius: 10px;
-    }
-
-    /* Variante: Respuesta del Admin */
-    .admin-msg {
-        background: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .admin-msg .modal-ticket-title {
-        color: #10b981;
-    }
-    .admin-msg .modal-ticket-text {
-        color: #e5e7eb;
-    }
-    .admin-msg .modal-ticket-text::-webkit-scrollbar-thumb {
-        background: rgba(16, 185, 129, 0.3);
-        border-radius: 10px;
-    }
+    .admin-msg { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
+    .admin-msg .modal-ticket-title { color: #10b981; }
+    .admin-msg .modal-ticket-text { color: #e5e7eb; }
 `;
 
 const styleSheetTickets = document.createElement("style");
 styleSheetTickets.innerText = ticketStyles;
 document.head.appendChild(styleSheetTickets);
 
+/**
+ * OBSERVADOR DE VISIBILIDAD PARA CARGA AUTOMÁTICA
+ */
 document.addEventListener('DOMContentLoaded', () => {
     const secMisTickets = document.getElementById('sec-mistickets');
     
@@ -5376,6 +5527,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         observer.observe(secMisTickets, { attributes: true });
     }
-});</script>
+});
+</script>
+
+
 </body>
 </html>
