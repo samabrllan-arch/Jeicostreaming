@@ -1664,14 +1664,13 @@ body { background-color: var(--bg-dark); color: var(--text-white); overflow-x: h
 <script id="script-Tienda.js">/* Tienda.js */
 /**
  * ===============================================================
- * TIENDA.JS - VERSIÓN DEFINITIVA (SINCRONIZACIÓN TOTAL POST-COMPRA)
+ * TIENDA.JS - VERSIÓN DEFINITIVA ULTRA-PREMIUM (CON FIX MÓVIL)
  * ===============================================================
  */
 
-const STORE_CACHE_KEY = "jeico_store_cache_v2";
-const TIEMPO_VALIDEZ_CACHE = 5 * 60 * 1000; // 5 Minutos para todo el sistema
+const STORE_CACHE_KEY = "jeico_store_cache";
 
-// --- CONFIGURACIÓN DE NOTIFICACIONES ---
+// --- CONFIGURACIÓN DE NOTIFICACIONES (CON FIX DE Z-INDEX) ---
 const Toast = Swal.mixin({
     toast: true,
     position: 'top-end',
@@ -1680,70 +1679,56 @@ const Toast = Swal.mixin({
     background: '#0a0a0a',
     color: '#fff',
     iconColor: '#7c3aed',
-    customClass: { container: 'swal-high-priority' }
+    // Forzamos que el contenedor de la alerta esté por encima de todo (z-index)
+    customClass: {
+        container: 'swal-high-priority'
+    }
 });
 
 /**
- * 1. CARGA INICIAL CON CACHÉ DE 5 MINUTOS
+ * 1. CARGA INICIAL Y SINCRONIZACIÓN
  */
-async function cargarTienda(forzarRecarga = false) {
+async function cargarTienda() {
     const container = document.getElementById('shop-container');
-    if (!container) return;
-
-    const rawCache = localStorage.getItem(STORE_CACHE_KEY);
-    const u = localStorage.getItem('jeico_user');
-    const t = localStorage.getItem('jeico_token');
-
-    // A. VALIDACIÓN DE CACHÉ
-    if (rawCache && !forzarRecarga) {
-        try {
-            const cache = JSON.parse(rawCache);
-            const edadCache = Date.now() - cache.timestamp;
-
-            if (edadCache < TIEMPO_VALIDEZ_CACHE) {
-                console.log("♻️ Tienda: Usando caché local (Menos de 5 min).");
-                if (cache.saldo !== undefined) {
-                    userBalance = Number(cache.saldo);
-                    if (typeof updateBalanceUI === 'function') updateBalanceUI();
-                }
-                renderizarTiendaPremium(cache.productos, false);
-                return; // CERO PETICIONES AL SERVER
-            }
-            // Si expiró pero existe, mostramos lo viejo mientras llega lo nuevo
-            renderizarTiendaPremium(cache.productos, true);
-        } catch (e) { localStorage.removeItem(STORE_CACHE_KEY); }
-    }
-
-    // B. SPINNER SI ESTÁ VACÍO
-    if (!container.querySelector('.product-card')) {
+    
+    // A. Carga instantánea desde memoria
+    const cachedData = localStorage.getItem(STORE_CACHE_KEY);
+    if (cachedData) {
+        const data = JSON.parse(cachedData);
+        renderizarTiendaPremium(data.productos, true);
+    } else {
         container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><div class="spinner"></div></div>';
     }
 
-    // C. PETICIÓN AL SERVIDOR
+    // B. Sincronización real con el servidor
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+
     try {
         const res = await apiCall({ accion: 'getTienda', usuario: u, token: t });
+
         if (res.success) {
             userBalance = Number(res.saldo);
             if (typeof updateBalanceUI === 'function') updateBalanceUI();
 
             localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
                 productos: res.productos,
-                saldo: res.saldo,
-                timestamp: Date.now()
+                timestamp: new Date().getTime()
             }));
+
             renderizarTiendaPremium(res.productos, false);
-        } else if (res.msg === "Sesión inválida") {
-            logout();
+        } else {
+            if (res.msg === "Sesión inválida") logout();
         }
     } catch (e) {
-        console.error("Error tienda:", e);
+        console.error("Error de sincronización:", e);
     }
 }
 
 /**
- * 2. RENDERIZADOR DE TARJETAS
+ * 2. RENDERIZADOR DE TARJETAS (RECTANGULARES Y AGOTADOS)
  */
-function renderizarTiendaPremium(productos, isSyncing) {
+function renderizarTiendaPremium(productos, isCache) {
     const container = document.getElementById('shop-container');
     container.innerHTML = "";
 
@@ -1765,8 +1750,9 @@ function renderizarTiendaPremium(productos, isSyncing) {
         const precioAnterior = Number(p.precioAnt) || 0;
         const tieneOferta = precioAnterior > precioActual;
 
-        let btnHtml = isSyncing 
-            ? `<button class="btn-buy" style="opacity:0.5; cursor:wait;">ACTUALIZANDO...</button>`
+        // Botón con validación de stockReal para el fix del bug
+        let btnHtml = isCache 
+            ? `<button class="btn-buy" style="opacity:0.5; cursor:wait;">SINCRONIZANDO...</button>`
             : isSoldOut 
                 ? `<button class="btn-buy disabled" disabled>AGOTADO</button>`
                 : `<button class="btn-buy" onclick="addToCart('${p.nombre}', ${precioActual}, '${img}', ${stockActual})">AGREGAR AL CARRITO</button>`;
@@ -1796,16 +1782,21 @@ function renderizarTiendaPremium(productos, isSyncing) {
 }
 
 /**
- * 3. LÓGICA DEL CARRITO
+ * 3. LÓGICA DEL CARRITO (CANTIDADES Y STOCK MÁXIMO)
  */
 function addToCart(nombre, precio, img, stockReal) {
     const existe = cart.find(item => item.nombre === nombre);
+    
     if (existe) {
         if (existe.cantidad < stockReal) {
             existe.cantidad++;
             Toast.fire({ icon: 'success', title: 'Cantidad aumentada' });
         } else {
-            return Toast.fire({ icon: 'warning', title: 'Stock limitado', text: `Solo quedan ${stockReal} unidades.` });
+            return Toast.fire({ 
+                icon: 'warning', 
+                title: 'Stock limitado',
+                text: `Solo quedan ${stockReal} unidades.` 
+            });
         }
     } else {
         cart.push({ nombre, precio, img, cantidad: 1, stockMax: stockReal });
@@ -1817,11 +1808,14 @@ function addToCart(nombre, precio, img, stockReal) {
 function changeQty(index, delta) {
     const item = cart[index];
     const nuevaCant = item.cantidad + delta;
+    
     if (nuevaCant > 0 && nuevaCant <= item.stockMax) {
         item.cantidad = nuevaCant;
     } else if (nuevaCant <= 0) {
         cart.splice(index, 1);
         Toast.fire({ icon: 'info', title: 'Producto eliminado' });
+    } else {
+        return Toast.fire({ icon: 'info', title: 'No hay más stock' });
     }
     updateCartUI();
 }
@@ -1830,9 +1824,10 @@ function updateCartUI() {
     const list = document.getElementById('cart-items-list');
     const badge = document.getElementById('cart-count');
     const totalDisplay = document.getElementById('cart-total-display');
-    if (!list) return;
+    
     list.innerHTML = "";
-    let total = 0, count = 0;
+    let total = 0;
+    let count = 0;
 
     if(cart.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:#555; margin-top:50px;">Carrito vacío</div>';
@@ -1840,6 +1835,7 @@ function updateCartUI() {
         cart.forEach((item, index) => {
             total += item.precio * item.cantidad;
             count += item.cantidad;
+            
             list.innerHTML += `
                 <div class="cart-item-row-premium">
                     <img src="${item.img}" class="cart-item-img">
@@ -1852,12 +1848,16 @@ function updateCartUI() {
                             <button class="btn-qty" onclick="changeQty(${index}, 1)">+</button>
                         </div>
                     </div>
-                    <button class="btn-remove-item" onclick="removeFromCart(${index})"><span class="material-icons-round">close</span></button>
-                </div>`;
+                    <button class="btn-remove-item" onclick="removeFromCart(${index})">
+                        <span class="material-icons-round">close</span>
+                    </button>
+                </div>
+            `;
         });
     }
-    if (badge) badge.innerText = count;
-    if (totalDisplay) totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+
+    badge.innerText = count;
+    totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
 }
 
 function removeFromCart(index) {
@@ -1866,13 +1866,15 @@ function removeFromCart(index) {
 }
 
 /**
- * 4. CHECKOUT Y PAGO FINAL (SINCRONIZACIÓN TOTAL)
+ * 4. CHECKOUT Y PAGO FINAL
  */
 function goToCheckout() {
     if(cart.length === 0) return;
+    
     let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
     const summaryList = document.getElementById('checkout-summary-list');
     summaryList.innerHTML = "";
+    
     cart.forEach(item => {
         summaryList.innerHTML += `
             <div class="checkout-item-premium">
@@ -1881,8 +1883,10 @@ function goToCheckout() {
                     <div class="checkout-item-qty">Unidades: ${item.cantidad}</div>
                 </div>
                 <div class="checkout-item-price">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
-            </div>`;
+            </div>
+        `;
     });
+
     document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
     toggleCart(); 
     document.getElementById('checkout-overlay').classList.remove('hidden');
@@ -1898,90 +1902,55 @@ async function finalizePurchase() {
     let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
     if(userBalance < total) return Toast.fire({ icon: 'error', title: 'Saldo insuficiente' });
 
+    // 1. CERRAR MODAL DE CONFIRMACIÓN INMEDIATAMENTE
     closeCheckout();
+
     const u = localStorage.getItem('jeico_user');
     const t = localStorage.getItem('jeico_token');
     
+    // 2. LANZAR CARGADOR CON PRIORIDAD ABSOLUTA
     Swal.fire({ 
-        title: 'PROCESANDO PAGO', 
-        text: 'Generando accesos...',
+        title: 'PROCESANDO TRANSACCIÓN', 
+        text: 'Generando accesos directos...',
         didOpen: () => Swal.showLoading(), 
-        background: '#0a0a0a', color: '#fff',
+        background: '#0a0a0a', 
+        color: '#fff',
         allowOutsideClick: false,
         customClass: { container: 'swal-top-layer' }
     });
 
-    let exitos = 0;
+    let errores = [], exitos = 0;
     for (const item of cart) {
         for(let i=0; i<item.cantidad; i++) {
             const res = await apiCall({ accion: 'comprar', usuario: u, token: t, producto: item.nombre });
-            if(res.success) { 
-                exitos++; 
-                userBalance = res.nuevoSaldo; 
-            }
+            if(res.success) { exitos++; userBalance = res.nuevoSaldo; } 
+            else { errores.push(`${item.nombre}: ${res.msg}`); }
         }
     }
 
+    updateBalanceUI();
+    
     if(exitos > 0) {
         cart = []; 
         updateCartUI();
-        updateBalanceUI();
-
-        // --- MEJORA: RECARGA TRIPLE EN SEGUNDO PLANO ---
-        // Al terminar, disparamos actualizaciones para todas las pestañas
-        // para que al cambiar de sección todo esté listo al instante.
-        console.log("🚀 Sincronizando Bóveda y Billetera tras compra...");
+        cargarTienda();
         
-        const syncPromises = [
-            apiCall({ accion: 'getTienda', usuario: u, token: t }),
-            apiCall({ accion: 'getPedidos', usuario: u, token: t }),
-            apiCall({ accion: 'getMovimientos', usuario: u, token: t })
-        ];
-
-        const [rTienda, rPedidos, rBilletera] = await Promise.all(syncPromises);
-
-        // Actualizamos LocalStorage de Tienda
-        if(rTienda.success) {
-            localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
-                productos: rTienda.productos,
-                saldo: rTienda.saldo,
-                timestamp: Date.now()
-            }));
-            renderizarTiendaPremium(rTienda.productos, false);
-        }
-
-        // Actualizamos LocalStorage de Pedidos (Bóveda)
-        if(rPedidos.success) {
-            localStorage.setItem("jeico_orders_cache_v2", JSON.stringify({
-                datos: rPedidos.datos,
-                timestamp: Date.now()
-            }));
-        }
-
-        // Actualizamos LocalStorage de Billetera
-        if(rBilletera.success) {
-            localStorage.setItem("jeico_wallet_cache_v2", JSON.stringify({
-                datos: rBilletera.datos,
-                saldoActual: rBilletera.saldoActual,
-                timestamp: Date.now()
-            }));
-        }
-
         Toast.fire({
-            icon: 'success', title: '¡PAGO REALIZADO!',
-            text: `Se activaron ${exitos} servicios. Revisa tu Bóveda.`,
+            icon: 'success',
+            title: '¡PAGO REALIZADO!',
+            text: `Se activaron ${exitos} servicios correctamente.`,
             timer: 5000
         });
     } else {
-        Toast.fire({ icon: 'error', title: 'Error en la compra' });
+        Toast.fire({ icon: 'error', title: 'Transacción fallida', text: errores[0] });
     }
 }
 
 /**
- * 5. ESTILOS INTEGRADOS
+ * 5. ESTILOS INTEGRADOS (RECTANGULAR + Z-INDEX + FIX HAMBURGUESA Y CARRITO)
  */
 const tiendaStyles = `
-    .product-card { height: 480px; display: flex; flex-direction: column; overflow: hidden; margin-bottom: 20px;}
+    .product-card { height: 480px; display: flex; flex-direction: column; overflow: hidden; }
     .card-img-container { height: 50%; width: 100%; position: relative; background: #111; overflow: hidden; }
     .card-img { width: 100%; height: 100%; object-fit: cover; border-radius: 0; transition: transform 0.5s; }
     .product-card:hover .card-img { transform: scale(1.05); }
@@ -1992,6 +1961,8 @@ const tiendaStyles = `
     .sold-out-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); background: var(--danger); color: white; padding: 8px 15px; font-weight: 900; border: 2px solid white; z-index: 10; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
     .product-card.sold-out { filter: grayscale(0.8); opacity: 0.7; }
     .btn-buy.disabled { border-color: #333; color: #555; background: #111; cursor: not-allowed; }
+
+    /* CARRITO DRAWER */
     .cart-item-row-premium { display: flex; align-items: center; gap: 15px; padding: 15px 0; border-bottom: 1px solid #111; }
     .cart-item-img { width: 60px; height: 60px; object-fit: cover; border-radius: 4px; border: 1px solid #222; }
     .cart-item-info { flex-grow: 1; }
@@ -2002,15 +1973,30 @@ const tiendaStyles = `
     .qty-num { color: #fff; font-size: 0.85rem; min-width: 15px; text-align: center; }
     .btn-remove-item { background: none; border: none; color: #444; cursor: pointer; transition: 0.3s; }
     .btn-remove-item:hover { color: var(--danger); }
+
+    /* CHECKOUT */
     .checkout-item-premium { display: flex; justify-content: space-between; align-items: center; background: #050505; padding: 12px 15px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid var(--accent); }
     .checkout-item-name { color: #fff; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; }
     .checkout-item-qty { color: #555; font-size: 0.7rem; }
     .checkout-item-price { color: var(--accent); font-weight: 800; }
+
+    /* FIX Z-INDEX TOASTS */
     .swal-high-priority { z-index: 99999 !important; }
     .swal2-container { z-index: 1000000 !important; }
     .swal-top-layer { z-index: 1000000 !important; }
-    @media (max-width: 768px) { .sidebar .nav-links { display: block !important; } }
+
+    /* =========================================================
+       FIX DEFINITIVO DE BUGS MÓVILES (INYECCIÓN DIRECTA) 
+       ========================================================= */
+    @media (max-width: 768px) {
+        /* Obliga al menú hamburguesa a mostrar las opciones anulando tu viejo CSS */
+        .sidebar .nav-links { display: block !important; }
+    }
+    
+    /* Obliga al botón flotante a desaparecer si tiene la clase hidden */
     .floating-cart-btn.hidden { display: none !important; }
+    
+    /* Obliga al menú del carrito lateral a esconderse fuera de la pantalla si no está abierto */
     .cart-drawer:not(.open) { right: -150% !important; display: none !important; }
 `;
 
@@ -2020,52 +2006,28 @@ document.head.appendChild(styleSheetTienda);</script>
 <script id="script-pedidos.js">/* pedidos.js */
 /**
  * ===============================================================
- * PEDIDO.JS - VERSIÓN ULTRA PREMIUM (OPTIMIZADO 30 MIN CACHE)
+ * PEDIDO.JS - VERSIÓN ULTRA PREMIUM (CON IMÁGENES MINIATURA)
  * ===============================================================
  */
 
 // --- CONFIGURACIÓN DE CACHÉ ---
-const ORDERS_CACHE_KEY = "jeico_orders_cache_v2";
+const ORDERS_CACHE_KEY = "jeico_orders_cache";
+// Necesitamos leer el caché de la tienda para sacar las imágenes
 const STORE_CACHE_KEY_REF = "jeico_store_cache"; 
-const TIEMPO_VALIDEZ_PEDIDOS = 30 * 60 * 1000; // 30 Minutos
-
-let cargandoPedidos = false;
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA
  */
-async function cargarPedidos(forzarRecarga = false) {
-    if (cargandoPedidos) return;
-    cargandoPedidos = true;
-
+async function cargarPedidos() {
     const container = document.getElementById('orders-container');
-    if (!container) {
-        cargandoPedidos = false;
-        return;
-    }
     
-    // A. VALIDACIÓN DE CACHÉ INTELIGENTE
-    const cachedDataRaw = localStorage.getItem(ORDERS_CACHE_KEY);
-    
-    if (cachedDataRaw && !forzarRecarga) {
+    // A. CARGA INSTANTÁNEA DESDE CACHÉ
+    const cachedOrders = localStorage.getItem(ORDERS_CACHE_KEY);
+    if (cachedOrders) {
         try {
-            const cache = JSON.parse(cachedDataRaw);
-            const edadCache = Date.now() - cache.timestamp;
-
-            // SI EL CACHÉ ES JOVEN (Menos de 30 min), NO HAY PETICIÓN
-            if (edadCache < TIEMPO_VALIDEZ_PEDIDOS) {
-                console.log(`♻️ Pedidos desde caché (Edad: ${Math.round(edadCache/60000)} min).`);
-                renderizarPedidosPremium(cache.datos);
-                cargandoPedidos = false;
-                return; // <--- ESCUDO: DETIENE LA SOLICITUD AL SERVER
-            }
-        } catch (e) {
-            console.warn("Error en caché de pedidos, sincronizando de nuevo...");
-        }
-    }
-
-    // B. SI NO HAY CACHÉ O EXPIRÓ: MOSTRAR CARGA (Solo si el contenedor está vacío)
-    if (!container.querySelector('.order-premium-card')) {
+            renderizarPedidosPremium(JSON.parse(cachedOrders));
+        } catch (e) { console.error(e); }
+    } else {
         container.innerHTML = `
             <div style="grid-column: 1/-1; text-align:center; padding:80px;">
                 <div class="spinner"></div>
@@ -2075,7 +2037,7 @@ async function cargarPedidos(forzarRecarga = false) {
             </div>`;
     }
 
-    // C. CONSULTAR SERVIDOR (SINCRONIZACIÓN)
+    // B. CONSULTAR API
     const u = localStorage.getItem('jeico_user');
     const t = localStorage.getItem('jeico_token');
 
@@ -2083,23 +2045,13 @@ async function cargarPedidos(forzarRecarga = false) {
         const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
 
         if (res.success && res.datos) {
-            // Guardamos en caché con Timestamp actual
-            localStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify({
-                datos: res.datos,
-                timestamp: Date.now()
-            }));
-            
+            localStorage.setItem(ORDERS_CACHE_KEY, JSON.stringify(res.datos));
             renderizarPedidosPremium(res.datos);
         } else if (res.msg === "Sesión inválida") {
             logout();
         }
     } catch (error) {
         console.error("Error crítico al sincronizar pedidos:", error);
-        if (!cachedDataRaw) {
-            container.innerHTML = `<div style="grid-column:1/-1; text-align:center; padding:40px; color:#ff0055;">Falla de conexión</div>`;
-        }
-    } finally {
-        cargandoPedidos = false;
     }
 }
 
@@ -2108,8 +2060,6 @@ async function cargarPedidos(forzarRecarga = false) {
  */
 function renderizarPedidosPremium(pedidos) {
     const container = document.getElementById('orders-container');
-    if (!container) return;
-    
     container.innerHTML = "";
 
     if (!pedidos || pedidos.length === 0) {
@@ -2121,31 +2071,33 @@ function renderizarPedidosPremium(pedidos) {
         return;
     }
 
-    // --- OBTENER IMÁGENES DEL CACHÉ DE LA TIENDA ---
+    // --- INTENTAR OBTENER IMÁGENES DEL CACHÉ DE LA TIENDA ---
     let storeProducts = [];
     try {
         const storeCache = localStorage.getItem(STORE_CACHE_KEY_REF);
         if (storeCache) storeProducts = JSON.parse(storeCache).productos || [];
-    } catch (e) { }
+    } catch (e) { console.warn("No se pudo acceder al caché de imágenes de la tienda"); }
 
     // Ordenar por fecha (más reciente primero)
     const pedidosOrdenados = [...pedidos].sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
 
     pedidosOrdenados.forEach(p => {
-        // Formatear Fecha y Hora
+        // 1. Formatear Fecha y Hora
         const fechaObj = p.fecha ? new Date(p.fecha) : null;
         const fechaVal = fechaObj && !isNaN(fechaObj) ? fechaObj.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Reciente';
         const horaVal = fechaObj && !isNaN(fechaObj) ? fechaObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '';
 
-        // Buscar imagen del servicio
+        // 2. Buscar la imagen correspondiente al servicio
         const productMatch = storeProducts.find(prod => prod.nombre === p.servicio);
         let imgUrl = productMatch ? productMatch.img : null;
         
+        // Procesar miniatura de Drive si existe
         if (imgUrl && imgUrl.includes('drive')) {
             const id = imgUrl.match(/\/d\/([a-zA-Z0-9_-]+)/) || imgUrl.match(/id=([a-zA-Z0-9_-]+)/);
-            if (id) imgUrl = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w200`;
+            if (id) imgUrl = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w200`; // w200 es suficiente para miniatura
         }
 
+        // Crear HTML de la imagen o un icono de fallback
         const imgHtml = imgUrl 
             ? `<img src="${imgUrl}" alt="${p.servicio}" class="order-thumb-img">`
             : `<div class="order-thumb-fallback"><span class="material-icons-round">stars</span></div>`;
@@ -2156,8 +2108,7 @@ function renderizarPedidosPremium(pedidos) {
         card.innerHTML = `
             <div class="card-order-header">
                 <div class="header-left-premium">
-                    ${imgHtml} 
-                    <div class="header-info-block">
+                    ${imgHtml} <div class="header-info-block">
                         <span class="service-name-premium">${p.servicio}</span>
                         <div class="status-indicator">
                             <span class="pulse-dot"></span>
@@ -2208,10 +2159,12 @@ function copiarPedidoPremium(servicio, fechaCompleta, cuenta, clave) {
     navigator.clipboard.writeText(textoParaCopiar).then(() => {
         const Toast = Swal.mixin({
             toast: true, position: 'top-end', showConfirmButton: false, timer: 2000,
-            background: '#0a0a0a', color: '#fff', iconColor: '#7c3aed'
+            background: '#0a0a0a', color: '#fff', iconColor: '#7c3aed',
+            customClass: { container: 'swal-top-priority' }
         });
         Toast.fire({ icon: 'success', title: '¡Credenciales copiadas!' });
     }).catch(err => {
+        console.error('Error copy:', err);
         Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error al copiar', showConfirmButton: false, timer: 2000 });
     });
 }
@@ -2221,31 +2174,73 @@ function copiarPedidoPremium(servicio, fechaCompleta, cuenta, clave) {
  */
 const pedidosRefinedStyles = `
     .orders-premium-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 25px; padding: 10px; }
-    .order-premium-card { background: linear-gradient(160deg, #141414 0%, #080808 100%); border: 1px solid #1f1f1f; border-radius: 16px; padding: 22px; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5); transition: all 0.3s ease; animation: cardSlideIn 0.4s ease forwards; opacity: 0; }
-    .order-premium-card:hover { border-color: rgba(124, 58, 237, 0.5); transform: translateY(-5px); }
+    
+    /* Tarjeta Principal - Más sutil */
+    .order-premium-card {
+        background: linear-gradient(160deg, #141414 0%, #080808 100%);
+        border: 1px solid #1f1f1f;
+        border-radius: 16px;
+        padding: 22px;
+        position: relative;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        transition: all 0.3s ease;
+        animation: cardSlideIn 0.4s ease forwards;
+        opacity: 0;
+    }
+    .order-premium-card:hover { border-color: rgba(124, 58, 237, 0.5); box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 20px rgba(124, 58, 237, 0.1); transform: translateY(-5px); }
+
+    /* Header con Imagen */
     .card-order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
     .header-left-premium { display: flex; align-items: center; gap: 12px; }
+    
+    /* Miniatura de Imagen */
     .order-thumb-img { width: 48px; height: 48px; border-radius: 10px; object-fit: cover; border: 1px solid #2a2a2a; }
     .order-thumb-fallback { width: 48px; height: 48px; border-radius: 10px; background: #1a1a1a; display: flex; align-items: center; justify-content: center; border: 1px solid #2a2a2a; color: var(--accent); }
+
     .header-info-block { display: flex; flex-direction: column; }
-    .service-name-premium { font-family: 'Righteous', sans-serif; font-size: 1.1rem; color: #fff; line-height: 1.2; }
+    .service-name-premium { font-family: 'Righteous', sans-serif; font-size: 1.1rem; color: #fff; letter-spacing: 0.5px; line-height: 1.2; }
     .status-indicator { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-    .pulse-dot { width: 6px; height: 6px; background: #00e676; border-radius: 50%; animation: pulseGreen 2s infinite; }
+    .pulse-dot { width: 6px; height: 6px; background: #00e676; border-radius: 50%; box-shadow: 0 0 8px #00e676; animation: pulseGreen 2s infinite; }
     .status-text { font-size: 0.6rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
     .header-right { text-align: right; }
-    .order-date { color: #888; font-size: 0.75rem; display: block; }
+    .order-date { color: #888; font-size: 0.75rem; font-weight: 600; display: block; }
     .order-time { color: #555; font-size: 0.7rem; font-family: monospace; }
-    .card-order-body-refined { background: rgba(255, 255, 255, 0.02); border-radius: 12px; padding: 15px; border: 1px solid rgba(255, 255, 255, 0.05); }
+
+    /* Cuerpo Refinado (Adiós a la caja negra tosca) */
+    .card-order-body-refined {
+        background: rgba(255, 255, 255, 0.02); /* Muy sutil */
+        border-radius: 12px;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+    }
     .credential-row { margin-bottom: 15px; }
-    .cred-label-refined { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; color: var(--accent); font-weight: 700; text-transform: uppercase; }
-    .cred-value-refined { font-family: 'Inter', monospace; font-size: 0.95rem; color: #e0e0e0; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; margin-top: 5px; border: 1px solid #1a1a1a; }
-    .select-all { user-select: all; }
+    .credential-row:last-child { margin-bottom: 0; }
+    .cred-label-refined { display: flex; align-items: center; gap: 6px; font-size: 0.65rem; color: var(--accent); font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
+    .cred-label-refined .material-icons-round { font-size: 0.9rem; }
+    .cred-value-refined { font-family: 'Inter', monospace; font-size: 0.95rem; color: #e0e0e0; font-weight: 500; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 6px; border: 1px solid #1a1a1a; }
+    .select-all { user-select: all; } /* Facilita la selección manual */
+
+    /* Footer y Botón Refinado */
     .card-order-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 15px; border-top: 1px solid #1a1a1a; }
     .warranty-tag { display: flex; align-items: center; gap: 5px; color: #555; font-weight: 700; }
-    .btn-copy-premium-refined { background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 8px 16px; border-radius: 50px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.7rem; font-weight: 800; transition: 0.3s; }
-    .btn-copy-premium-refined:hover { background: var(--accent); color: white; }
+    .verified-icon { color: var(--accent); font-size: 1rem; }
+    
+    .btn-copy-premium-refined {
+        background: transparent;
+        border: 1px solid var(--accent);
+        color: var(--accent);
+        padding: 8px 16px;
+        border-radius: 50px; /* Botón redondeado más elegante */
+        display: flex; align-items: center; gap: 8px;
+        cursor: pointer; font-size: 0.7rem; font-weight: 800; letter-spacing: 1px;
+        transition: 0.3s;
+    }
+    .btn-copy-premium-refined:hover { background: var(--accent); color: white; box-shadow: 0 0 15px rgba(124, 58, 237, 0.4); }
+
+    /* Animaciones y Utilidades */
     @keyframes cardSlideIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulseGreen { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(0, 230, 118, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); } }
+    @keyframes pulseGreen { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } 100% { transform: scale(1); opacity: 1; } }
+    .swal-top-priority { z-index: 1000001 !important; }
     .no-orders-container { grid-column: 1/-1; text-align: center; padding: 80px 20px; border: 1px dashed #222; border-radius: 20px; }
 `;
 
@@ -2255,66 +2250,34 @@ document.head.appendChild(styleSheetPedidos);</script>
 <script id="script-billetera.js">/* billetera.js */
 /**
  * ===============================================================
- * BILLETERA.JS - GESTIÓN DE SALDO (OPTIMIZADO 30 MIN CACHE)
+ * BILLETERA.JS - GESTIÓN DE SALDO (4 COLUMNAS CENTRADAS PREMIUM)
  * ===============================================================
  */
 
-const WALLET_CACHE_KEY = "jeico_wallet_cache_v2";
-const TIEMPO_VALIDEZ_WALLET = 30 * 60 * 1000; // 30 Minutos
-let cargandoBilletera = false;
+const WALLET_CACHE_KEY = "jeico_wallet_cache";
 
 /**
  * 1. FUNCIÓN PRINCIPAL DE CARGA
  */
-async function cargarBilletera(forzarRecarga = false) {
-    if (cargandoBilletera) return;
-    cargandoBilletera = true;
-
+async function cargarBilletera() {
     const historyBody = document.getElementById('wallet-history');
-    if (!historyBody) {
-        cargandoBilletera = false;
-        return;
-    }
-
-    // A. VALIDACIÓN DE CACHÉ INTELIGENTE
-    const cachedDataRaw = localStorage.getItem(WALLET_CACHE_KEY);
     
-    if (cachedDataRaw && !forzarRecarga) {
-        try {
-            const cache = JSON.parse(cachedDataRaw);
-            const edadCache = Date.now() - cache.timestamp;
-
-            // SI LA CACHÉ TIENE MENOS DE 30 MINUTOS, NO MOLESTAMOS AL SERVIDOR
-            if (edadCache < TIEMPO_VALIDEZ_WALLET) {
-                console.log(`♻️ Billetera desde caché (Edad: ${Math.round(edadCache/60000)} min).`);
-                
-                // Actualizar saldo global en la UI si existe la función
-                if (cache.saldoActual !== undefined) {
-                    userBalance = Number(cache.saldoActual);
-                    if (typeof updateBalanceUI === 'function') updateBalanceUI();
-                }
-
-                renderMovimientos(cache.datos);
-                cargandoBilletera = false;
-                return; // PARAR AQUÍ: CERO SOLICITUDES
-            }
-        } catch (e) {
-            console.warn("Error en caché de billetera, recargando...");
-        }
-    }
-
-    // B. SI NO HAY CACHÉ O EXPIRÓ: MOSTRAR CARGA (Solo si la tabla está vacía)
-    if (!historyBody.querySelector('.wallet-row-premium')) {
+    // A. CARGA DESDE CACHÉ (INSTANTÁNEA)
+    const cachedWallet = localStorage.getItem(WALLET_CACHE_KEY);
+    if (cachedWallet) {
+        const cache = JSON.parse(cachedWallet);
+        renderMovimientos(cache.datos);
+    } else {
         historyBody.innerHTML = `
             <tr>
                 <td colspan="4" style="text-align:center; padding:60px;">
                     <div class="spinner"></div>
-                    <p style="color:#444; margin-top:15px; letter-spacing:2px; font-size:0.75rem;">SINCRONIZANDO ESTADO DE CUENTA...</p>
+                    <p style="color:#444; margin-top:15px; letter-spacing:2px; font-size:0.75rem;">SOLICITANDO ESTADO DE CUENTA...</p>
                 </td>
             </tr>`;
     }
 
-    // C. CONSULTA AL SERVIDOR
+    // B. SINCRONIZACIÓN CON EL SERVIDOR
     const u = localStorage.getItem('jeico_user');
     const t = localStorage.getItem('jeico_token');
 
@@ -2322,15 +2285,12 @@ async function cargarBilletera(forzarRecarga = false) {
         const res = await apiCall({ accion: 'getMovimientos', usuario: u, token: t });
 
         if (res.success) {
-            // Actualizar Saldo Global
             userBalance = Number(res.saldoActual);
             if (typeof updateBalanceUI === 'function') updateBalanceUI();
 
-            // Guardar en caché con Timestamp
             localStorage.setItem(WALLET_CACHE_KEY, JSON.stringify({
                 datos: res.datos,
-                saldoActual: res.saldoActual,
-                timestamp: Date.now()
+                timestamp: new Date().getTime()
             }));
 
             renderMovimientos(res.datos);
@@ -2339,11 +2299,6 @@ async function cargarBilletera(forzarRecarga = false) {
         }
     } catch (e) {
         console.error("Error crítico en Billetera:", e);
-        if (!cachedDataRaw) {
-            historyBody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--danger);">Error de conexión</td></tr>`;
-        }
-    } finally {
-        cargandoBilletera = false;
     }
 }
 
@@ -2352,8 +2307,6 @@ async function cargarBilletera(forzarRecarga = false) {
  */
 function renderMovimientos(movimientos) {
     const historyBody = document.getElementById('wallet-history');
-    if (!historyBody) return;
-    
     historyBody.innerHTML = "";
 
     if (!movimientos || movimientos.length === 0) {
@@ -2409,7 +2362,7 @@ function renderMovimientos(movimientos) {
 }
 
 /**
- * 3. ESTILOS DINÁMICOS
+ * 3. ESTILOS DINÁMICOS CORREGIDOS
  */
 const walletExtraStyles = `
     .premium-table {
@@ -2424,7 +2377,7 @@ const walletExtraStyles = `
         letter-spacing: 2px;
         padding: 15px;
         border-bottom: 1px solid #1a1a1a;
-        text-align: center;
+        text-align: center; /* Encabezados centrados */
     }
     .wallet-row-premium {
         border-bottom: 1px solid #0f0f0f;
@@ -3329,465 +3282,15 @@ const contraStyles = `
 const styleSheetContra = document.createElement("style");
 styleSheetContra.innerText = contraStyles;
 document.head.appendChild(styleSheetContra);</script>
-<script id="script-ranking.js">/* ranking.js */
-/**
- * ===============================================================
- * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
- * ===============================================================
- */
-
-let cargandoRanking = false;
-
-/**
- * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
- */
-async function cargarRanking() {
-    if (cargandoRanking) return;
-    cargandoRanking = true;
-
-    // --- PREPARAR CONTENEDOR ---
-    const mainSection = document.getElementById('sec-ranking');
-    let container = document.getElementById('ranking-content');
-    
-    if (!container && mainSection) {
-        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
-        container = document.getElementById('ranking-content');
-    }
-    
-    if (!container) {
-        cargandoRanking = false;
-        return; 
-    }
-
-    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
-    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
-    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
-    const cacheRanking = localStorage.getItem('jeico_ranking_data');
-    
-    // Verificamos si tenemos datos y si corresponden al día de hoy
-    const datosSonDeHoy = (fechaGuardada === hoy);
-
-    if (cacheRanking && datosSonDeHoy) {
-        console.log("Ranking: Cargando desde caché (Datos de hoy).");
-        const datos = JSON.parse(cacheRanking);
-        renderRankingUI(container, datos.top10, datos.miRanking);
-        cargandoRanking = false;
-        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
-    }
-
-    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
-    
-    // Loader solo si vamos a buscar datos nuevos
-    container.innerHTML = `
-        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
-            <div class="spinner"></div>
-            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
-        </div>
-    `;
-
-    try {
-        const u = localStorage.getItem('jeico_user');
-        const t = localStorage.getItem('jeico_token');
-
-        if (!u || !t) {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
-            cargandoRanking = false;
-            return;
-        }
-
-        const res = await apiCall({ 
-            accion: 'getRanking', 
-            usuario: u, 
-            token: t 
-        });
-
-        if (res && res.success) {
-            // Guardamos datos y LA FECHA DE HOY
-            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
-            localStorage.setItem('jeico_ranking_date', hoy);
-            
-            renderRankingUI(container, res.top10, res.miRanking);
-        } else {
-            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
-            if (cacheRanking) {
-                const datosViejos = JSON.parse(cacheRanking);
-                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
-            } else {
-                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
-            }
-        }
-
-    } catch (error) {
-        if (cacheRanking) {
-            const datosViejos = JSON.parse(cacheRanking);
-            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
-        } else {
-            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
-        }
-    } finally {
-        cargandoRanking = false;
-    }
-}
-
-/**
- * 2. RENDERIZADO UI: Construir la interfaz épica
- */
-function renderRankingUI(container, top10, miData) {
-    container.innerHTML = "";
-
-    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
-    const divMiStats = document.createElement('div');
-    divMiStats.className = 'my-stats-card';
-    
-    // Determinar mensaje según posición
-    let mensajeAnimo = "¡Sigue comprando para subir!";
-    let iconoPosicion = "trending_up";
-    let clasePosicion = "";
-
-    if (miData.posicion === 1) { 
-        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
-        iconoPosicion = "emoji_events";
-        clasePosicion = "rank-1-text";
-    } else if (miData.posicion > 0 && miData.posicion <= 3) {
-        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
-        iconoPosicion = "military_tech";
-    } else if (miData.posicion > 0 && miData.posicion <= 10) {
-        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
-        iconoPosicion = "star";
-    } else if (miData.posicion === -1) {
-        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
-    }
-
-    divMiStats.innerHTML = `
-        <div class="my-stats-header">
-            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
-            <span>TU RENDIMIENTO</span>
-        </div>
-        <div class="my-stats-grid">
-            <div class="stat-item">
-                <div class="stat-label">POSICIÓN GLOBAL</div>
-                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
-            </div>
-            <div class="stat-item border-left">
-                <div class="stat-label">CUENTAS COMPRADAS</div>
-                <div class="stat-value text-accent">${miData.compras}</div>
-            </div>
-        </div>
-        <div class="my-stats-footer">
-            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
-        </div>
-    `;
-    container.appendChild(divMiStats);
-
-    // --- B. LISTA DEL TOP 10 ---
-    const divLeaderboard = document.createElement('div');
-    divLeaderboard.className = 'leaderboard-container';
-    
-    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
-
-    if(top10.length === 0) {
-        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
-    } else {
-        top10.forEach((user, index) => {
-            const rank = index + 1;
-            let rankClass = "rank-item";
-            let iconHtml = `<span class="rank-number">#${rank}</span>`;
-            
-            // Estilos especiales para el podio
-            if (rank === 1) {
-                rankClass += " rank-gold";
-                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
-            } else if (rank === 2) {
-                rankClass += " rank-silver";
-                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
-            } else if (rank === 3) {
-                rankClass += " rank-bronze";
-                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
-            }
-
-            // Resaltar si soy yo
-            if (user.usuario === miData.usuario) {
-                rankClass += " its-me";
-            }
-
-            htmlList += `
-                <div class="${rankClass}">
-                    <div class="rank-left">
-                        ${iconHtml}
-                        <span class="rank-name">${user.usuario}</span>
-                    </div>
-                    <div class="rank-right">
-                        <span class="rank-score">${user.compras}</span>
-                        <span class="rank-label">Ventas</span>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    htmlList += `</div>`;
-    divLeaderboard.innerHTML = htmlList;
-    container.appendChild(divLeaderboard);
-
-    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
-    const divDisclaimer = document.createElement('div');
-    divDisclaimer.className = 'ranking-disclaimer';
-    divDisclaimer.innerHTML = `
-        <span class="material-icons-round" style="font-size: 1rem;">update</span>
-        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
-    `;
-    container.appendChild(divDisclaimer);
-}
-
-/**
- * ===============================================================
- * ESTILOS CSS PREMIUM (INYECTADOS)
- * ===============================================================
- */
-const rankingStyles = `
-    .ranking-wrapper {
-        padding: 10px;
-        max-width: 800px;
-        margin: 0 auto;
-        animation: fadeIn 0.5s ease;
-    }
-
-    /* --- DISCLAIMER --- */
-    .ranking-disclaimer {
-        margin-top: 20px;
-        text-align: center;
-        font-size: 0.75rem;
-        color: #666;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        background: rgba(255, 255, 255, 0.02);
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px dashed #333;
-    }
-
-    /* --- MI TARJETA --- */
-    .my-stats-card {
-        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-        border: 1px solid #333;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    /* Efecto de brillo superior */
-    .my-stats-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; width: 100%; height: 4px;
-        background: linear-gradient(90deg, var(--accent), #b721ff);
-    }
-
-    .my-stats-header {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        font-size: 1.2rem;
-        margin-bottom: 20px;
-        opacity: 0.9;
-    }
-
-    .my-stats-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-    }
-
-    .stat-item {
-        text-align: center;
-    }
-    
-    .border-left {
-        border-left: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .stat-label {
-        color: #666;
-        font-size: 0.7rem;
-        font-weight: 800;
-        letter-spacing: 2px;
-        margin-bottom: 5px;
-    }
-
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 800;
-        color: #fff;
-        line-height: 1;
-    }
-    
-    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
-    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
-
-    .my-stats-footer {
-        margin-top: 20px;
-        background: rgba(255,255,255,0.03);
-        padding: 10px;
-        border-radius: 8px;
-        text-align: center;
-        font-size: 0.85rem;
-        color: #aaa;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-    }
-
-    /* --- LEADERBOARD --- */
-    .leaderboard-container {
-        background: #000;
-        border-radius: 16px;
-        border: 1px solid #222;
-        padding: 20px;
-    }
-
-    .leaderboard-title {
-        text-align: center;
-        font-family: 'Righteous', sans-serif;
-        color: #fff;
-        margin-top: 0;
-        margin-bottom: 20px;
-        letter-spacing: 1px;
-        text-transform: uppercase;
-        background: -webkit-linear-gradient(#fff, #888);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .leaderboard-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .rank-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #111;
-        padding: 12px 15px;
-        border-radius: 10px;
-        border: 1px solid transparent;
-        transition: transform 0.2s;
-    }
-    
-    .rank-item:hover {
-        transform: translateX(5px);
-        background: #161616;
-    }
-
-    .rank-left { display: flex; align-items: center; gap: 15px; }
-    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
-
-    .rank-number {
-        font-family: 'Righteous', sans-serif;
-        color: #444;
-        font-size: 1.2rem;
-        width: 30px;
-        text-align: center;
-    }
-
-    .rank-name {
-        font-weight: 600;
-        color: #eee;
-        font-size: 0.95rem;
-    }
-
-    .rank-score {
-        font-weight: 800;
-        color: #fff;
-        font-size: 1.1rem;
-    }
-    
-    .rank-label {
-        font-size: 0.6rem;
-        color: #555;
-        text-transform: uppercase;
-        font-weight: 700;
-    }
-
-    /* --- MEDALLAS Y COLORES --- */
-    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
-    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
-    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
-    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
-
-    /* Estilos de fila Top 3 */
-    .rank-gold {
-        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
-        border: 1px solid rgba(255,215,0,0.3);
-    }
-    .rank-silver {
-        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
-        border: 1px solid rgba(192,192,192,0.2);
-    }
-    .rank-bronze {
-        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
-        border: 1px solid rgba(205,127,50,0.2);
-    }
-
-    /* Highlight del propio usuario */
-    .its-me {
-        border: 1px solid var(--accent);
-        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
-    }
-    .its-me .rank-name { color: var(--accent); }
-`;
-
-const styleSheetRanking = document.createElement("style");
-styleSheetRanking.innerText = rankingStyles;
-document.head.appendChild(styleSheetRanking);
-
-// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
-document.addEventListener('DOMContentLoaded', () => {
-    const secRanking = document.getElementById('sec-ranking');
-    
-    if (secRanking) {
-        const observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                if (mutation.attributeName === 'class') {
-                    if (!secRanking.classList.contains('hidden')) {
-                        cargarRanking();
-                    }
-                }
-            });
-        });
-        observer.observe(secRanking, { attributes: true });
-    }
-});</script>
 <script id="script-script.js">/* script.js */
-/**
- * ===============================================================
- * MAIN.JS - NÚCLEO PRO (ULTRA-SYNC + PANTALLA DE CARGA)
- * ===============================================================
- */
-
 // ============================================
 // ⚠️ URL DE TU API GOOGLE APPS SCRIPT ⚠️
 const API_URL = "https://script.google.com/macros/s/AKfycbxO3Cxp48sMVrhz6nlViSudvJ8GTB1aM_4N91L3kVeLBPuRRmwtYme2Y1d0Yzgw9LCDNA/exec";
 // ============================================
 
-// --- CONFIGURACIÓN DE ENFRIAMIENTO ---
-const TIEMPO_ENFRIAMIENTO = 5 * 60 * 1000; // 5 Minutos para F5
-const COOLDOWN_LOGIN_ERROR = 15; // 15 Segundos por error de login
-
 // --- ESTADO GLOBAL ---
 let cart = []; 
 let userBalance = 0;
-let loginEnCooldown = false;
 
 // --- API FETCH ---
 async function apiCall(params) {
@@ -3819,6 +3322,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sidebar = document.querySelector('.sidebar');
     const btn = document.getElementById('hamburger-btn');
     
+    // Si el menú está abierto en móvil y el clic no es en el menú ni en el botón de abrir
     if (window.innerWidth <= 768 && 
         sidebar && sidebar.classList.contains('open') && 
         !sidebar.contains(e.target) && 
@@ -3828,138 +3332,56 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// --- LÓGICA DE LOGIN CON ESCUDO DE 15 SEG ---
+// --- LÓGICA DE LOGIN ---
 document.getElementById('login-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  
-  if (loginEnCooldown) return; 
-
-  const u = document.getElementById('user').value.trim();
-  const p = document.getElementById('pass').value.trim();
+  const u = document.getElementById('user').value;
+  const p = document.getElementById('pass').value;
   const btn = document.querySelector('.btn-login'); 
   
   btn.innerText = "VERIFICANDO...";
   btn.disabled = true;
   
-  try {
-    const res = await apiCall({ accion: 'login', usuario: u, clave: p });
-    
-    if(res.success) {
-      localStorage.setItem('jeico_token', res.token);
-      localStorage.setItem('jeico_user', res.usuario);
-      localStorage.setItem('jeico_saldo', res.saldo);
-      localStorage.setItem('jeico_last_sync_balance', Date.now());
-      
-      // Inicializamos marca de pestaña
-      sessionStorage.setItem('jeico_tab_initialized', 'true');
-      
-      btn.innerText = "ENTRAR";
-      btn.disabled = false;
-      mostrarApp(res.usuario, res.saldo);
-    } else {
-      activarCooldownLogin(btn);
-      Swal.fire({
-          title: 'Acceso Denegado',
-          text: res.msg,
-          icon: 'error',
-          background: '#0a0a0a',
-          color: '#fff',
-          confirmButtonColor: '#7c3aed'
-      });
-    }
-  } catch (error) {
-    btn.innerText = "ENTRAR";
-    btn.disabled = false;
-    Swal.fire({ icon: 'error', title: 'Error de Red', text: 'Servidor no disponible.', background: '#0a0a0a', color: '#fff' });
+  const res = await apiCall({ accion: 'login', usuario: u, clave: p });
+  
+  btn.innerText = "ENTRAR";
+  btn.disabled = false;
+  
+  if(res.success) {
+    localStorage.setItem('jeico_token', res.token);
+    localStorage.setItem('jeico_user', res.usuario);
+    localStorage.setItem('jeico_saldo', res.saldo); // <-- MEJORA: GUARDAR SALDO INICIAL EN CACHÉ
+    mostrarApp(res.usuario, res.saldo);
+  } else {
+    Swal.fire({
+        title: 'Error',
+        text: res.msg,
+        icon: 'error',
+        background: '#0a0a0a',
+        color: '#fff',
+        confirmButtonColor: '#7c3aed'
+    });
   }
 });
 
-function activarCooldownLogin(btn) {
-    loginEnCooldown = true;
-    btn.disabled = true;
-    let segundos = COOLDOWN_LOGIN_ERROR;
-
-    const interval = setInterval(() => {
-        segundos--;
-        btn.innerHTML = `<span class="material-icons-round" style="font-size:1rem; vertical-align:middle;">lock</span> ESPERA ${segundos}s`;
-
-        if (segundos <= 0) {
-            clearInterval(interval);
-            loginEnCooldown = false;
-            btn.disabled = false;
-            btn.innerText = "ENTRAR";
-        }
-    }, 1000);
-}
-
-/**
- * PANTALLA DE CARGA GLOBAL (BLOQUEO)
- */
-function mostrarLoadingGlobal() {
-    const loader = document.createElement('div');
-    loader.id = 'loading-global-overlay';
-    loader.innerHTML = `
-        <div class="loader-content">
-            <div class="spinner-global"></div>
-            <h2 style="color:#fff; margin-top:25px; letter-spacing:5px; font-size:0.85rem; font-weight:900; text-transform:uppercase;">Autenticando Acceso</h2>
-            <p style="color:#555; font-size:0.65rem; margin-top:10px; letter-spacing:2px; font-weight:bold;">SINCRONIZANDO DATOS DE BÓVEDA...</p>
-        </div>
-    `;
-    document.body.appendChild(loader);
-}
-
-function ocultarLoadingGlobal() {
-    const loader = document.getElementById('loading-global-overlay');
-    if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 400);
-    }
-}
-
-/**
- * Función que orquestra la entrada y la sincronización inicial
- */
-async function mostrarApp(user, saldo) {
+function mostrarApp(user, saldo) {
   document.getElementById('login-view').style.display = 'none';
   document.getElementById('app-view').style.display = 'block';
   document.getElementById('display-user').innerText = user;
   
-  const isNewTab = !sessionStorage.getItem('jeico_tab_initialized');
-
-  if (saldo !== undefined) {
+  // LÓGICA DE CACHÉ DE SALDO
+  if(saldo !== undefined) {
     userBalance = Number(saldo);
     localStorage.setItem('jeico_saldo', userBalance);
   } else {
+    // Si carga desde caché (al recargar la página), muestra rápido y luego sincroniza en silencio
     userBalance = Number(localStorage.getItem('jeico_saldo')) || 0;
-  }
-
-  if (isNewTab) {
-      // 🚀 CASO PESTAÑA NUEVA: Bloqueo de pantalla y Sincronización Forzada de los 5 Módulos
-      mostrarLoadingGlobal();
-      sessionStorage.setItem('jeico_tab_initialized', 'true');
-      
-      try {
-          await Promise.all([
-              sincronizarSaldo(),
-              cargarTienda(true),
-              typeof cargarPedidos === 'function' ? cargarPedidos(true) : Promise.resolve(),
-              typeof cargarBilletera === 'function' ? cargarBilletera(true) : Promise.resolve(),
-              typeof cargarMisTickets === 'function' ? cargarMisTickets(true) : Promise.resolve()
-          ]);
-      } catch (err) {
-          console.error("Falla en sincronización masiva:", err);
-      } finally {
-          ocultarLoadingGlobal();
-      }
-  } else {
-      // ♻️ CASO F5: Respetamos enfriamiento de 5 min
-      const lastSync = localStorage.getItem('jeico_last_sync_balance');
-      if (!lastSync || (Date.now() - lastSync > TIEMPO_ENFRIAMIENTO)) {
-          sincronizarSaldo(); 
-      }
+    sincronizarSaldo(); 
   }
   
   updateBalanceUI();
+  
+  // Siempre iniciar en la sección de INICIO por defecto
   nav('inicio', document.querySelector('.nav-item[onclick*="inicio"]'));
 }
 
@@ -3971,143 +3393,166 @@ async function sincronizarSaldo() {
     try {
         const res = await apiCall({ accion: 'getSaldo', usuario: u, token: t });
         if (res.success) {
-            userBalance = Number(res.saldo);
-            localStorage.setItem('jeico_saldo', userBalance);
-            localStorage.setItem('jeico_last_sync_balance', Date.now());
-            updateBalanceUI();
+            // Si el saldo en la DB es distinto al local, actualiza la UI al instante
+            if (Number(res.saldo) !== userBalance) {
+                userBalance = Number(res.saldo);
+                localStorage.setItem('jeico_saldo', userBalance);
+                updateBalanceUI();
+            }
         } else if (res.msg === "Sesión inválida") {
+            // Si le cambiaron la clave en la base de datos o el token expiró, lo saca
             logout();
         }
-    } catch (e) { console.error("Error balance sync"); }
+    } catch (e) {
+        console.error("Falla en sincronización de fondo.");
+    }
 }
 
 function updateBalanceUI() {
     const formatted = `$ ${new Intl.NumberFormat('es-CO').format(userBalance)}`;
-    const displayBal = document.getElementById('display-balance');
-    if(displayBal) displayBal.innerText = formatted;
+    document.getElementById('display-balance').innerText = formatted;
     
     const bigWallet = document.getElementById('wallet-balance-big');
     if(bigWallet) bigWallet.innerText = formatted;
 }
 
+// --- TOGGLE DEL SIDEBAR ---
 function toggleSidebar() {
     const sidebar = document.querySelector('.sidebar');
     if(sidebar) sidebar.classList.toggle('open');
 }
 
+// --- LÓGICA DE NAVEGACIÓN ---
 /**
- * NAVEGACIÓN ENTRE SECCIONES
+ * Navegación principal de la App Jeico Streaming
  */
 function nav(sec, el) {
+    // 1. MANEJO DE CLASES ACTIVAS EN EL MENÚ
     if (el && !el.classList.contains('submenu-item')) {
         document.querySelectorAll('.nav-links > .nav-item').forEach(e => e.classList.remove('active'));
         el.classList.add('active');
     }
     
-    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets', 'ranking'];
+    // 2. OCULTAR TODAS LAS SECCIONES (¡AQUÍ AGREGAMOS 'mistickets'!)
+    const secciones = ['inicio', 'tienda', 'pedidos', 'recarga', 'soporte', 'billetera', 'codigos', 'datos', 'mistickets'];
     secciones.forEach(id => {
         const elem = document.getElementById('sec-' + id);
         if(elem) elem.classList.add('hidden');
     });
     
+    // 3. MOSTRAR LA SECCIÓN SELECCIONADA
     const section = document.getElementById('sec-' + sec);
     if(section) {
         section.classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    // --- CERRAR SIDEBAR TRAS NAVEGAR (MÓVIL) ---
     if (window.innerWidth <= 768) {
         const sidebar = document.querySelector('.sidebar');
         if(sidebar) sidebar.classList.remove('open');
     }
 
+    // 4. CONTROL DE VISIBILIDAD DEL CARRITO
     const cartBtn = document.getElementById('main-cart-btn');
     const cartDrawer = document.getElementById('cart-drawer');
     const cartOverlay = document.getElementById('cart-overlay');
 
     if (sec === 'tienda') {
-        cartBtn?.classList.remove('hidden');
+        if(cartBtn) cartBtn.classList.remove('hidden');
         cargarTienda(); 
     } else {
-        cartBtn?.classList.add('hidden');
+        if(cartBtn) cartBtn.classList.add('hidden');
         if(cartDrawer) cartDrawer.classList.remove('open');
         if(cartOverlay) cartOverlay.classList.add('hidden');
     }
     
-    if (sec === 'pedidos') if(typeof cargarPedidos === 'function') cargarPedidos();
-    if (sec === 'billetera') if(typeof cargarBilletera === 'function') cargarBilletera();
-    if (sec === 'recarga') if(typeof cargarRecarga === 'function') cargarRecarga();
-    if (sec === 'soporte') if(typeof cargarSoporte === 'function') cargarSoporte(); 
-    if (sec === 'codigos') if(typeof cargarCodigos === 'function') cargarCodigos(); 
-    if (sec === 'datos') if(typeof cargarDatos === 'function') cargarDatos(); 
-    if (sec === 'mistickets') if(typeof cargarMisTickets === 'function') cargarMisTickets();
-    if (sec === 'ranking' && typeof cargarRanking === 'function') cargarRanking();
+    // 5. INICIALIZACIÓN DE MÓDULOS ESPECÍFICOS
+    if (sec === 'pedidos') cargarPedidos();
+    if (sec === 'billetera') cargarBilletera();
+    if (sec === 'recarga') cargarRecarga();
+    if (sec === 'soporte') cargarSoporte(); 
+    if (sec === 'codigos') cargarCodigos(); 
+    if (sec === 'datos') cargarDatos(); 
 }
 
-/**
- * Lógica de tienda
- */
-async function cargarTienda(forzar = false) {
-  const container = document.getElementById('shop-container');
-  if(!container) return;
-
-  const lastSyncStore = localStorage.getItem('jeico_last_sync_store');
-  const cachedStore = localStorage.getItem('jeico_store_cache');
-
-  if (!forzar && cachedStore && lastSyncStore && (Date.now() - lastSyncStore < TIEMPO_ENFRIAMIENTO)) {
-      renderizarTiendaDesdeDatos(JSON.parse(cachedStore));
-      return;
-  }
-
-  container.innerHTML = '<div class="spinner"></div>';
+// --- LÓGICA DE TIENDA Y STOCK ---
+async function cargarTienda() {
   const u = localStorage.getItem('jeico_user');
   const t = localStorage.getItem('jeico_token');
+  const container = document.getElementById('shop-container');
+  
+  container.innerHTML = '<div class="spinner"></div>';
   
   const res = await apiCall({ accion: 'getTienda', usuario: u, token: t });
   
-  if(res.success) {
-      userBalance = Number(res.saldo); 
-      updateBalanceUI();
-      localStorage.setItem('jeico_store_cache', JSON.stringify(res.productos));
-      localStorage.setItem('jeico_last_sync_store', Date.now());
-      localStorage.setItem('jeico_saldo', userBalance);
-      renderizarTiendaDesdeDatos(res.productos);
+  if(!res.success) { 
+    logout(); 
+    return; 
   }
+  
+  userBalance = Number(res.saldo); 
+  updateBalanceUI();
+  container.innerHTML = "";
+
+  if(!res.productos || res.productos.length === 0) {
+    container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#555;'>No hay productos configurados.</p>";
+    return;
+  }
+
+  res.productos.forEach(p => {
+    let img = p.img;
+    if(img && img.includes('drive')) {
+        const id = img.match(/\/d\/([a-zA-Z0-9_-]+)/) || img.match(/id=([a-zA-Z0-9_-]+)/);
+        if(id) img = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w400`;
+    }
+
+    const isSoldOut = p.stock <= 0;
+    const soldOutClass = isSoldOut ? 'sold-out' : '';
+    const btnHtml = isSoldOut 
+        ? `<button class="btn-buy disabled" disabled>AGOTADO</button>`
+        : `<button class="btn-buy" onclick="addToCart('${p.nombre}', ${p.precio}, '${img}')">AGREGAR</button>`;
+    
+    const stockHtml = isSoldOut 
+        ? `<span style="color:#9f1239; font-weight:bold;">SIN STOCK</span>` 
+        : `${p.stock} disponibles`;
+
+    const card = document.createElement('div');
+    card.className = `product-card ${soldOutClass}`;
+    card.innerHTML = `
+      <div class="card-img-container"><img src="${img || ''}" class="card-img" alt="${p.nombre}"></div>
+      <div class="card-body">
+        <div class="card-title">${p.nombre}</div>
+        <div class="price-container">
+            <span class="card-price">$ ${new Intl.NumberFormat('es-CO').format(p.precio)}</span>
+        </div>
+        <div class="card-stock">${stockHtml}</div>
+        ${btnHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  });
 }
 
-function renderizarTiendaDesdeDatos(productos) {
-    const container = document.getElementById('shop-container');
-    if(!container) return;
-    container.innerHTML = "";
-    productos.forEach(p => {
-        let img = p.img;
-        if(img && img.includes('drive')) {
-            const id = img.match(/\/d\/([a-zA-Z0-9_-]+)/) || img.match(/id=([a-zA-Z0-9_-]+)/);
-            if(id) img = `https://drive.google.com/thumbnail?id=${id[1]}&sz=w400`;
-        }
-        const isSoldOut = p.stock <= 0;
-        const btnHtml = isSoldOut 
-            ? `<button class="btn-buy disabled" disabled>AGOTADO</button>`
-            : `<button class="btn-buy" onclick="addToCart('${p.nombre}', ${p.precio}, '${img}')">AGREGAR</button>`;
-        
-        container.innerHTML += `
-            <div class="product-card ${isSoldOut ? 'sold-out' : ''}">
-              <div class="card-img-container"><img src="${img || ''}" class="card-img"></div>
-              <div class="card-body">
-                <div class="card-title">${p.nombre}</div>
-                <span class="card-price">$ ${new Intl.NumberFormat('es-CO').format(p.precio)}</span>
-                <div class="card-stock">${isSoldOut ? 'SIN STOCK' : p.stock + ' disponibles'}</div>
-                ${btnHtml}
-              </div>
-            </div>`;
-    });
-}
-
+// --- LÓGICA DE CARRITO ---
 function addToCart(nombre, precio, img) {
     const existe = cart.find(item => item.nombre === nombre);
-    if(existe) { existe.cantidad++; } 
-    else { cart.push({ nombre, precio, img, cantidad: 1 }); }
+    if(existe) {
+        existe.cantidad++;
+    } else {
+        cart.push({ nombre, precio, img, cantidad: 1 });
+    }
     updateCartUI();
+    
+    const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 1500,
+        background: '#0a0a0a',
+        color: '#fff',
+        iconColor: '#7c3aed'
+    });
     Toast.fire({ icon: 'success', title: 'Añadido al carrito' });
 }
 
@@ -4115,9 +3560,10 @@ function updateCartUI() {
     const list = document.getElementById('cart-items-list');
     const badge = document.getElementById('cart-count');
     const totalDisplay = document.getElementById('cart-total-display');
-    if(!list) return;
+    
     list.innerHTML = "";
-    let total = 0, count = 0;
+    let total = 0;
+    let count = 0;
 
     if(cart.length === 0) {
         list.innerHTML = '<p style="text-align:center; color:#555; margin-top:20px;">Tu carrito está vacío.</p>';
@@ -4125,6 +3571,7 @@ function updateCartUI() {
         cart.forEach((item, index) => {
             total += item.precio * item.cantidad;
             count += item.cantidad;
+            
             list.innerHTML += `
                 <div class="cart-item-row">
                     <img src="${item.img}" class="cart-item-img">
@@ -4134,13 +3581,15 @@ function updateCartUI() {
                         <span>Cantidad: ${item.cantidad}</span>
                     </div>
                     <button class="btn-remove" onclick="removeFromCart(${index})">
-                        <span class="material-icons-round">delete</span>
+                        <span class="material-icons-round" style="font-size:1.2rem;">delete</span>
                     </button>
-                </div>`;
+                </div>
+            `;
         });
     }
-    if(badge) badge.innerText = count;
-    if(totalDisplay) totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+
+    badge.innerText = count;
+    totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
 }
 
 function removeFromCart(index) {
@@ -4151,106 +3600,192 @@ function removeFromCart(index) {
 function toggleCart() {
     const drawer = document.getElementById('cart-drawer');
     const overlay = document.getElementById('cart-overlay');
-    if(drawer) drawer.classList.toggle('open');
-    if(overlay) overlay.classList.toggle('hidden');
+    drawer.classList.toggle('open');
+    overlay.classList.toggle('hidden');
 }
 
-/**
- * PROCESO DE COMPRA (SINCRONIZACIÓN POST-PAGO MEJORADA)
- */
+// --- CHECKOUT & COMPRA ---
+function goToCheckout() {
+    if(cart.length === 0) return;
+    
+    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    const summaryList = document.getElementById('checkout-summary-list');
+    summaryList.innerHTML = "";
+    
+    cart.forEach(item => {
+        summaryList.innerHTML += `
+            <div class="checkout-summary-row">
+                <span>${item.nombre} (x${item.cantidad})</span>
+                <span style="color:var(--accent); font-weight:bold;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</span>
+            </div>
+        `;
+    });
+
+    document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+
+    toggleCart(); 
+    document.getElementById('checkout-overlay').classList.remove('hidden');
+    document.getElementById('checkout-modal').classList.add('active');
+}
+
+function closeCheckout() {
+    document.getElementById('checkout-overlay').classList.add('hidden');
+    document.getElementById('checkout-modal').classList.remove('active');
+}
+
 async function finalizePurchase() {
     let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+    
     if(userBalance < total) {
-        return Swal.fire({ title: 'Saldo Insuficiente', icon: 'error', background: '#0a0a0a', color: '#fff' });
+        return Swal.fire({
+            title: 'Saldo Insuficiente',
+            text: 'No tienes saldo suficiente para esta compra.',
+            icon: 'error',
+            background: '#0a0a0a', color: '#fff'
+        });
     }
 
     const u = localStorage.getItem('jeico_user');
     const t = localStorage.getItem('jeico_token');
     
     Swal.fire({ 
-        title: 'PROCESANDO PAGO', text: 'Generando credenciales...',
-        didOpen: () => Swal.showLoading(), background: '#0a0a0a', color:'#fff', allowOutsideClick: false
+        title: 'PROCESANDO PAGO', 
+        text: 'Generando tus credenciales...',
+        didOpen: () => Swal.showLoading(), 
+        background: '#0a0a0a', color:'#fff',
+        allowOutsideClick: false
     });
 
+    let errores = [];
     let exitos = 0;
+
     for (const item of cart) {
         for(let i=0; i<item.cantidad; i++) {
             const res = await apiCall({ accion: 'comprar', usuario: u, token: t, producto: item.nombre });
             if(res.success) {
                 exitos++;
                 userBalance = res.nuevoSaldo; 
+                // MEJORA: GUARDAMOS EL NUEVO SALDO EN CACHÉ AL INSTANTE
                 localStorage.setItem('jeico_saldo', userBalance); 
+            } else {
+                errores.push(`${item.nombre}: ${res.msg}`);
             }
         }
     }
 
+    closeCheckout();
+    updateBalanceUI();
+    
     if(exitos > 0) {
-        cart = []; updateCartUI();
+        cart = []; 
+        updateCartUI();
+        cargarTienda(); 
         
-        // --- MEJORA: INVALIDAR CACHÉS PARA FORZAR ACTUALIZACIÓN REAL EN PESTAÑAS ---
-        localStorage.removeItem('jeico_last_sync_store');
-        localStorage.removeItem('jeico_last_sync_balance');
-        localStorage.removeItem('jeico_last_sync_orders');
-        localStorage.removeItem('jeico_wallet_cache_v2'); // Limpiamos billetera para ver saldo real
-        
-        if(typeof closeCheckout === 'function') closeCheckout();
-        updateBalanceUI();
-        
-        // Llamamos a cargarTienda pero sin el 'true' para no bloquear la pantalla
-        // El otro JS se encargará de la resta visual suave.
-        if(typeof cargarTienda === 'function') cargarTienda(); 
-        
-        Swal.fire({ title: '¡PAGO COMPLETADO!', text: 'Cuentas generadas con éxito. Revisa tus Pedidos.', icon: 'success', background: '#0a0a0a', color:'#fff', confirmButtonColor: '#7c3aed' });
+        if(errores.length > 0) {
+            Swal.fire({
+                title: 'Compra Parcial',
+                text: `Se procesaron ${exitos} cuentas. Fallaron: ${errores.length}`,
+                icon: 'warning',
+                background: '#0a0a0a', color: '#fff'
+            });
+        } else {
+            Swal.fire({
+                title: '¡PAGO COMPLETADO!',
+                text: 'Revisa tus cuentas en la sección "Mis Pedidos"',
+                icon: 'success',
+                background: '#0a0a0a', color:'#fff',
+                confirmButtonColor: '#7c3aed'
+            });
+        }
+    } else {
+        Swal.fire({
+            title: 'Error en la compra',
+            text: errores[0] || "No se pudo procesar la solicitud.",
+            icon: 'error',
+            background: '#0a0a0a', color: '#fff'
+        });
     }
 }
 
+// --- OTROS MÉTODOS ---
+/**
+ * Alternar Menús Desplegables (Dinámico para múltiples menús)
+ */
 function toggleSubmenu(elemento) {
+    // Busca el elemento que está exactamente debajo del botón clickeado en el HTML
     const submenu = elemento.nextElementSibling;
+    
+    // Verifica que el elemento de abajo sea realmente un submenú
     if (submenu && submenu.classList.contains('submenu')) {
+        // Muestra u oculta el submenú
         submenu.classList.toggle('hidden');
+        
+        // Gira la flechita (añade la clase 'open' al li)
         elemento.classList.toggle('open');
     }
 }
 
-function logout() {
-    localStorage.clear();
-    sessionStorage.clear(); 
-    location.reload();
+function cargarBilletera() {
+    updateBalanceUI();
 }
 
-// Toggle visual de contraseña
+async function cargarPedidos() {
+    const u = localStorage.getItem('jeico_user');
+    const t = localStorage.getItem('jeico_token');
+    const tbody = document.getElementById('orders-tbody');
+    
+    if(!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:40px;"><div class="spinner"></div></td></tr>';
+    
+    const res = await apiCall({ accion: 'getPedidos', usuario: u, token: t });
+    tbody.innerHTML = "";
+    
+    if(res.success && res.datos && res.datos.length > 0) {
+        res.datos.forEach(p => {
+            const fechaVal = p.fecha ? new Date(p.fecha).toLocaleDateString() : 'N/A';
+            tbody.innerHTML += `
+            <tr style="border-bottom:1px solid #1a1a1a;">
+                <td style="padding:20px; color:#fff; font-weight:bold;">${p.servicio}</td>
+                <td style="padding:20px;">
+                    <div style="background:#000; padding:10px; border:1px solid #222; font-family:monospace; color:var(--accent);">
+                        USER: ${p.cuenta}<br>PASS: ${p.clave}
+                    </div>
+                </td>
+                <td style="padding:20px; color:#555;">${fechaVal}</td>
+            </tr>`;
+        });
+    } else {
+        tbody.innerHTML = "<tr><td colspan='3' style='text-align:center; padding:40px; color:#444;'>No has realizado compras todavía.</td></tr>";
+    }
+}
+// Lógica para mostrar/ocultar contraseña
 document.addEventListener('DOMContentLoaded', () => {
     const togglePassword = document.querySelector('#togglePassword');
     const passwordField = document.querySelector('#pass');
+
     if (togglePassword && passwordField) {
         togglePassword.addEventListener('click', function () {
+            // Cambiamos el tipo de input
             const type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
             passwordField.setAttribute('type', type);
+            
+            // Cambiamos el icono
             this.textContent = type === 'password' ? 'visibility_off' : 'visibility';
+            
+            // Un pequeño efecto de feedback
+            this.style.transform = 'scale(1.2)';
+            setTimeout(() => this.style.transform = 'scale(1)', 150);
         });
     }
 });
-
-/**
- * ESTILOS INYECTADOS PARA EL LOADER GLOBAL (OVERLAY GRIS)
- */
-const styleGlobalLoader = document.createElement('style');
-styleGlobalLoader.innerHTML = `
-    #loading-global-overlay {
-        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: #0a0a0a; display: flex; align-items: center; justify-content: center;
-        z-index: 9999999; transition: opacity 0.4s ease;
-    }
-    .loader-content { text-align: center; }
-    .spinner-global {
-        width: 60px; height: 60px; border: 4px solid rgba(124, 58, 237, 0.1);
-        border-top-color: #7c3aed; border-radius: 50%;
-        animation: spin-global 1s linear infinite; margin: 0 auto;
-        box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);
-    }
-    @keyframes spin-global { to { transform: rotate(360deg); } }
-`;
-document.head.appendChild(styleGlobalLoader);</script>
+function logout() {
+    // Borramos solo la sesión, pero dejamos la caché de datos intacta
+    localStorage.removeItem('jeico_token');
+    localStorage.removeItem('jeico_user');
+    
+    // Recargamos la página para volver a la pantalla de Login
+    location.reload();
+}</script>
 <script id="script-soporte.js">/* soporte.js */
 /**
  * ===============================================================
@@ -5556,6 +5091,445 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
         observer.observe(secMisTickets, { attributes: true });
+    }
+});</script>
+<script id="script-ranking.js">/* ranking.js */
+/**
+ * ===============================================================
+ * RANKING.JS - TABLA DE LÍDERES (OPTIMIZADA CON CACHÉ DIARIA)
+ * ===============================================================
+ */
+
+let cargandoRanking = false;
+
+/**
+ * 1. FUNCIÓN PRINCIPAL: Cargar datos del Ranking
+ */
+async function cargarRanking() {
+    if (cargandoRanking) return;
+    cargandoRanking = true;
+
+    // --- PREPARAR CONTENEDOR ---
+    const mainSection = document.getElementById('sec-ranking');
+    let container = document.getElementById('ranking-content');
+    
+    if (!container && mainSection) {
+        mainSection.innerHTML = '<div id="ranking-content" class="ranking-wrapper"></div>';
+        container = document.getElementById('ranking-content');
+    }
+    
+    if (!container) {
+        cargandoRanking = false;
+        return; 
+    }
+
+    // --- LÓGICA DE CACHÉ INTELIGENTE (12 AM RULE) ---
+    const hoy = new Date().toLocaleDateString(); // Ej: "19/2/2026"
+    const fechaGuardada = localStorage.getItem('jeico_ranking_date');
+    const cacheRanking = localStorage.getItem('jeico_ranking_data');
+    
+    // Verificamos si tenemos datos y si corresponden al día de hoy
+    const datosSonDeHoy = (fechaGuardada === hoy);
+
+    if (cacheRanking && datosSonDeHoy) {
+        console.log("Ranking: Cargando desde caché (Datos de hoy).");
+        const datos = JSON.parse(cacheRanking);
+        renderRankingUI(container, datos.top10, datos.miRanking);
+        cargandoRanking = false;
+        return; // ¡TERMINAMOS AQUÍ! No consumimos API.
+    }
+
+    // --- SI NO HAY CACHÉ O ES UN DÍA NUEVO -> CARGAR DEL SERVIDOR ---
+    
+    // Loader solo si vamos a buscar datos nuevos
+    container.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:300px;">
+            <div class="spinner"></div>
+            <p style="color:#888; margin-top:20px; font-family: 'Righteous', sans-serif; letter-spacing: 2px;">ACTUALIZANDO POSICIONES...</p>
+        </div>
+    `;
+
+    try {
+        const u = localStorage.getItem('jeico_user');
+        const t = localStorage.getItem('jeico_token');
+
+        if (!u || !t) {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Sesión no válida.</p>`;
+            cargandoRanking = false;
+            return;
+        }
+
+        const res = await apiCall({ 
+            accion: 'getRanking', 
+            usuario: u, 
+            token: t 
+        });
+
+        if (res && res.success) {
+            // Guardamos datos y LA FECHA DE HOY
+            localStorage.setItem('jeico_ranking_data', JSON.stringify(res));
+            localStorage.setItem('jeico_ranking_date', hoy);
+            
+            renderRankingUI(container, res.top10, res.miRanking);
+        } else {
+            // Si falla la red pero teníamos una caché vieja (de ayer), la mostramos como respaldo
+            if (cacheRanking) {
+                const datosViejos = JSON.parse(cacheRanking);
+                renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+                Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Mostrando datos anteriores (Sin conexión)', showConfirmButton: false, timer: 3000 });
+            } else {
+                container.innerHTML = `<p style="text-align:center; color:var(--danger);">Error al cargar el ranking.</p>`;
+            }
+        }
+
+    } catch (error) {
+        if (cacheRanking) {
+            const datosViejos = JSON.parse(cacheRanking);
+            renderRankingUI(container, datosViejos.top10, datosViejos.miRanking);
+        } else {
+            container.innerHTML = `<p style="text-align:center; color:var(--danger);">Fallo de conexión.</p>`;
+        }
+    } finally {
+        cargandoRanking = false;
+    }
+}
+
+/**
+ * 2. RENDERIZADO UI: Construir la interfaz épica
+ */
+function renderRankingUI(container, top10, miData) {
+    container.innerHTML = "";
+
+    // --- A. TARJETA DEL USUARIO ACTUAL (MI ESTADÍSTICA) ---
+    const divMiStats = document.createElement('div');
+    divMiStats.className = 'my-stats-card';
+    
+    // Determinar mensaje según posición
+    let mensajeAnimo = "¡Sigue comprando para subir!";
+    let iconoPosicion = "trending_up";
+    let clasePosicion = "";
+
+    if (miData.posicion === 1) { 
+        mensajeAnimo = "¡ERES EL REY DEL STREAMING! 👑"; 
+        iconoPosicion = "emoji_events";
+        clasePosicion = "rank-1-text";
+    } else if (miData.posicion > 0 && miData.posicion <= 3) {
+        mensajeAnimo = "¡Estás en el podio! Mantén el ritmo.";
+        iconoPosicion = "military_tech";
+    } else if (miData.posicion > 0 && miData.posicion <= 10) {
+        mensajeAnimo = "¡Eres un Top Seller! Estás en la élite.";
+        iconoPosicion = "star";
+    } else if (miData.posicion === -1) {
+        mensajeAnimo = "Realiza tu primera compra para entrar al Ranking.";
+    }
+
+    divMiStats.innerHTML = `
+        <div class="my-stats-header">
+            <span class="material-icons-round" style="color:var(--accent);">account_circle</span>
+            <span>TU RENDIMIENTO</span>
+        </div>
+        <div class="my-stats-grid">
+            <div class="stat-item">
+                <div class="stat-label">POSICIÓN GLOBAL</div>
+                <div class="stat-value ${clasePosicion}">#${miData.posicion > 0 ? miData.posicion : '-'}</div>
+            </div>
+            <div class="stat-item border-left">
+                <div class="stat-label">CUENTAS COMPRADAS</div>
+                <div class="stat-value text-accent">${miData.compras}</div>
+            </div>
+        </div>
+        <div class="my-stats-footer">
+            <span class="material-icons-round">${iconoPosicion}</span> ${mensajeAnimo}
+        </div>
+    `;
+    container.appendChild(divMiStats);
+
+    // --- B. LISTA DEL TOP 10 ---
+    const divLeaderboard = document.createElement('div');
+    divLeaderboard.className = 'leaderboard-container';
+    
+    let htmlList = `<h3 class="leaderboard-title">🏆 TOP 10 LÍDERES</h3><div class="leaderboard-list">`;
+
+    if(top10.length === 0) {
+        htmlList += `<p style="text-align:center; padding:20px; color:#666;">Aún no hay datos registrados hoy.</p>`;
+    } else {
+        top10.forEach((user, index) => {
+            const rank = index + 1;
+            let rankClass = "rank-item";
+            let iconHtml = `<span class="rank-number">#${rank}</span>`;
+            
+            // Estilos especiales para el podio
+            if (rank === 1) {
+                rankClass += " rank-gold";
+                iconHtml = `<span class="material-icons-round medal-icon gold">emoji_events</span>`;
+            } else if (rank === 2) {
+                rankClass += " rank-silver";
+                iconHtml = `<span class="material-icons-round medal-icon silver">military_tech</span>`;
+            } else if (rank === 3) {
+                rankClass += " rank-bronze";
+                iconHtml = `<span class="material-icons-round medal-icon bronze">military_tech</span>`;
+            }
+
+            // Resaltar si soy yo
+            if (user.usuario === miData.usuario) {
+                rankClass += " its-me";
+            }
+
+            htmlList += `
+                <div class="${rankClass}">
+                    <div class="rank-left">
+                        ${iconHtml}
+                        <span class="rank-name">${user.usuario}</span>
+                    </div>
+                    <div class="rank-right">
+                        <span class="rank-score">${user.compras}</span>
+                        <span class="rank-label">Ventas</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    htmlList += `</div>`;
+    divLeaderboard.innerHTML = htmlList;
+    container.appendChild(divLeaderboard);
+
+    // --- C. DISCLAIMER DE ACTUALIZACIÓN ---
+    const divDisclaimer = document.createElement('div');
+    divDisclaimer.className = 'ranking-disclaimer';
+    divDisclaimer.innerHTML = `
+        <span class="material-icons-round" style="font-size: 1rem;">update</span>
+        Los datos se actualizan automáticamente todos los días a las 12:00 AM (Medianoche).
+    `;
+    container.appendChild(divDisclaimer);
+}
+
+/**
+ * ===============================================================
+ * ESTILOS CSS PREMIUM (INYECTADOS)
+ * ===============================================================
+ */
+const rankingStyles = `
+    .ranking-wrapper {
+        padding: 10px;
+        max-width: 800px;
+        margin: 0 auto;
+        animation: fadeIn 0.5s ease;
+    }
+
+    /* --- DISCLAIMER --- */
+    .ranking-disclaimer {
+        margin-top: 20px;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 10px;
+        border-radius: 8px;
+        border: 1px dashed #333;
+    }
+
+    /* --- MI TARJETA --- */
+    .my-stats-card {
+        background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
+        border: 1px solid #333;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    /* Efecto de brillo superior */
+    .my-stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; width: 100%; height: 4px;
+        background: linear-gradient(90deg, var(--accent), #b721ff);
+    }
+
+    .my-stats-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        font-size: 1.2rem;
+        margin-bottom: 20px;
+        opacity: 0.9;
+    }
+
+    .my-stats-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+    }
+    
+    .border-left {
+        border-left: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #fff;
+        line-height: 1;
+    }
+    
+    .text-accent { color: var(--accent); text-shadow: 0 0 20px rgba(124, 58, 237, 0.4); }
+    .rank-1-text { color: #FFD700; text-shadow: 0 0 20px rgba(255, 215, 0, 0.6); }
+
+    .my-stats-footer {
+        margin-top: 20px;
+        background: rgba(255,255,255,0.03);
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 0.85rem;
+        color: #aaa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* --- LEADERBOARD --- */
+    .leaderboard-container {
+        background: #000;
+        border-radius: 16px;
+        border: 1px solid #222;
+        padding: 20px;
+    }
+
+    .leaderboard-title {
+        text-align: center;
+        font-family: 'Righteous', sans-serif;
+        color: #fff;
+        margin-top: 0;
+        margin-bottom: 20px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        background: -webkit-linear-gradient(#fff, #888);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .leaderboard-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .rank-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #111;
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        transition: transform 0.2s;
+    }
+    
+    .rank-item:hover {
+        transform: translateX(5px);
+        background: #161616;
+    }
+
+    .rank-left { display: flex; align-items: center; gap: 15px; }
+    .rank-right { text-align: right; display: flex; flex-direction: column; align-items: flex-end; }
+
+    .rank-number {
+        font-family: 'Righteous', sans-serif;
+        color: #444;
+        font-size: 1.2rem;
+        width: 30px;
+        text-align: center;
+    }
+
+    .rank-name {
+        font-weight: 600;
+        color: #eee;
+        font-size: 0.95rem;
+    }
+
+    .rank-score {
+        font-weight: 800;
+        color: #fff;
+        font-size: 1.1rem;
+    }
+    
+    .rank-label {
+        font-size: 0.6rem;
+        color: #555;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    /* --- MEDALLAS Y COLORES --- */
+    .medal-icon { font-size: 1.5rem; width: 30px; text-align: center; }
+    .gold { color: #FFD700; filter: drop-shadow(0 0 5px rgba(255,215,0,0.5)); }
+    .silver { color: #C0C0C0; filter: drop-shadow(0 0 5px rgba(192,192,192,0.5)); }
+    .bronze { color: #CD7F32; filter: drop-shadow(0 0 5px rgba(205,127,50,0.5)); }
+
+    /* Estilos de fila Top 3 */
+    .rank-gold {
+        background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent);
+        border: 1px solid rgba(255,215,0,0.3);
+    }
+    .rank-silver {
+        background: linear-gradient(90deg, rgba(192,192,192,0.05), transparent);
+        border: 1px solid rgba(192,192,192,0.2);
+    }
+    .rank-bronze {
+        background: linear-gradient(90deg, rgba(205,127,50,0.05), transparent);
+        border: 1px solid rgba(205,127,50,0.2);
+    }
+
+    /* Highlight del propio usuario */
+    .its-me {
+        border: 1px solid var(--accent);
+        box-shadow: 0 0 15px rgba(124, 58, 237, 0.2) inset;
+    }
+    .its-me .rank-name { color: var(--accent); }
+`;
+
+const styleSheetRanking = document.createElement("style");
+styleSheetRanking.innerText = rankingStyles;
+document.head.appendChild(styleSheetRanking);
+
+// --- OBSERVER PARA CARGAR AL ABRIR LA PESTAÑA ---
+document.addEventListener('DOMContentLoaded', () => {
+    const secRanking = document.getElementById('sec-ranking');
+    
+    if (secRanking) {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.attributeName === 'class') {
+                    if (!secRanking.classList.contains('hidden')) {
+                        cargarRanking();
+                    }
+                }
+            });
+        });
+        observer.observe(secRanking, { attributes: true });
     }
 });</script>
 </body>
