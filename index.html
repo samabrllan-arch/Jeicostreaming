@@ -3189,12 +3189,15 @@ function extraerDatosCorreo(asunto, cuerpoOriginal) {
         }
     }
     else if (asunto.includes("Crunchyroll")) {
-        const regexCrunchy = /https:\/\/links\.mail\.crunchyroll\.com\/ls\/click[^>"\s]+/g;
-        const linksCrunchy = textoAplanado.match(regexCrunchy);
-        if (linksCrunchy) {
-            codigoFinal = (linksCrunchy.length >= 2 ? linksCrunchy[1] : linksCrunchy[0]).replace(/\s/g, "");
-        }
+    // Buscamos la frase, ignorando si "aquí" tiene tilde o no, seguida de cualquier texto hasta encontrar el enlace
+    const regexCrunchy = /Por favor haz clic aqu[ií][\s\S]*?(https:\/\/links\.mail\.crunchyroll\.com\/ls\/click\?[^>"\s]+)/i;
+    const matchCrunchy = textoAplanado.match(regexCrunchy);
+    
+    // Si encuentra coincidencia, matchCrunchy[1] contendrá solo la URL capturada en los paréntesis
+    if (matchCrunchy && matchCrunchy[1]) {
+        codigoFinal = matchCrunchy[1].replace(/\s/g, "");
     }
+}
     else if (asunto.includes("Disney+")) {
         match = textoAplanado.match(/(\d{6})\s*Si\s+no\s+lo\s+solicitaste/i) || textoAplanado.match(/\b(\d{6})\b/);
         if (match) codigoFinal = match[1];
@@ -4723,4 +4726,5 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 </body>
 </html>
+
 
