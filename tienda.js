@@ -2,7 +2,7 @@ const STORE_CACHE_KEY = "dw_store_cache";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 🔥 1 HORA EN MILISEGUNDOS
 
 // 🔥 Pega aquí la URL del Google Apps Script que creaste para el Webhook
-const WEBHOOK_GS_COMPRAS = "https://script.google.com/macros/s/AKfycbybqRTJ1V0ppx4274KGorb7B3DSu9KF37UvegewhbMRanjD09hVADnCap_m9BAyYbO3/exec"; 
+const WEBHOOK_GS_COMPRAS = "https://script.google.com/macros/s/AKfycbxLaIGGpcQN1oFoyo_PkUp9BZYU4tMGGh-Qaia_s7TtUMRR1R7kLbII8vWsLuah_xfj/exec"; 
 
 if (typeof cart === 'undefined') {
     var cart = [];
