@@ -1,9 +1,6 @@
 const STORE_CACHE_KEY = "dw_store_cache";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 🔥 1 HORA EN MILISEGUNDOS
 
-// 🔥 Pega aquí la URL del Google Apps Script que creaste para el Webhook
-const WEBHOOK_GS_COMPRAS = "https://script.google.com/macros/s/AKfycbxLaIGGpcQN1oFoyo_PkUp9BZYU4tMGGh-Qaia_s7TtUMRR1R7kLbII8vWsLuah_xfj/exec"; 
-
 if (typeof cart === 'undefined') {
     var cart = [];
 }
@@ -714,7 +711,7 @@ window.finalizePurchase = async function() {
                     userBalance = res.nuevoSaldo; 
                     localStorage.setItem('dw_saldo', userBalance);
 
-                    // 🔥 WEBHOOK SILENCIOSO A GOOGLE SHEETS
+                    // 🔥 WEBHOOK SILENCIOSO A GOOGLE SHEETS USANDO LA VARIABLE GLOBAL GS_CODIGO
                     try {
                         let diasExtraidos = 30;
                         const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
@@ -731,7 +728,7 @@ window.finalizePurchase = async function() {
                         params.append('dias', diasExtraidos);
                         params.append('servicio', item.nombre);
 
-                        await fetch(WEBHOOK_GS_COMPRAS, {
+                        await fetch(GS_CODIGO, {
                             method: 'POST',
                             mode: 'no-cors', 
                             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
