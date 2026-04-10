@@ -15,7 +15,6 @@ let selectedAmount = null;
 const WSP_ICON_ID = "12_hw1hRhhGNGv1UY7CX-YJajITFtrY-S";
 const WSP_ICON_URL = `https://drive.google.com/thumbnail?id=${WSP_ICON_ID}&sz=w200`;
 
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwnMW1rwkNBVT_dn83D6QaSAfy3FEcHW_LUmFMIYmakptyAO8osELRvgRqxRopMdGe6/exec";
 const API_CLIENTE_URL = `${API_BASE_URL_CLIENTE}/dw_api.php`;
 
 /**
@@ -148,6 +147,12 @@ async function procesarPagoBancolombia() {
 
     let htmlBono = bono > 0 ? `<div style="color:#10b981; font-weight:800; font-size:12px; margin-top:5px;">🎁 BONO INCLUIDO: $ ${new Intl.NumberFormat('es-CO').format(bono)}</div>` : '';
 
+    // 🔥 EL FIX: Calculamos la fecha estrictamente en tu zona horaria local
+    const hoy = new Date();
+    const fechaLocal = hoy.getFullYear() + '-' + 
+                       String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
+                       String(hoy.getDate()).padStart(2, '0');
+
     const { value: formValues } = await Swal.fire({
         html: `
             <div class="banco-modal-container">
@@ -165,7 +170,9 @@ async function procesarPagoBancolombia() {
                 <div class="banco-glass-card" style="margin-top:15px;">
                     <p class="banco-step-title">Paso 2: Datos del Comprobante</p>
                     <input type="text" id="nombre-titular" class="banco-custom-input text-input" placeholder="NOMBRE DEL TITULAR" autocomplete="off">
-                    <input type="date" id="fecha-pago" class="banco-custom-input text-input-date" value="${new Date().toISOString().split('T')[0]}" style="margin-top:10px;">
+                    
+                    <input type="date" id="fecha-pago" class="banco-custom-input text-input-date" value="${fechaLocal}" style="margin-top:10px;">
+                    
                     <div class="banco-time-selectors" style="margin-top:10px;">
                         <input type="number" id="hora" class="banco-custom-input" placeholder="00" min="1" max="12">
                         <span class="banco-time-separator">:</span>
@@ -220,8 +227,8 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
     });
 
     try {
-        // 1. Notificar a Google
-        await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ usuario: user, monto: monto, bono: bonoCalculado, email_usuario: email, hora_pago: horaPago, fecha_pago: fechaPago, nombre: nombreTitular }) });
+        // 1. Notificar a Google (Usando GS_RECARGA de config_cliente.js)
+        await fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ usuario: user, monto: monto, bono: bonoCalculado, email_usuario: email, hora_pago: horaPago, fecha_pago: fechaPago, nombre: nombreTitular }) });
 
         let recargaExitosa = false;
         
@@ -230,7 +237,8 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
             const statusText = document.getElementById('ia-status');
             if(statusText) statusText.innerText = `> ESCANEANDO BANCO (Intento ${i})...`;
             
-            const resp = await fetch(`${GAS_URL}?action=forceScan&usuario=${encodeURIComponent(user)}&monto=${monto}`);
+            // Usando GS_RECARGA de config_cliente.js
+            const resp = await fetch(`${GS_RECARGA}?action=forceScan&usuario=${encodeURIComponent(user)}&monto=${monto}`);
             const data = await resp.json();
             if (data.estado === 'APROBADO') { 
                 recargaExitosa = true; 
@@ -308,8 +316,8 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
                 });
             }
         } else {
-            // RECHAZO DE IA CON COLORES VARIABLES
-            fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'rechazar_timeout', usuario: user, monto: monto }) });
+            // RECHAZO DE IA CON COLORES VARIABLES (Usando GS_RECARGA)
+            fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'rechazar_timeout', usuario: user, monto: monto }) });
             
             Swal.fire({
                 html: `
@@ -351,7 +359,8 @@ async function verHistorialRecargas() {
     });
 
     try {
-        const response = await fetch(`${GAS_URL}?action=getHistory&usuario=${encodeURIComponent(user)}`);
+        // Usando GS_RECARGA de config_cliente.js
+        const response = await fetch(`${GS_RECARGA}?action=getHistory&usuario=${encodeURIComponent(user)}`);
         const data = await response.json();
 
         let htmlHistorial = "";
