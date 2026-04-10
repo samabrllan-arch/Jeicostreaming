@@ -147,7 +147,6 @@ async function procesarPagoBancolombia() {
 
     let htmlBono = bono > 0 ? `<div style="color:#10b981; font-weight:800; font-size:12px; margin-top:5px;">🎁 BONO INCLUIDO: $ ${new Intl.NumberFormat('es-CO').format(bono)}</div>` : '';
 
-    // 🔥 EL FIX: Calculamos la fecha estrictamente en tu zona horaria local
     const hoy = new Date();
     const fechaLocal = hoy.getFullYear() + '-' + 
                        String(hoy.getMonth() + 1).padStart(2, '0') + '-' + 
@@ -203,7 +202,7 @@ async function procesarPagoBancolombia() {
 }
 
 /**
- * 🚀 FUNCIÓN CRÍTICA: VALIDA CON GOOGLE Y LUEGO GUARDA EN BD SIN RECARGAR LA PÁGINA (F5)
+ * 🚀 FUNCIÓN CRÍTICA: VALIDA CON GOOGLE Y LUEGO GUARDA EN BD
  */
 async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fechaPago, bonoCalculado) {
     const user = localStorage.getItem('dw_user') || 'Cliente';
@@ -227,7 +226,7 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
     });
 
     try {
-        // 1. Notificar a Google (Usando GS_RECARGA de config_cliente.js)
+        // 1. Notificar a Google
         await fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ usuario: user, monto: monto, bono: bonoCalculado, email_usuario: email, hora_pago: horaPago, fecha_pago: fechaPago, nombre: nombreTitular }) });
 
         let recargaExitosa = false;
@@ -237,14 +236,19 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
             const statusText = document.getElementById('ia-status');
             if(statusText) statusText.innerText = `> ESCANEANDO BANCO (Intento ${i})...`;
             
-            // Usando GS_RECARGA de config_cliente.js
             const resp = await fetch(`${GS_RECARGA}?action=forceScan&usuario=${encodeURIComponent(user)}&monto=${monto}`);
             const data = await resp.json();
+            
             if (data.estado === 'APROBADO') { 
                 recargaExitosa = true; 
                 break; 
             }
-            await new Promise(r => setTimeout(r, 10000));
+            
+            // MEJORA 2 APLICADA: Solo esperamos los 10s si habrá un siguiente intento.
+            // Si i == 2 (último intento) y falló, no esperamos más, terminamos de inmediato.
+            if (i < 2) {
+                await new Promise(r => setTimeout(r, 10000));
+            }
         }
 
         if (recargaExitosa) {
@@ -273,16 +277,14 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
             if (finalData.success) {
                 const nuevoSaldoFormat = new Intl.NumberFormat('es-CO').format(finalData.nuevo_saldo);
                 
-                // ACTUALIZAR SALDO EN ALMACENAMIENTO Y EN UI USANDO LAS FUNCIONES DE TU CÓDIGO
                 localStorage.setItem('dw_saldo', finalData.nuevo_saldo);
                 if (typeof window.sincronizarSaldo === 'function') {
-                    window.sincronizarSaldo(); // Va a la BD y actualiza la UI
+                    window.sincronizarSaldo(); 
                 } else if (typeof window.updateBalanceUI === 'function') {
                     if (typeof userBalance !== 'undefined') userBalance = finalData.nuevo_saldo;
                     window.updateBalanceUI();
                 }
 
-                // MODAL DE ÉXITO DINÁMICO
                 Swal.fire({
                     html: `
                         <div class="banco-success-container" style="text-align: center; padding: 10px;">
@@ -303,7 +305,6 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
                     background: 'var(--bg-card)', showConfirmButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'EXCELENTE',
                     customClass: { popup: 'banco-swal-popup', confirmButton: 'banco-btn-confirm' }
                 }).then(() => {
-                    // Limpiamos los campos del modal de recarga para una próxima vez
                     if(document.getElementById('custom-recharge')) document.getElementById('custom-recharge').value = "";
                     limpiarSeleccionTarjetas();
                 });
@@ -316,7 +317,6 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
                 });
             }
         } else {
-            // RECHAZO DE IA CON COLORES VARIABLES (Usando GS_RECARGA)
             fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'rechazar_timeout', usuario: user, monto: monto }) });
             
             Swal.fire({
@@ -359,7 +359,6 @@ async function verHistorialRecargas() {
     });
 
     try {
-        // Usando GS_RECARGA de config_cliente.js
         const response = await fetch(`${GS_RECARGA}?action=getHistory&usuario=${encodeURIComponent(user)}`);
         const data = await response.json();
 
@@ -409,101 +408,3 @@ async function verHistorialRecargas() {
         Swal.fire({ title: 'Error', text: 'No se pudo cargar el historial.', icon: 'error', background: 'var(--bg-card)', color: 'var(--text-white)', confirmButtonColor: '#dc2626' });
     }
 }
-
-/**
- * 8. ESTILOS COMPLETOS (ULTRA-PREMIUM)
- * 100% Adaptativos a Light Mode y Dark Mode usando tus variables nativas.
- */
-const recargaStyles = `
-    .recharge-wrapper-premium { max-width: 850px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px; }
-    .recharge-grid-premium { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; width: 100%; margin-bottom: 40px; justify-content: center; }
-    .recharge-card-premium { background: var(--bg-card); border: 1px solid var(--border-color); padding: 30px 20px; border-radius: 20px; text-align: center; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
-    .recharge-card-premium:hover { background: var(--bg-dark); border-color: var(--accent); transform: translateY(-5px); }
-    .recharge-card-premium.active { border-color: var(--accent); background: rgba(220, 38, 38, 0.08); box-shadow: 0 0 40px rgba(220, 38, 38, 0.15); }
-    .recharge-card-icon span { font-size: 2.8rem; color: var(--text-gray); margin-bottom: 15px; display: block; transition: 0.3s; }
-    .recharge-card-premium.active .recharge-card-icon span { color: var(--accent); text-shadow: 0 0 20px rgba(220, 38, 38, 0.5); transform: scale(1.1); }
-    .recharge-label { display: block; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 8px; font-weight: 700; }
-    .recharge-price { display: block; font-size: 1.5rem; font-weight: 800; color: var(--text-white); font-family: 'Inter', sans-serif; letter-spacing: -0.5px; }
-    .selection-check { position: absolute; top: 15px; right: 15px; color: var(--accent); opacity: 0; transition: 0.3s; transform: scale(0.8); }
-    .recharge-card-premium.active .selection-check { opacity: 1; transform: scale(1); }
-    
-    .recharge-input-section { width: 100%; max-width: 400px; text-align: center; margin-bottom: 40px; }
-    .input-helper-text { color: var(--text-gray); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; font-weight: 800; }
-    .input-field-recharge::-webkit-outer-spin-button, .input-field-recharge::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-    .input-field-recharge { -moz-appearance: textfield; background: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 15px; color: var(--text-white); text-align: center; width: 100%; font-size: 1.4rem; font-weight: 700; transition: 0.3s; letter-spacing: 1px; }
-    .input-field-recharge:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 25px var(--accent-glow); background: var(--bg-dark); }
-    .input-field-recharge::placeholder { color: var(--text-gray); font-weight: 500; }
-    
-    /* ACORDEÓN DE BONOS */
-    .bonus-table-container { width: 100%; max-width: 400px; margin: 20px auto 30px auto; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 15px; overflow: hidden; transition: 0.3s; }
-    .bonus-table-container:hover { border-color: var(--accent); }
-    .bonus-table-header { display: flex; justify-content: space-between; align-items: center; padding: 15px; cursor: pointer; user-select: none; }
-    .bonus-table-title { color: var(--text-gray); font-size: 11px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; transition: 0.3s; }
-    .bonus-table-header:hover .bonus-table-title { color: var(--text-white); }
-    .bonus-chevron { color: var(--text-gray); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
-    .bonus-table-body { max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.4s ease, opacity 0.3s ease; padding: 0 15px; }
-    .bonus-table-body.open { max-height: 300px; opacity: 1; padding: 0 15px 15px 15px; border-top: 1px dashed var(--border-color); margin-top: 5px; }
-    .bonus-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; margin-top: 10px; }
-    .bonus-table th { color: var(--text-gray); font-weight: 700; padding: 8px 5px; border-bottom: 1px dashed var(--border-color); font-size: 10px; letter-spacing: 1px; }
-    .bonus-table td { color: var(--text-white); padding: 10px 5px; border-bottom: 1px solid var(--border-color); font-weight: 600; }
-    .bonus-table tr:last-child td { border-bottom: none; }
-    .bonus-highlight { color: #10b981 !important; font-weight: 900 !important; }
-    
-    .recharge-actions-elite { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 15px; }
-    .btn-action-recharge { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; max-width: 400px; padding: 18px; border-radius: 50px; font-weight: 800; letter-spacing: 1.5px; cursor: pointer; transition: 0.3s; border: none; text-transform: uppercase; font-size: 0.85rem; font-family: 'Inter', sans-serif; }
-    .btn-action-recharge.wsp { background: #25d366; color: #000; box-shadow: 0 4px 15px rgba(37, 211, 102, 0.2); }
-    .btn-action-recharge.wsp:hover { background: #22c55e; box-shadow: 0 6px 25px rgba(37, 211, 102, 0.4); transform: translateY(-2px); }
-    .btn-icon-wsp { width: 24px; height: 24px; object-fit: contain; }
-    .btn-action-recharge.bank { background: var(--bg-card); border: 1px solid var(--border-color); color: var(--text-gray); }
-    .btn-action-recharge.bank:hover { border-color: var(--accent); color: var(--text-white); background: var(--bg-dark); transform: translateY(-2px); }
-    .btn-action-recharge.history-btn { background: transparent; border: 1px dashed var(--border-color); color: var(--text-gray); padding: 15px; font-size: 0.75rem; }
-    .btn-action-recharge.history-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(220,38,38,0.05); }
-
-    /* ESTILOS SWAL / MODALES BANCARIOS BLINDADOS AL TEMA */
-    .premium-toast { border-radius: 15px !important; border: 1px solid var(--border-color) !important; }
-    .banco-swal-popup { border: 1px solid var(--border-color) !important; border-radius: 24px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5) !important; background: var(--bg-card) !important; overflow: hidden; }
-    .banco-modal-container, .banco-loader-container { padding: 30px 20px 10px 20px; text-align: center; font-family: 'Inter', sans-serif; }
-    .banco-glass-card { background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 16px; padding: 20px; text-align: center; }
-    .banco-title { color: var(--text-white); font-size: 22px; font-weight: 900; letter-spacing: 1px; margin: 0 0 5px 0; }
-    .banco-subtitle { color: var(--text-gray); font-size: 13px; margin: 0 0 25px 0; text-transform: uppercase; letter-spacing: 1.5px; }
-    .banco-step-title { color: var(--text-white); font-size: 13px; text-transform: uppercase; font-weight: 800; letter-spacing: 1px; margin: 0 0 10px 0; }
-    .banco-amount-display { font-size: 38px; font-weight: 900; color: var(--text-white); text-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 15px; letter-spacing: -1px; }
-    .banco-key-box { background: var(--bg-dark); border-radius: 12px; padding: 12px; border: 1px dashed var(--border-color); display: flex; flex-direction: column; align-items: center; }
-    .banco-key-label { color: var(--text-gray); font-size: 12px; margin-bottom: 5px; }
-    .banco-key-value { color: var(--text-white); font-size: 20px; font-weight: 800; letter-spacing: 2px; }
-
-    .banco-custom-input.text-input, .banco-custom-input.text-input-date { width: 100%; text-align: left; padding: 15px; font-size: 15px; background: var(--bg-dark) !important; color: var(--text-white) !important; font-weight: 800; text-transform: uppercase; border: 2px solid var(--border-color); border-radius: 10px; box-sizing: border-box; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); transition: 0.3s; }
-    .banco-custom-input.text-input::placeholder { color: var(--text-gray) !important; font-weight: 500; text-transform: none; }
-    .banco-custom-input.text-input:focus, .banco-custom-input.text-input-date:focus { background: var(--bg-card) !important; color: var(--text-white) !important; border-color: var(--accent) !important; box-shadow: 0 0 15px var(--accent-glow) !important; outline: none; }
-    
-    .banco-time-selectors { display: flex; justify-content: center; align-items: center; gap: 8px; }
-    .banco-custom-input { width: 65px; appearance: none; background: var(--bg-dark); color: var(--text-white); border: 1px solid var(--border-color); padding: 12px 0; border-radius: 10px; font-size: 18px; font-weight: 700; text-align: center; outline: none; transition: 0.3s;}
-    .banco-custom-select.ampm-select-white { width: 100%; background: var(--bg-dark) !important; color: var(--text-white) !important; border: 2px solid var(--border-color); padding: 12px 0; border-radius: 10px; font-size: 16px; font-weight: 900; text-align: center; cursor: pointer; outline: none; }
-    .banco-time-separator { color: var(--text-gray); font-size: 24px; font-weight: bold; margin: 0 2px; }
-
-    .ia-scanner-ring { width: 80px; height: 80px; margin: 0 auto; border-radius: 50%; display:flex; align-items:center; justify-content:center; border: 2px solid var(--border-color); position:relative; box-shadow: 0 0 25px rgba(0,0,0,0.1); }
-    .ia-scanner-ring::before { content: ''; position:absolute; top:-2px; left:-2px; right:-2px; bottom:-2px; border-radius:50%; border: 2px solid transparent; border-top-color: var(--accent-text); animation: ia-spin 1.2s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite; }
-    @keyframes ia-spin { 100% { transform: rotate(360deg); } }
-    @keyframes floatPremium { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.02); } }
-
-    .banco-swal-actions { margin-top: 10px !important; gap: 10px !important; padding: 0 20px 20px 20px !important; width: 100% !important; box-sizing: border-box; }
-    .banco-btn-confirm { border-radius: 12px !important; padding: 14px 0 !important; font-weight: 800 !important; letter-spacing: 1px !important; width: 100% !important; margin: 0 !important; background: var(--accent-gradient) !important; box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3) !important; transition: 0.3s !important; color:#fff !important;}
-    .banco-btn-cancel { border-radius: 12px !important; padding: 14px 0 !important; font-weight: 700 !important; letter-spacing: 1px !important; width: 100% !important; margin: 0 !important; border: 1px solid var(--border-color) !important; color: var(--text-gray) !important; background: var(--bg-dark) !important;}
-
-    .history-header { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 1px dashed var(--border-color); }
-    .history-container { display: flex; flex-direction: column; gap: 12px; max-height: 280px; overflow-y: auto; padding-right: 8px; }
-    .history-item-card { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 12px; text-align: left; border-top: 1px solid var(--border-color); }
-    .history-amount { color: var(--text-white); font-size: 18px; font-weight: 900; font-family: 'Inter', sans-serif; letter-spacing: -0.5px; margin-bottom: 3px; display:block;}
-    .premium-slide-up { animation: slideUpFade 0.4s ease forwards; opacity: 0; transform: translateY(15px); }
-    @keyframes slideUpFade { to { opacity: 1; transform: translateY(0); } }
-
-    /* VIDEOS */
-    .btn-tutorial-video { background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-white); padding: 8px 20px; border-radius: 50px; display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.75rem; letter-spacing: 1px; cursor: pointer; transition: 0.3s; margin-top: 15px; }
-    .btn-tutorial-video:hover { background: var(--bg-card); border-color: var(--accent); box-shadow: 0 0 15px var(--accent-glow); transform: translateY(-2px); }
-    .iframe-wrapper { position: relative; width: 100%; height: 60vh; max-height: 500px; min-height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color); background: #000; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-    .iframe-wrapper iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-`;
-
-const styleSheetRecarga = document.createElement("style");
-styleSheetRecarga.innerText = recargaStyles;
-document.head.appendChild(styleSheetRecarga);
