@@ -1,3 +1,8 @@
+/* =================================================================================
+   ARCHIVO: billetera.js (LADO CLIENTE)
+   Lógica: Historial de movimientos, renderizado optimizado y facturas externas.
+================================================================================= */
+
 let misMovsRaw = [];              
 let misMovsAgrupados = [];        
 let misMovsInicializado = false; 
@@ -10,6 +15,17 @@ let misMovLimitePagina = 10;
 let misMovColumnaOrden = 'fecha';
 let misMovDireccionOrden = 'desc';
 
+// --- FUNCIÓN GLOBAL DE SANITIZACIÓN (MITIGACIÓN XSS) ---
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // ==========================================
 // 1. GANCHOS DE NAVEGACIÓN
 // ==========================================
@@ -21,7 +37,7 @@ document.addEventListener('moduloCargado', (e) => {
 });
 
 // ==========================================
-// 2. INTERFAZ ULTRA-PREMIUM (CSS & HTML)
+// 2. INTERFAZ ULTRA-PREMIUM
 // ==========================================
 function inicializarModuloMisMovimientos() {
     if (misMovsInicializado) return; 
@@ -31,143 +47,6 @@ function inicializarModuloMisMovimientos() {
     if (!seccionHistorial) return;
 
     seccionHistorial.innerHTML = `
-        <style>
-            /* --- RESUMEN ESTADÍSTICO PREMIUM --- */
-            .stats-dashboard {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-                gap: 20px;
-                margin-bottom: 30px;
-            }
-            .stat-card-glass {
-                background: var(--bg-card);
-                border: 1px solid var(--border-color);
-                padding: 20px;
-                border-radius: 16px;
-                display: flex;
-                align-items: center;
-                gap: 15px;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-                transition: transform 0.3s ease, border-color 0.3s, box-shadow 0.3s;
-            }
-            .stat-card-glass:hover { transform: translateY(-5px); border-color: var(--accent-text); box-shadow: 0 10px 25px var(--accent-glow); }
-            .stat-icon-circle {
-                width: 55px; height: 55px; border-radius: 14px;
-                display: flex; align-items: center; justify-content: center;
-                font-size: 1.6rem;
-            }
-            .stat-info { display: flex; flex-direction: column; }
-            .stat-label { font-size: 0.75rem; font-weight: 800; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-            .stat-value { font-size: 1.5rem; font-weight: 900; color: var(--text-white); font-family: 'Inter', monospace; letter-spacing: 0.5px; }
-
-            /* --- COLORES DE ESTADOS --- */
-            .bg-recarga { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.2); }
-            .bg-compra { background: rgba(59, 130, 246, 0.1); color: var(--accent-text); border: 1px solid rgba(59, 130, 246, 0.2); }
-            .bg-descuento { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.2); }
-
-            /* --- HEADER Y BOTÓN DE DESCARGA --- */
-            .mis-movs-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
-            .header-title-premium { margin: 0; font-family: 'Righteous', cursive; letter-spacing: 1.5px; color: var(--text-white); display: flex; align-items: center; gap: 10px; font-size: 1.3rem; }
-            
-            .btn-export-csv {
-                background: transparent; color: var(--accent-text); 
-                border: 1px solid var(--accent-text); padding: 10px 20px; border-radius: 10px; 
-                font-weight: 800; font-size: 0.8rem; cursor: pointer; transition: 0.3s; 
-                display: flex; align-items: center; gap: 8px; letter-spacing: 1px;
-            }
-            .btn-export-csv:hover { background: var(--accent-text); color: #fff; box-shadow: 0 4px 15px var(--accent-glow); }
-
-            /* --- FILTROS --- */
-            .mis-movs-filters-box {
-                background: var(--bg-card); border: 1px solid var(--border-color);
-                padding: 20px; border-radius: 16px; margin-bottom: 10px;
-                display: flex; flex-wrap: wrap; gap: 15px;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-            }
-            .filter-input-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 150px; }
-            .filter-input-group label { font-size: 0.7rem; font-weight: 800; color: var(--text-gray); text-transform: uppercase; letter-spacing: 1px; }
-            .filter-input-group input, .filter-input-group select {
-                background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-white);
-                padding: 12px; border-radius: 8px; font-size: 0.9rem; outline: none; transition: 0.3s; width: 100%;
-            }
-            .filter-input-group input:focus, .filter-input-group select:focus { border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-glow); }
-
-            /* --- ALERTA DE MES ACTUAL --- */
-            .alerta-mes-movimientos {
-                background: rgba(245, 158, 11, 0.1); border: 1px dashed rgba(245, 158, 11, 0.4);
-                color: #f59e0b; padding: 12px 20px; border-radius: 10px; font-size: 0.85rem; font-weight: 700;
-                display: flex; align-items: center; gap: 10px; margin-bottom: 20px; display: none;
-            }
-
-            /* --- ESTILO DE TABLA ULTRA-PREMIUM --- */
-            .premium-table-container { 
-                background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border-color); overflow-x: auto; 
-                box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-            }
-            .mov-table { width: 100%; border-collapse: collapse; min-width: 800px; }
-            .mov-table thead th { 
-                background: var(--bg-dark); color: var(--text-gray); font-size: 0.75rem; 
-                text-transform: uppercase; padding: 18px 20px; letter-spacing: 1px; 
-                border-bottom: 2px solid var(--border-color); font-weight: 800;
-            }
-            .mov-row { border-bottom: 1px solid var(--border-color); transition: 0.2s; background: transparent; }
-            .mov-row:hover { background: var(--bg-dark); }
-            .mov-row td { padding: 20px; font-size: 0.9rem; color: var(--text-white); vertical-align: middle; }
-
-            .date-block { display: flex; flex-direction: column; gap: 4px; }
-            .date-primary { color: var(--text-white); font-size: 0.85rem; font-weight: 500; }
-            .date-secondary { color: var(--text-gray); font-size: 0.75rem; }
-
-            /* Badges dinámicos para el tipo de orden */
-            .id-badge-premium {
-                padding: 6px 12px; border-radius: 6px; 
-                font-family: 'Inter', monospace; font-weight: 800; font-size: 0.75rem;
-                letter-spacing: 1px; display: inline-block;
-            }
-            .id-badge-premium.orden { background: rgba(59, 130, 246, 0.1); color: var(--accent-text); border: 1px solid rgba(59, 130, 246, 0.3); }
-            .id-badge-premium.recarga { background: rgba(16, 185, 129, 0.1); color: var(--success); border: 1px solid rgba(16, 185, 129, 0.3); }
-            .id-badge-premium.descuento { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); }
-            .id-badge-premium.nulo { background: rgba(255, 255, 255, 0.05); color: var(--text-gray); border: 1px dashed var(--border-color); }
-            
-            .amount-positive { color: var(--success); font-weight: 900; font-size: 1.05rem; letter-spacing: 0.5px; font-family: 'Inter', monospace; }
-            .amount-negative { color: var(--danger); font-weight: 900; font-size: 1.05rem; letter-spacing: 0.5px; font-family: 'Inter', monospace; }
-            .saldo-text { color: var(--text-white); font-weight: 800; font-size: 1rem; font-family: 'Inter', monospace; }
-            
-            /* --- BOTONES DE ACCIÓN PREMIUM --- */
-            .btn-receipt-glow {
-                background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.4); color: var(--accent-text); 
-                padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.75rem; 
-                display: inline-flex; align-items: center; gap: 6px; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;
-            }
-            .btn-receipt-glow:hover { background: var(--accent-text); color: #ffffff; border-color: var(--accent-text); transform: translateY(-2px); box-shadow: 0 4px 15px var(--accent-glow); }
-
-            .btn-info-glow {
-                background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.4); color: var(--success); 
-                padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.75rem; 
-                display: inline-flex; align-items: center; gap: 6px; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px;
-            }
-            .btn-info-glow:hover { background: var(--success); color: #ffffff; border-color: var(--success); transform: translateY(-2px); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
-
-            /* Sortable headers */
-            .sortable-th { cursor: pointer; transition: 0.2s; user-select: none; white-space: nowrap; }
-            .sortable-th:hover { color: var(--accent-text); }
-            .sort-icon-mov { margin-left: 6px; font-size: 0.85rem; display: inline-block; color: var(--text-gray); transition: 0.3s; }
-
-            /* --- PAGINADOR AVANZADO --- */
-            .pagination-container { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
-            .page-btn {
-                background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-gray);
-                height: 38px; min-width: 38px; padding: 0 10px; border-radius: 8px; font-weight: 800; cursor: pointer;
-                transition: 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;
-            }
-            .page-btn:hover:not(:disabled) { background: var(--bg-card); color: var(--text-white); border-color: var(--accent-text); }
-            .page-btn.active { background: var(--accent-text); color: #fff; border-color: var(--accent-text); box-shadow: 0 4px 10px var(--accent-glow); }
-            .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
-
-            /* Loader */
-            .loader-spinner { width: 30px; height: 30px; border: 3px solid var(--border-color); border-top-color: var(--accent-text); border-radius: 50%; animation: spin 1s infinite linear; }
-        </style>
-
         <div class="stats-dashboard">
             <div class="stat-card-glass">
                 <div class="stat-icon-circle bg-recarga"><i class="material-icons-round">account_balance</i></div>
@@ -263,14 +142,12 @@ function procesarDataHistorica(datos, totalesServidor, mensajeAlertaServidor) {
     let agrupados = [];
     let mapa = {};
 
-    // Mostrar mensaje de alerta si el servidor envió alguno (Filtro del mes)
     const divAlerta = document.getElementById('alerta-filtro-mes');
     if (divAlerta && mensajeAlertaServidor) {
-        divAlerta.innerHTML = `<i class="material-icons-round">info</i> ${mensajeAlertaServidor}`;
+        divAlerta.innerHTML = `<i class="material-icons-round">info</i> ${escapeHTML(mensajeAlertaServidor)}`;
         divAlerta.style.display = 'flex';
     }
 
-    // Agrupación para la tabla visual (Junta servicios de la misma compra)
     datos.forEach(mov => {
         const montoNum = parseFloat(mov.monto) || 0;
         const ref = (mov.orderId || '').trim();
@@ -304,7 +181,6 @@ function procesarDataHistorica(datos, totalesServidor, mensajeAlertaServidor) {
         }
     });
 
-    // Actualizar Motivos de Compra Múltiple
     agrupados.forEach(item => {
         if (item.conteo > 1) {
             item.motivo = `Compra Múltiple (${item.conteo} servicios en tienda)`;
@@ -313,12 +189,10 @@ function procesarDataHistorica(datos, totalesServidor, mensajeAlertaServidor) {
 
     misMovsAgrupados = agrupados;
 
-    // LECTURA DIRECTA DE LA BASE DE DATOS
     const recargas = totalesServidor?.recargas ? parseFloat(totalesServidor.recargas) : 0;
     const compras = totalesServidor?.compras ? parseFloat(totalesServidor.compras) : 0;
     const descuentos = totalesServidor?.descuentos ? parseFloat(totalesServidor.descuentos) : 0;
 
-    // Pintar Totales Reales
     const f = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
     document.getElementById('tot-recargas').innerText = `$ ${f.format(recargas)}`;
     document.getElementById('tot-compras').innerText = `$ ${f.format(compras)}`;
@@ -332,7 +206,6 @@ function renderizarHistoricoPremium() {
     const dIni = document.getElementById('mismovs-inicio')?.value || '';
     const dFin = document.getElementById('mismovs-fin')?.value || '';
 
-    // 🔥 TRADUCTOR DE FECHAS (Convierte barras o guiones a un valor de tiempo real para ordenar)
     const parseFechaSegura = (fechaStr) => {
         if (!fechaStr) return 0;
         let soloFecha = fechaStr.split(' ')[0]; 
@@ -345,7 +218,6 @@ function renderizarHistoricoPremium() {
             tiempoObj = new Date(y, m - 1, d);
         }
         
-        // Mantener la hora original si existe para ordenar de forma súper precisa
         if (fechaStr.includes(' ')) {
             let horaParts = fechaStr.split(' ')[1].split(':');
             tiempoObj.setHours(horaParts[0] || 0, horaParts[1] || 0, horaParts[2] || 0);
@@ -358,10 +230,9 @@ function renderizarHistoricoPremium() {
         let matchText = `${mov.motivo} ${mov.orderId || ''}`.toLowerCase().includes(filtro);
         let matchDate = true;
         if(dIni || dFin) {
-            // Intentar detectar fecha base para el filtro
             let fObj = new Date(parseFechaSegura(mov.fecha));
             if(!isNaN(fObj.getTime())) {
-                const mDate = fObj.toISOString().split('T')[0]; // Convertir a YYYY-MM-DD estándar para comparar
+                const mDate = fObj.toISOString().split('T')[0]; 
                 if(dIni && mDate < dIni) matchDate = false;
                 if(dFin && mDate > dFin) matchDate = false;
             }
@@ -369,7 +240,6 @@ function renderizarHistoricoPremium() {
         return matchText && matchDate;
     });
 
-    // Ordenamiento Dinámico Mejorado
     filtrados.sort((a, b) => {
         let vA, vB;
         switch(misMovColumnaOrden) {
@@ -386,22 +256,17 @@ function renderizarHistoricoPremium() {
     misMovLimitePagina = parseInt(document.getElementById('mismovs-limite')?.value || 10);
     misMovTotalPaginas = Math.ceil(total / misMovLimitePagina) || 1;
     
-    // Evitar que la página actual sea mayor que el total de páginas
     if (misMovPaginaActual > misMovTotalPaginas) misMovPaginaActual = Math.max(1, misMovTotalPaginas);
 
     let start = (misMovPaginaActual - 1) * misMovLimitePagina;
     let pagina = filtrados.slice(start, start + misMovLimitePagina);
 
-    // ===============================================
-    // ENRUTADOR INTELIGENTE MÓVIL (DETECCIÓN ESTRICTA)
-    // ===============================================
     const esMovil = window.matchMedia("(max-width: 768px)").matches || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     
     if (esMovil && typeof renderizarBilleteraMovil === 'function') {
         return renderizarBilleteraMovil(pagina, total, misMovPaginaActual, misMovTotalPaginas);
     }
 
-    // --- RESTAURAR TABLA PC SI SE GIRA LA PANTALLA ---
     const tableContainer = document.querySelector('.premium-table-container');
     if (tableContainer && !document.getElementById('tabla-mis-movs')) {
         tableContainer.style.background = 'var(--bg-card)';
@@ -440,6 +305,9 @@ function renderizarHistoricoPremium() {
     }
 
     const fmt = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    
+    // MEJORA 2: DocumentFragment para evitar repaints en bucle
+    const fragment = document.createDocumentFragment();
 
     pagina.forEach(mov => {
         const monto = mov.monto_agrupado;
@@ -448,10 +316,9 @@ function renderizarHistoricoPremium() {
         const signo = isIngreso ? '+' : '-';
         const montoAbs = Math.abs(monto);
         
-        let fFormat1 = mov.fecha;
+        let fFormat1 = escapeHTML(mov.fecha);
         let fFormat2 = '';
         try {
-            // Intentar extraer con traductor para render
             let fPura = mov.fecha.split(' ')[0];
             let fObj = new Date();
             if (fPura.includes('-')) {
@@ -468,17 +335,18 @@ function renderizarHistoricoPremium() {
             }
         } catch(e){}
 
-        // Generar Badge
-        let ref = mov.orderId || '';
+        // MEJORA 1: SANITIZACIÓN DE SALIDAS (XSS)
+        let refSafe = escapeHTML(mov.orderId || '');
         let badgeHTML = '';
-        if (ref.startsWith('ORD-') || ref.startsWith('REN-')) {
-            badgeHTML = `<span class="id-badge-premium orden">${ref}</span>`;
-        } else if (ref.startsWith('REC-')) {
-            badgeHTML = `<span class="id-badge-premium recarga">${ref}</span>`;
-        } else if (ref.startsWith('DES-')) {
-            badgeHTML = `<span class="id-badge-premium descuento">${ref}</span>`;
-        } else if (ref !== '') {
-            badgeHTML = `<span class="id-badge-premium nulo">${ref}</span>`; 
+
+        if (refSafe.startsWith('ORD-') || refSafe.startsWith('REN-')) {
+            badgeHTML = `<span class="id-badge-premium orden">${refSafe}</span>`;
+        } else if (refSafe.startsWith('REC-')) {
+            badgeHTML = `<span class="id-badge-premium recarga">${refSafe}</span>`;
+        } else if (refSafe.startsWith('DES-')) {
+            badgeHTML = `<span class="id-badge-premium descuento">${refSafe}</span>`;
+        } else if (refSafe !== '') {
+            badgeHTML = `<span class="id-badge-premium nulo">${refSafe}</span>`; 
         } else {
             badgeHTML = `<span class="id-badge-premium nulo">S/N</span>`; 
         }
@@ -486,18 +354,17 @@ function renderizarHistoricoPremium() {
         const tr = document.createElement('tr');
         tr.className = "mov-row";
         
-        // CSS en línea para evitar que textos muy largos deformen la fila de "Detalle"
-        const motivoSafeTooltip = mov.motivo.replace(/"/g, '&quot;');
+        const motivoSafeTooltip = escapeHTML(mov.motivo);
         
         tr.innerHTML = `
             <td data-label="Fecha" style="text-align: left;">
                 <div class="date-block">
                     <span class="date-primary">${fFormat1}</span>
-                    <span class="date-secondary">${fFormat2}</span>
+                    <span class="date-secondary">${escapeHTML(fFormat2)}</span>
                 </div>
             </td>
             <td data-label="Referencia" style="text-align: left;">${badgeHTML}</td>
-            <td data-label="Detalle" style="font-weight:500; color:var(--text-white); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${motivoSafeTooltip}">${mov.motivo}</td>
+            <td data-label="Detalle" style="font-weight:500; color:var(--text-white); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${motivoSafeTooltip}">${motivoSafeTooltip}</td>
             <td data-label="Monto" style="text-align: right;" class="${colorClass}">${signo}$ ${fmt.format(montoAbs)}</td>
             <td data-label="Saldo Nuevo" style="text-align: right;" class="saldo-text">$ ${fmt.format(mov.saldo_final_pedido)}</td>
             <td data-label="Acciones" style="text-align: center; vertical-align: middle;">
@@ -506,8 +373,10 @@ function renderizarHistoricoPremium() {
                 </div>
             </td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     });
+
+    tbody.appendChild(fragment);
 
     const numTotal = new Intl.NumberFormat('es-CO').format(total);
     document.getElementById('mis-movs-info').innerHTML = `MOSTRANDO PÁGINA <b>${misMovPaginaActual}</b> DE <b>${misMovTotalPaginas}</b> <span style="margin-left:10px; opacity:0.6;">(Total: ${numTotal} registros)</span>`;
@@ -518,10 +387,9 @@ function renderizarHistoricoPremium() {
 // 4. GENERACIÓN DE BOTONES
 // ==========================================
 function generarBotonAccionCliente(mov) {
-    const ref = mov.orderId || '';
+    const ref = escapeHTML(mov.orderId || '');
     const mot = encodeURIComponent(mov.motivo || 'Operación manual del Administrador');
     
-    // RECONOCE LAS RENOVACIONES PARA MOSTRAR LA FACTURA
     if (ref.startsWith('ORD-') || ref.startsWith('REN-')) {
         return `<button class="btn-receipt-glow" onclick="abrirFacturaGlobal('${ref}')"><i class="material-icons-round" style="font-size:1.1rem;">receipt_long</i> FACTURA</button>`;
     } else {
@@ -548,8 +416,6 @@ async function cargarMisMovimientosBase() {
         if (res.success) {
             misMovsRaw = res.datos || [];
             const totalesServer = res.totales || { recargas: 0, compras: 0, descuentos: 0 };
-            
-            // Le pasamos el msg_alerta a la función para que decida si dibujarlo o no
             procesarDataHistorica(misMovsRaw, totalesServer, res.msg_alerta);
         } else {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 60px; color:var(--danger);">Error al conectar con la base de datos.</td></tr>`;
@@ -622,7 +488,7 @@ window.exportarMisMovimientosCSV = function() {
     const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b);
-    a.download = `${NOMBRE_NEGOCIO}_Billetera_Historial_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `${typeof NOMBRE_NEGOCIO !== 'undefined' ? NOMBRE_NEGOCIO : 'Billetera'}_Historial_${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     if(typeof mostrarToast === 'function') mostrarToast("Historial exportado con éxito", "success");
 };
@@ -630,7 +496,6 @@ window.exportarMisMovimientosCSV = function() {
 window.verMotivoFinanciero = function(orderId, motivo) {
     const isDark = document.body.classList.contains('dark-mode');
     
-    // Lógica dinámica de colores según el tipo de movimiento
     let isRecarga = orderId.startsWith('REC-');
     let isDescuento = orderId.startsWith('DES-');
 
@@ -648,7 +513,7 @@ window.verMotivoFinanciero = function(orderId, motivo) {
                 <div>
                     <h2 style="margin:0; font-size: 1.25rem; font-family: 'Righteous', sans-serif; color: var(--text-white); letter-spacing: 0.5px;">${titleText}</h2>
                     <div style="background: var(--bg-dark); color: var(--text-gray); border: 1px dashed var(--border-color); padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; display: inline-block; margin-top: 6px; font-weight: bold;">
-                        REF: <span style="color: ${themeColor};">${orderId}</span>
+                        REF: <span style="color: ${themeColor};">${escapeHTML(orderId)}</span>
                     </div>
                 </div>
             </div>
@@ -661,7 +526,7 @@ window.verMotivoFinanciero = function(orderId, motivo) {
                     <i class="material-icons-round" style="font-size: 1.1rem;">notes</i> Concepto Registrado
                 </p>
                 <div style="color: var(--text-white); line-height: 1.7; font-weight: 500; font-size: 1rem; position: relative; z-index: 1; word-break: break-word;">
-                    ${motivo}
+                    ${escapeHTML(motivo)}
                 </div>
             </div>
         `,
@@ -669,7 +534,7 @@ window.verMotivoFinanciero = function(orderId, motivo) {
         confirmButtonText: '<i class="material-icons-round" style="font-size: 1.2rem; vertical-align: middle; margin-right: 5px;">check_circle</i> ENTENDIDO', 
         confirmButtonColor: themeColor, 
         background: isDark ? 'var(--bg-card)' : '#ffffff',
-        color: 'var(--text-main)', // <-- CORREGIDO PARA QUE SE VEA BIEN EL TEXTO
+        color: 'var(--text-main)', 
         customClass: { popup: 'premium-modal-radius' }
     });
 };
@@ -679,7 +544,7 @@ window.invocarModalFacturaExterna = async function(orderId) {
         return Swal.fire({
             icon: 'info',
             title: 'Operación Financiera',
-            text: `El ID ${orderId} corresponde a un ajuste de saldo, no a una compra de servicios.`,
+            text: `El ID ${escapeHTML(orderId)} corresponde a un ajuste de saldo, no a una compra de servicios.`,
             background: document.body.classList.contains('dark-mode') ? 'var(--bg-card)' : '#ffffff',
             color: 'var(--text-main)',
             confirmButtonColor: 'var(--accent-text)',
@@ -698,7 +563,6 @@ window.invocarModalFacturaExterna = async function(orderId) {
     });
 
     try {
-        // En el historial "viejo" sin orderId, usamos la fecha como búsqueda
         let filtroPeticion = orderId;
         if (orderId.startsWith('Sin Orden')) {
             filtroPeticion = orderId.replace('Sin Orden - ', '').trim();
@@ -714,12 +578,11 @@ window.invocarModalFacturaExterna = async function(orderId) {
 
         if (response.success && response.datos && response.datos.length > 0) {
             
-            // Adaptamos el filtro de items para facturas antiguas
             let itemsFactura = [];
             if (orderId.startsWith('Sin Orden')) {
                 const fechaExtract = orderId.replace('Sin Orden - ', '');
                 itemsFactura = response.datos.filter(i => {
-                    if (i.orderId && i.orderId.trim() !== '') return false; // Solo los que no tengan ID real
+                    if (i.orderId && i.orderId.trim() !== '') return false; 
                     
                     let fStr = i.fecha ? i.fecha.split(' ')[0] : '';
                     if (fStr.includes('-')) {
@@ -773,13 +636,12 @@ window.invocarModalFacturaExterna = async function(orderId) {
                     const c = cData.cuenta;
                     textoGrupo += `Cuenta ${indexObj + 1}: ${c}\n`;
                     
-                    const uniqueIdBtn = `copy-btn-${indexObj}-${Date.now()}`;
-                    const cuentaSafe = c.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                    const cuentaSafe = escapeHTML(c);
+                    const btnCopySafe = cuentaSafe.replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     
                     let estado = cData.estado ? cData.estado.toLowerCase() : '';
                     let notaReal = cData.notas || '';
 
-                    // Ocultar notas técnicas del administrador
                     const notasOcultasCliente = ['reciclada', 'archivada', 'stock'];
                     const notaMInusculas = notaReal.toLowerCase();
                     const esNotaInternaAdmin = notasOcultasCliente.some(palabra => notaMInusculas.includes(palabra));
@@ -789,8 +651,9 @@ window.invocarModalFacturaExterna = async function(orderId) {
                         notaReal = ''; 
                     }
 
+                    // MEJORA 1: SANITIZACIÓN DE NOTAS EN LA FACTURA
                     let notasHTML = notaReal 
-                        ? `<div style="margin-top: 4px; font-size: 0.75rem; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; border: 1px dashed rgba(245, 158, 11, 0.3); line-height: 1.3;"><i class="material-icons-round" style="font-size:0.9rem; vertical-align:middle; margin-right:3px;">history_edu</i> ${notaReal}</div>` 
+                        ? `<div style="margin-top: 4px; font-size: 0.75rem; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 4px 8px; border-radius: 6px; border: 1px dashed rgba(245, 158, 11, 0.3); line-height: 1.3;"><i class="material-icons-round" style="font-size:0.9rem; vertical-align:middle; margin-right:3px;">history_edu</i> ${escapeHTML(notaReal)}</div>` 
                         : '';
                     
                     let opacityAccount = '';
@@ -805,8 +668,8 @@ window.invocarModalFacturaExterna = async function(orderId) {
 
                     cuentasListaHtml += `
                         <div style="margin-bottom: 10px;">
-                            <div class="copy-cuenta-btn" data-copy="${cuentaSafe}" style="background: var(--bg-dark); border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; ${opacityAccount}">
-                                <span style="word-break: break-all; color: var(--text-main); font-family: monospace; font-size: 0.9rem;">${c}</span>
+                            <div class="copy-cuenta-btn" data-copy="${btnCopySafe}" style="background: var(--bg-dark); border: 1px solid var(--border-color); padding: 10px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; ${opacityAccount}">
+                                <span style="word-break: break-all; color: var(--text-main); font-family: monospace; font-size: 0.9rem;">${cuentaSafe}</span>
                                 <i class="material-icons-round icon-copy-feedback" style="font-size: 1.1rem; color: var(--accent-text);" title="Copiar Cuenta">content_copy</i>
                             </div>
                             ${notasHTML}
@@ -823,7 +686,7 @@ window.invocarModalFacturaExterna = async function(orderId) {
                     <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 15px; overflow: hidden; text-align:left;">
                         <div style="padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); background: rgba(56, 189, 248, 0.05);">
                             <h4 style="color: var(--accent-text); font-weight: 800; font-size: 0.95rem; text-transform: uppercase; margin: 0; display: flex; align-items: center; gap: 8px;">
-                                ${srv}
+                                ${escapeHTML(srv)}
                                 <i class="material-icons-round copy-grupo-btn" data-copy="${txtGrupoSafe}" style="font-size:1.1rem; cursor:pointer; color:var(--text-gray); transition:0.2s;" title="Copiar bloque de servicio">content_copy</i>
                             </h4>
                             <span style="background: rgba(56, 189, 248, 0.2); color: var(--accent-text); padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">x${cantidad}</span>
@@ -879,7 +742,7 @@ window.invocarModalFacturaExterna = async function(orderId) {
                             <h2 style="margin:0; font-size: 1.3rem; font-family: 'Righteous', sans-serif; color: var(--text-main); display:flex; align-items:center; gap:8px;">
                                 <i class="material-icons-round" style="color: ${colorFactura};">${iconFactura}</i> ${tituloFactura}
                             </h2>
-                            <div style="background: ${bgBadge}; color: ${colorFactura}; border: 1px solid ${colorFactura}; opacity: 0.8; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.75rem; display: inline-block; margin-top: 6px; font-weight: bold;">${orderId}</div>
+                            <div style="background: ${bgBadge}; color: ${colorFactura}; border: 1px solid ${colorFactura}; opacity: 0.8; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.75rem; display: inline-block; margin-top: 6px; font-weight: bold;">${escapeHTML(orderId)}</div>
                         </div>
                         <button id="btn-copiar-todo-modal" data-texto-full="${encodedTextoTodo}" style="background: rgba(56, 189, 248, 0.15); color: var(--accent-text); border: 1px solid rgba(56, 189, 248, 0.3); padding: 8px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; transition: 0.2s;">
                             <i class="material-icons-round" style="font-size: 1.1rem;">receipt</i> COPIAR
@@ -1005,7 +868,6 @@ function animarCopia(icono) {
     }, 1500);
 }
 
-// RADAR GLOBAL: Escucha clics en toda la página (Evita el "efecto fantasma")
 if (!window.radarCopiaIniciado) {
     window.radarCopiaIniciado = true;
     
