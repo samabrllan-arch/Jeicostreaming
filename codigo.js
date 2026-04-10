@@ -1,12 +1,3 @@
-const URL_MAESTRO = "https://script.google.com/macros/s/AKfycbyZu-05L75tVwAvJjN7gQ7JQZ7EyxgEUhT723Jd9tXHjdAvZaVXGE6AsENiwyyQX_ukwQ/exec";
-const LISTA_OBREROS = [
-    "https://script.google.com/macros/s/AKfycbxRf-m0Z3xjDwRrps5Ia3zdGZtWKioxPj3h3nrexlCzOawt7fzdFgeC_xeqj-zsCJzCrA/exec",
-    "https://script.google.com/macros/s/AKfycbyHVbLbV2jhNYPDyxjmp9yIKO9HWAl3IxvO1qAuvMRlVZdFUCGD88U6OsJw8mnpSS3X/exec",
-    "https://script.google.com/macros/s/AKfycbyD_7GCUkn2t5O7kl95mU7riGMOiy0hNJtPduv6Sf_37mxfSm50OnMn4aRWlsl7wN7e/exec",
-    "https://script.google.com/macros/s/AKfycbxUuHwtfFTW2bnOUBHkw3TkVVoQi9hH4Kk_y96T6XIC6VMwl9qeZmZZckmoySgZnXil/exec",
-    "https://script.google.com/macros/s/AKfycbw-V7SRUufYl5hkAWcLV8ajQbCa0vzTD3iwklRas2_ddY4YAzzVAE59XgdeVmLmUrBRDQ/exec"
-];
-
 const COOLDOWN_CODIGOS = 20; // Segundos
 let enCooldownCodigos = false;
 
@@ -172,22 +163,25 @@ window.abrirModalCorreo = function() {
     const isMobile = window.innerWidth <= 768;
     const isDark = document.body.classList.contains('dark-mode');
     
-    // Función mágica: Analizar el HTML y forzar apertura en nueva pestaña para TODOS los enlaces
-    let htmlParchado = correoHTMLActual.replace(/<a([^>]+)>/g, function(match, p1) {
-        // Si ya tiene target, lo ignoramos, si no, se lo inyectamos
-        if (!/target=/i.test(p1)) {
-            return `<a${p1} target="_blank">`;
-        }
-        // Si tiene un target distinto a _blank, lo forzamos
-        return `<a${p1.replace(/target=["'][^"']*["']/i, 'target="_blank"')}>`;
-    });
+    // MEJORA 2: Analizar el HTML de forma segura con DOMParser (evita Regex inseguros)
+    const parser = new DOMParser();
+    const docHtml = parser.parseFromString(correoHTMLActual, 'text/html');
+    
+    // Forzar apertura en nueva pestaña para TODOS los enlaces
+    const links = docHtml.querySelectorAll('a');
+    links.forEach(a => a.setAttribute('target', '_blank'));
+    
+    const htmlParchado = docHtml.documentElement.outerHTML;
     
     Swal.fire({
         html: `
             <div class="video-modal-container" style="padding: 5px;">
                 <h2 class="banco-title" style="margin-bottom: ${isMobile ? '10px' : '15px'}; font-size: ${isMobile ? '1.2rem' : '1.5rem'};">Bandeja de Entrada Segura</h2>
                 <div class="iframe-wrapper">
-                    <iframe id="iframeCorreo" frameborder="0" style="width: 100%; height: 100%; background: #ffffff;"></iframe>
+                    <iframe id="iframeCorreo" 
+                            sandbox="allow-same-origin allow-popups" 
+                            frameborder="0" 
+                            style="width: 100%; height: 100%; background: #ffffff;"></iframe>
                 </div>
             </div>
         `,
@@ -202,7 +196,7 @@ window.abrirModalCorreo = function() {
             const iframe = document.getElementById('iframeCorreo');
             const doc = iframe.contentWindow.document;
             doc.open();
-            doc.write(htmlParchado); // <-- Usamos el HTML con el parche de target="_blank"
+            doc.write(htmlParchado); // <-- Usamos el HTML procesado por DOMParser
             doc.close();
             
             // Parche extra por si el HTML del correo usó Javascript para hacer redirecciones (evita que el iframe salte)
@@ -300,8 +294,8 @@ async function ejecutarAccesoCodigos() {
         await faseIA("Inicializando motor de búsqueda...", "memory");
         await faseIA("Validando credenciales en la Bóveda...", "security");
 
-        // 1. LOGIN MAESTRO
-        const login = await fetch(`${URL_MAESTRO}?usuario=${encodeURIComponent(user)}&clave=${encodeURIComponent(pass)}&servicio=${encodeURIComponent(nombreServicioCorto)}`);
+        // LOGIN MAESTRO (Usa la variable global GS_MAESTRO de config_cliente.js)
+        const login = await fetch(`${GS_MAESTRO}?usuario=${encodeURIComponent(user)}&clave=${encodeURIComponent(pass)}&servicio=${encodeURIComponent(nombreServicioCorto)}`);
         const dataM = await login.json();
 
         if (!dataM.exito) {
@@ -313,24 +307,29 @@ async function ejecutarAccesoCodigos() {
 
         let infoExito = null;
 
-        // 2. BÚSQUEDA EN WORKERS
-        for (let i = 0; i < LISTA_OBREROS.length; i++) {
-            try {
-                const r = await fetch(`${LISTA_OBREROS[i]}?usuario=${encodeURIComponent(user)}&asunto=${encodeURIComponent(asunto)}`);
-                const d = await r.json();
+        // MEJORA 3: BÚSQUEDA CONCURRENTE EN WORKERS (Usa GS_OBREROS del config)
+        const fetchWorker = async (url) => {
+            const r = await fetch(`${url}?usuario=${encodeURIComponent(user)}&asunto=${encodeURIComponent(asunto)}`);
+            const d = await r.json();
+            if (d.exito && d.encontrado && d.cuerpo) {
+                return d;
+            }
+            throw new Error("No encontrado en este worker");
+        };
 
-                if (d.exito && d.encontrado && d.cuerpo) {
-                    infoExito = d;
-                    correoHTMLActual = d.cuerpo; // Guardamos el HTML completo del correo
-                    break;
-                }
-            } catch { /* Silencio en errores de red del worker */ }
+        try {
+            // Promise.any lanza todas las peticiones al mismo tiempo y se resuelve con la primera que tenga éxito.
+            infoExito = await Promise.any(GS_OBREROS.map(url => fetchWorker(url)));
+            correoHTMLActual = infoExito.cuerpo; // Guardamos el HTML completo del correo
+        } catch (e) {
+            // Si entra al catch, significa que NINGÚN worker encontró el correo
+            infoExito = null;
         }
 
         if (!infoExito) throw new Error("NOT_FOUND");
 
-        // 🔥 3. AVISO AL MAESTRO PARA ACTUALIZAR AUDITORÍA (COLUMNA G) 🔥
-        fetch(`${URL_MAESTRO}?accion=registrar_codigo&usuario=${encodeURIComponent(user)}&codigo_encontrado=Correo_HTML_Visualizado`, { mode: "no-cors" });
+        // 🔥 AVISO AL MAESTRO PARA ACTUALIZAR AUDITORÍA 🔥
+        fetch(`${GS_MAESTRO}?accion=registrar_codigo&usuario=${encodeURIComponent(user)}&codigo_encontrado=Correo_HTML_Visualizado`, { mode: "no-cors" });
 
         fechaMsg.innerHTML = `<span class="material-icons-round" style="font-size:16px;">schedule</span> Recibido a las: ${infoExito.hora || "Reciente"}`;
         resBox.classList.remove("hidden");
@@ -354,7 +353,7 @@ async function ejecutarAccesoCodigos() {
             textEl.innerText = "No se encontró correo reciente.";
             
             // Aviso de fallo al maestro
-            fetch(`${URL_MAESTRO}?accion=registrar_codigo&usuario=${encodeURIComponent(user)}&codigo_encontrado=Fallo_Timeout_No_Encontrado`, { mode: "no-cors" });
+            fetch(`${GS_MAESTRO}?accion=registrar_codigo&usuario=${encodeURIComponent(user)}&codigo_encontrado=Fallo_Timeout_No_Encontrado`, { mode: "no-cors" });
 
             let linkManual = "#";
             if (asunto.includes("Disney")) linkManual = "https://www.disneyplus.com/identity/login/enter-passcode";
