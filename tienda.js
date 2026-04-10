@@ -1,3 +1,8 @@
+/* =================================================================================
+   ARCHIVO: tienda.js (LADO CLIENTE)
+   Lógica: Renderizado de la tienda, carrito de compras y proceso de Checkout.
+================================================================================= */
+
 const STORE_CACHE_KEY = "dw_store_cache";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 🔥 1 HORA EN MILISEGUNDOS
 
@@ -8,6 +13,17 @@ if (typeof cart === 'undefined') {
 // Variables globales para el manejo de las pestañas
 let lastProductos = []; 
 let currentStoreTab = 'pantallas'; // Pestaña por defecto
+
+// --- FUNCIÓN GLOBAL DE SANITIZACIÓN (MITIGACIÓN XSS) ---
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 // --- CONFIGURACIÓN DE NOTIFICACIONES (CON FIX DE Z-INDEX) ---
 const Toast = Swal.mixin({
@@ -60,13 +76,11 @@ async function cargarTienda(silencioso = false) {
             timestampAntiguo = data.timestamp;
             const tiempoPasado = new Date().getTime() - timestampAntiguo;
 
-            // Si el caché tiene menos de 1 hora, activamos la bandera para reciclar datos estáticos
             if (tiempoPasado < CACHE_TTL_MS) {
                 useCachedStatic = true;
                 cachedProducts = data.productos;
             }
             
-            // Mostramos lo que tenemos al instante para que el cliente no vea spinners (si no es carga silenciosa)
             if (!silencioso) {
                 window.userBalance = Number(localStorage.getItem('dw_saldo')) || 0;
                 if (typeof updateBalanceUI === 'function') updateBalanceUI();
@@ -80,7 +94,7 @@ async function cargarTienda(silencioso = false) {
         if (!silencioso) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><div class="spinner"></div></div>';
     }
 
-    // B. ACTUALIZACIÓN SILENCIOSA (DATOS DINÁMICOS: PRECIOS Y STOCK SIEMPRE FRESCOS)
+    // B. ACTUALIZACIÓN SILENCIOSA
     const u = localStorage.getItem('dw_user');
     const t = localStorage.getItem('dw_token');
 
@@ -94,15 +108,14 @@ async function cargarTienda(silencioso = false) {
 
             let finalProducts = res.productos;
 
-            // 🔥 EL TRUCO: Si el caché estático sirve (< 1h), fusionamos lo viejo con lo nuevo
             if (useCachedStatic) {
                 finalProducts = res.productos.map(freshProd => {
                     const cachedProd = cachedProducts.find(p => p.nombre === freshProd.nombre);
                     if (cachedProd) {
                         return {
-                            ...freshProd, // Toma el STOCK y PRECIO frescos del servidor
-                            img: cachedProd.img, // Recicla imagen cacheada
-                            descripcion: cachedProd.descripcion, // Recicla T&C
+                            ...freshProd, 
+                            img: cachedProd.img, 
+                            descripcion: cachedProd.descripcion, 
                             cuenta_completa: cachedProd.cuenta_completa,
                             favorito: cachedProd.favorito,
                             minimo_compra: cachedProd.minimo_compra,
@@ -110,19 +123,15 @@ async function cargarTienda(silencioso = false) {
                             oculto: cachedProd.oculto
                         };
                     }
-                    return freshProd; // Si es un producto nuevo, lo toma completo
+                    return freshProd; 
                 });
             }
 
-            // Guardamos la tienda combinada en el LocalStorage
             localStorage.setItem(STORE_CACHE_KEY, JSON.stringify({
                 productos: finalProducts,
-                // Si reciclamos estáticos, mantenemos la hora original para que caduque al cumplir 1H.
-                // Si no reciclamos, reseteamos el reloj.
                 timestamp: useCachedStatic ? timestampAntiguo : new Date().getTime()
             }));
 
-            // Repintamos la tienda silenciosamente con los precios y stock actualizados
             renderizarTiendaPremium(finalProducts, false);
         } else {
             if (res && res.msg === "Sesión inválida") {
@@ -131,7 +140,6 @@ async function cargarTienda(silencioso = false) {
         }
     } catch (e) {
         console.error("Error de sincronización silenciosa:", e);
-        // Si hay error de red, no hacemos nada. El cliente ya está viendo la versión del caché.
     }
 }
 
@@ -140,7 +148,7 @@ async function cargarTienda(silencioso = false) {
  */
 window.switchStoreTab = function(tabId) {
     currentStoreTab = tabId;
-    renderizarTiendaPremium(lastProductos, false); // Re-renderiza con la nueva pestaña activa
+    renderizarTiendaPremium(lastProductos, false);
 }
 
 /**
@@ -150,7 +158,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
     const container = document.getElementById('shop-container');
     if(!container) return;
     
-    // En lugar de borrar todo de golpe, creamos un contenedor temporal
     const tempContainer = document.createElement('div');
     tempContainer.style.display = 'contents';
 
@@ -159,7 +166,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
         return;
     }
 
-    // 🔥 FILTRO MAESTRO: Si la categoría está oculta, la eliminamos para que el cliente no la vea
     let productosValidos = productosDB.filter(p => {
         const isOculto = p.oculto && (p.oculto.toString().trim().toLowerCase() === 'si' || p.oculto.toString().trim().toLowerCase() === 'sí');
         return !isOculto;
@@ -170,10 +176,8 @@ function renderizarTiendaPremium(productosDB, isCache) {
         return;
     }
 
-    // Guardamos los productos válidos para poder cambiar de pestaña sin recargar
     lastProductos = productosValidos;
 
-    // --- A. RENDERIZAR BOTONES DE PESTAÑAS ---
     const tabContainer = document.createElement('div');
     tabContainer.className = 'store-tabs-container';
     tabContainer.innerHTML = `
@@ -182,7 +186,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
     `;
     tempContainer.appendChild(tabContainer);
 
-    // --- B. SEPARAR EN CATEGORÍAS (Cuentas completas vs Pantallas) ---
     const cuentasCompletas = [];
     const cuentasPantallas = [];
 
@@ -195,7 +198,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
         }
     });
 
-    // Función auxiliar para ordenar los arrays: Agotados al final, luego Favoritos, luego Alfabético
     const ordenarGrupo = (grupo) => {
         return grupo.sort((a, b) => {
             const stockA = Number(a.stock) || 0;
@@ -206,15 +208,12 @@ function renderizarTiendaPremium(productosDB, isCache) {
             const minB = Number(b.minimo_compra) || 0;
             const isAgotadoB = stockB <= 0 || (minB > stockB) ? 1 : 0;
 
-            // 1. Agotados al final
             if (isAgotadoA !== isAgotadoB) return isAgotadoA - isAgotadoB;
 
-            // 2. Favoritos primero
             const aFav = (a.favorito && (a.favorito.toString().trim().toLowerCase() === 'si' || a.favorito.toString().trim().toUpperCase() === 'X')) ? 1 : 0;
             const bFav = (b.favorito && (b.favorito.toString().trim().toLowerCase() === 'si' || b.favorito.toString().trim().toUpperCase() === 'X')) ? 1 : 0;
             if (aFav !== bFav) return bFav - aFav;
 
-            // 3. Alfabético
             return a.nombre.localeCompare(b.nombre);
         });
     };
@@ -222,10 +221,7 @@ function renderizarTiendaPremium(productosDB, isCache) {
     ordenarGrupo(cuentasCompletas);
     ordenarGrupo(cuentasPantallas);
 
-    // --- C. RENDERIZAR GRUPO ACTIVO ---
     const renderGrupo = (grupo, titulo) => {
-        
-        // Creamos el contenedor de la grilla (grid) para alinear las tarjetas
         const gridContainer = document.createElement('div');
         gridContainer.className = 'store-grid-container';
 
@@ -237,49 +233,41 @@ function renderizarTiendaPremium(productosDB, isCache) {
 
         const usuarioLogueado = localStorage.getItem('dw_user');
 
-        // Tarjetas del grupo
         grupo.forEach((p, index) => {
-            // 🔥 INYECTAMOS EL THUMBNAIL ULTRARRÁPIDO
             let img = p.img ? convertirAThumbnail(p.img) : ''; 
 
             const stockActual = Number(p.stock) || 0;
             let precioActual = Number(p.precio) || 0;
             const precioAnterior = Number(p.precioAnt) || 0;
-            const safeName = p.nombre.replace(/'/g, "\\'");
-            // 🔥 EL FIX: Convertimos saltos de línea (\n) a etiquetas HTML (<br>) para que no rompan el botón
-            const safeDesc = (p.descripcion || 'Sin descripción adicional.')
-                .replace(/'/g, "\\'")
-                .replace(/"/g, '&quot;')
-                .replace(/\r?\n/g, '<br>');
+            
+            // XSS MITIGATION: Utilizamos escapeHTML antes de inyectar variables de texto en el HTML
+            const safeName = escapeHTML(p.nombre).replace(/'/g, "\\'");
+            const safeDesc = escapeHTML(p.descripcion || 'Sin descripción adicional.').replace(/\r?\n/g, '<br>').replace(/'/g, "\\'");
     
             let tienePrecioEspecial = false;
 
-            // --- LÓGICA DE PRECIO PREFERENTE OCULTO (LEYENDO FORMATO Usuario:Precio) ---
             if (p.precios_especiales && usuarioLogueado) {
                 const reglasPrecios = p.precios_especiales.split(',');
                 for (let regla of reglasPrecios) {
                     const partes = regla.split(':');
                     if (partes.length === 2 && partes[0].trim() === usuarioLogueado) {
-                        precioActual = Number(partes[1].trim()); // Aplica el precio exacto
+                        precioActual = Number(partes[1].trim()); 
                         tienePrecioEspecial = true;
                         break; 
                     }
                 }
             }
 
-            // --- LÓGICA DE FLUCTUACIÓN DE PRECIOS ---
             let bajoDePrecio = false;
             let subioDePrecio = false;
             let mostrarPrecioViejo = false;
 
-            // Si tiene un precio especial, NO calculamos subidas ni bajadas para que no sospeche
             if (!tienePrecioEspecial) {
                 bajoDePrecio = precioAnterior > precioActual;
                 subioDePrecio = precioAnterior > 0 && precioAnterior < precioActual;
                 mostrarPrecioViejo = precioAnterior > 0 && precioAnterior !== precioActual;
             }
 
-            // --- LÓGICA DE LÍMITES DE COMPRA ---
             let minCompra = Number(p.minimo_compra) || 0;
             let maxCompra = Number(p.maximo_compra) || 0;
             
@@ -297,7 +285,7 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 limitesTexto = `<div style="font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: center; margin-top: 5px;">${txtMin}${sep}${txtMax}</div>`;
             }
             
-            const inputId = `qty-card-${titulo.replace(/\s/g, '')}-${p.nombre.replace(/\s/g, '')}-${index}`;
+            const inputId = `qty-card-${titulo.replace(/\s/g, '')}-${safeName.replace(/\s/g, '')}-${index}`;
 
             if (isCache) {
                 actionHtml = `<button class="btn-buy" style="opacity:0.5; cursor:wait; width: 100% !important; background: var(--accent) !important; color: #fff !important; border: none !important;" disabled>SINCRONIZANDO...</button>`;
@@ -319,7 +307,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 `;
             }
 
-            // --- CONSTRUCCIÓN DE BADGES VISUALES ---
             let badgesHTML = '';
             
             const esFav = p.favorito && (p.favorito.toString().trim().toLowerCase() === 'si' || p.favorito.toString().trim().toUpperCase() === 'X');
@@ -327,7 +314,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 badgesHTML += `<span class="offer-badge" style="background: rgba(234, 179, 8, 0.2); color: #ca8a04; border: 1px solid rgba(234, 179, 8, 0.4); font-weight:bold; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">⭐ DESTACADO</span>`;
             }
             
-            // 🔥 BADGE DE CUENTA COMPLETA 🔥
             const esCuentaCompleta = p.cuenta_completa && (p.cuenta_completa.toString().trim().toLowerCase() === 'si' || p.cuenta_completa.toString().trim().toLowerCase() === 'sí');
             if (esCuentaCompleta) {
                 badgesHTML += `<span class="offer-badge" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); font-weight:bold; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;"><i class="material-icons-round" style="font-size: 0.8rem; vertical-align: middle;">tv</i> COMPLETA</span>`;
@@ -344,11 +330,11 @@ function renderizarTiendaPremium(productosDB, isCache) {
             
             card.innerHTML = `
                 <div class="card-img-container">
-                    <img src="${img}" class="card-img" alt="${p.nombre}" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Sin+Imagen';">
+                    <img src="${img}" class="card-img" alt="${escapeHTML(p.nombre)}" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Sin+Imagen';">
                     ${isSoldOut ? '<div class="sold-out-badge" style="background: rgba(239, 68, 68, 0.9); color: #fff; font-weight:bold;">AGOTADO</div>' : ''}
                 </div>
                 <div class="card-body">
-                    <div class="card-title" style="color: var(--text-main) !important; font-weight: 900 !important; font-size: 1.1rem; margin-bottom: 5px; text-align: center; text-transform: uppercase;">${p.nombre}</div>
+                    <div class="card-title" style="color: var(--text-main) !important; font-weight: 900 !important; font-size: 1.1rem; margin-bottom: 5px; text-align: center; text-transform: uppercase;">${escapeHTML(p.nombre)}</div>
                     
                     <div style="margin-bottom: 10px; display: flex; flex-wrap: wrap; justify-content: center; gap: 5px;">${badgesHTML}</div>
                     
@@ -376,14 +362,12 @@ function renderizarTiendaPremium(productosDB, isCache) {
         tempContainer.appendChild(gridContainer);
     };
 
-    // Solo renderizamos la pestaña que el usuario haya seleccionado
     if (currentStoreTab === 'completas') {
         renderGrupo(cuentasCompletas, "Cuentas Completas");
     } else {
         renderGrupo(cuentasPantallas, "Cuentas por Pantallas");
     }
 
-    // Reemplazamos el contenido de una sola vez para evitar parpadeos
     container.innerHTML = tempContainer.innerHTML;
 }
 
@@ -459,10 +443,8 @@ window.addToCartFromCard = function(nombre, precio, img, stockReal, inputId, min
     const input = document.getElementById(inputId);
     const cantidadSeleccionada = input ? (parseInt(input.value) || 1) : 1;
     
-    // Llamamos a la lógica original enviando la cantidad exacta escrita
     addToCart(nombre, precio, img, stockReal, cantidadSeleccionada, minCompra, maxCompra);
     
-    // Reiniciamos el input visual al valor mínimo requerido
     if (input) input.value = minCompra > 0 ? minCompra : 1; 
 }
 
@@ -539,6 +521,7 @@ window.setQty = function(index, inputObj) {
     if (typeof updateCartUI === 'function') updateCartUI();
 }
 
+// MEJORA 3 Y 2 APLICADA: Optimización de DOM en bucle y mitigación de XSS en renderizado
 window.updateCartUI = function() {
     const list = document.getElementById('cart-items-list');
     const badge = document.getElementById('cart-count');
@@ -546,22 +529,21 @@ window.updateCartUI = function() {
     
     if(!list || !badge || !totalDisplay) return;
 
-    list.innerHTML = "";
     let total = 0;
     let count = 0;
 
-    if(cart.length === 0) {
+    if (cart.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px; font-weight:bold;">Carrito vacío</div>';
     } else {
-        cart.forEach((item, index) => {
+        const htmlString = cart.map((item, index) => {
             total += item.precio * item.cantidad;
             count += item.cantidad;
             
-            list.innerHTML += `
+            return `
                 <div class="cart-item-row-premium" style="display: flex !important; align-items: center !important; gap: 15px !important; padding: 15px 0 !important; border-bottom: 1px solid var(--border-color) !important;">
                     <img src="${item.img}" class="cart-item-img" style="width: 60px !important; height: 60px !important; object-fit: cover !important; border-radius: 4px !important; border: 1px solid var(--border-color) !important;">
                     <div class="cart-item-info" style="flex-grow: 1 !important;">
-                        <h4 class="cart-item-title" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; margin-bottom: 5px !important;">${item.nombre}</h4>
+                        <h4 class="cart-item-title" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; margin-bottom: 5px !important;">${escapeHTML(item.nombre)}</h4>
                         <div class="cart-item-price" style="color: var(--accent) !important; font-weight: 700 !important; font-size: 0.85rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio)}</div>
                         
                         <div class="qty-selector" style="display: flex !important; align-items: center !important; justify-content: space-between !important; margin-top: 8px !important; background: var(--bg-dark) !important; border-radius: 4px !important; border: 1px solid var(--border-color) !important; overflow: hidden !important; width: 90px !important;">
@@ -575,7 +557,9 @@ window.updateCartUI = function() {
                     </button>
                 </div>
             `;
-        });
+        }).join('');
+
+        list.innerHTML = htmlString;
     }
 
     badge.innerText = count;
@@ -597,12 +581,11 @@ window.toggleCart = function() {
 /**
  * 4. PROCESO DE COMPRA Y CHECKOUT PREMIUM
  */
+// MEJORA 3 Y 2 APLICADA: Optimización de DOM en Checkout
 window.goToCheckout = function() {
     if(cart.length === 0) return;
     
-    let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
-    const summaryList = document.getElementById('checkout-summary-list');
-    summaryList.innerHTML = "";
+    let total = 0;
     
     // Última validación
     for(let item of cart) {
@@ -612,18 +595,22 @@ window.goToCheckout = function() {
         }
     }
     
-    cart.forEach(item => {
-        summaryList.innerHTML += `
+    const summaryList = document.getElementById('checkout-summary-list');
+    
+    const htmlSummary = cart.map((item) => {
+        total += (item.precio * item.cantidad);
+        return `
             <div class="checkout-item-premium" style="display: flex !important; justify-content: space-between !important; align-items: center !important; background: var(--bg-card) !important; padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 6px !important; border-left: 3px solid var(--accent) !important; border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important; border-right: 1px solid var(--border-color) !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
                 <div>
-                    <div class="checkout-item-name" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; text-transform: uppercase !important;">${item.nombre}</div>
+                    <div class="checkout-item-name" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; text-transform: uppercase !important;">${escapeHTML(item.nombre)}</div>
                     <div class="checkout-item-qty" style="color: var(--text-gray) !important; font-size: 0.7rem !important; font-weight: 600;">Unidades: ${item.cantidad}</div>
                 </div>
                 <div class="checkout-item-price" style="color: var(--success) !important; font-weight: 900 !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
             </div>
         `;
-    });
+    }).join('');
 
+    summaryList.innerHTML = htmlSummary;
     document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
     
     toggleCart(); 
@@ -649,7 +636,6 @@ function generarOrderId() {
 }
 
 window.finalizePurchase = async function() {
-    // Evitamos doble clic accidental
     const payBtn = document.querySelector('.btn-final-pay');
     if (payBtn) payBtn.disabled = true;
 
@@ -667,7 +653,6 @@ window.finalizePurchase = async function() {
     const t = localStorage.getItem('dw_token');
     const orderId = generarOrderId();
     
-    // 🔥 PANTALLA DE CARGA PREMIUM DURANTE EL CHECKOUT (Bloqueada para no cerrar con clic afuera)
     const isDark = document.body.classList.contains('dark-mode');
     Swal.fire({ 
         title: '<span style="color:var(--text-main); font-family:\'Righteous\', cursive; letter-spacing:1px;">PROCESANDO PEDIDO</span>', 
@@ -689,7 +674,7 @@ window.finalizePurchase = async function() {
             Swal.update({
                 html: `
                     <div style="margin-top: 10px; color: var(--text-gray); font-weight: 500;">
-                        Activando: <b style="color:var(--accent);">${item.nombre}</b><br>
+                        Activando: <b style="color:var(--accent);">${escapeHTML(item.nombre)}</b><br>
                         (Unidad ${i + 1} de ${item.cantidad})
                     </div>
                     <div class="spinner" style="margin: 25px auto;"></div>
@@ -697,13 +682,14 @@ window.finalizePurchase = async function() {
             });
 
             try {
+                // MEJORA 1 APLICADA: No enviamos precio_pagado, solo la cantidad 1
                 const res = await apiCall({ 
                     accion: 'comprar', 
                     usuario: u, 
                     token: t, 
                     producto: item.nombre,
-                    order_id: orderId,
-                    precio_pagado: item.precio
+                    cantidad: 1, 
+                    order_id: orderId
                 });
                 
                 if(res.success) { 
@@ -711,7 +697,6 @@ window.finalizePurchase = async function() {
                     userBalance = res.nuevoSaldo; 
                     localStorage.setItem('dw_saldo', userBalance);
 
-                    // 🔥 WEBHOOK SILENCIOSO A GOOGLE SHEETS USANDO LA VARIABLE GLOBAL GS_CODIGO
                     try {
                         let diasExtraidos = 30;
                         const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
@@ -724,16 +709,22 @@ window.finalizePurchase = async function() {
                         const params = new URLSearchParams();
                         params.append('accion', 'nueva_compra');
                         params.append('cuenta', res.datos.cuenta);
-                        params.append('fecha', new Date().toISOString().replace('T', ' ').substring(0, 10));
+                        
+                        const hoyLoc = new Date();
+                        const fechaLocalFix = hoyLoc.getFullYear() + '-' + String(hoyLoc.getMonth() + 1).padStart(2, '0') + '-' + String(hoyLoc.getDate()).padStart(2, '0');
+                        params.append('fecha', fechaLocalFix);
+                        
                         params.append('dias', diasExtraidos);
                         params.append('servicio', item.nombre);
 
-                        await fetch(GS_CODIGO, {
-                            method: 'POST',
-                            mode: 'no-cors', 
-                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                            body: params
-                        });
+                        if (typeof GS_CODIGO !== 'undefined') {
+                            await fetch(GS_CODIGO, {
+                                method: 'POST',
+                                mode: 'no-cors', 
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: params
+                            });
+                        }
                     } catch(e) { console.error("Error Webhook:", e); }
                     
                 } else { 
@@ -751,21 +742,16 @@ window.finalizePurchase = async function() {
         cart = []; 
         updateCartUI();
         
-        // 🔥 FIX: Actualiza la tienda EN SEGUNDO PLANO (Silenciosamente) para que no parpadee a negro
         localStorage.removeItem(STORE_CACHE_KEY);
         await cargarTienda(true); 
         
-        // Cierra el Swal original manualmente
         Swal.close();
 
-        // 🔥 Y ahora, pasamos directo a abrir la factura
         if (errores.length > 0) {
-            // Notificamos si hubo parciales
             Toast.fire({ icon: 'warning', title: `Se activaron ${exitos}. Fallaron ${errores.length}` });
             if (payBtn) payBtn.disabled = false;
             if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
         } else {
-            // Notificamos éxito y abrimos factura de una vez
             Toast.fire({ icon: 'success', title: '¡Compra exitosa!' });
             if (payBtn) payBtn.disabled = false;
             if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
@@ -785,88 +771,3 @@ window.finalizePurchase = async function() {
         });
     }
 }
-
-// INYECCIÓN DE ESTILOS ADICIONALES PARA LA TIENDA
-const tiendaStyles = `
-    /* PESTAÑAS DE NAVEGACIÓN */
-    .store-tabs-container { grid-column: 1 / -1; display: flex; justify-content: center; gap: 15px; margin: 10px 0 25px 0; }
-    .store-tab { background: var(--bg-card); color: var(--text-gray); border: 1px solid var(--border-color); padding: 12px 25px; border-radius: 30px; font-size: 0.9rem; font-weight: 800; cursor: pointer; transition: all 0.3s ease; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px; box-shadow: var(--shadow-sm); }
-    .store-tab:hover { border-color: var(--accent); color: var(--text-main); }
-    .store-tab.active { background: var(--accent-gradient, var(--accent)); color: #fff; border-color: transparent; box-shadow: 0 4px 15px var(--accent-glow); transform: scale(1.05); }
-
-    /* LAYOUT DE GRILLA PARA LAS TARJETAS */
-    .store-grid-container {
-        grid-column: 1 / -1;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 20px;
-        width: 100%;
-    }
-
-    /* TARJETAS PREMIUM */
-    .product-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-sm); transition: transform 0.3s ease, box-shadow 0.3s ease; }
-    /* TARJETAS */
-    .product-card { height: auto; min-height: 480px; display: flex; flex-direction: column; overflow: hidden; }
-    
-    /* 🔥 LA LÓGICA DE LA IMAGEN ARREGLADA (COVER PREMIUM) 🔥 */
-    .card-img-container { 
-        height: 200px; 
-        width: 100%; 
-        position: relative; 
-        background: #111; 
-        overflow: hidden; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
-        border-bottom: none; 
-    }
-    
-    .card-img { 
-        width: 100%; 
-        height: 100%; 
-        object-fit: cover; 
-        padding: 0; 
-        box-sizing: border-box; 
-        transition: transform 0.5s; 
-    }
-    .product-card:hover .card-img { transform: scale(1.05); }
-    
-    .card-body { flex-grow: 1; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
-    .price-old-container { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: -5px; }
-    .price-old { text-decoration: line-through; color: var(--text-muted); font-size: 0.8rem; }
-    .sold-out-badge { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-15deg); background: rgba(239, 68, 68, 0.95); color: white; padding: 8px 15px; font-weight: 900; border: 2px solid white; z-index: 10; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); border-radius: 8px; letter-spacing: 1px; }
-    .product-card.sold-out { filter: grayscale(0.8); opacity: 0.8; }
-    .btn-buy.disabled { border-color: var(--border-color); color: var(--text-muted); background: var(--bg-dark); cursor: not-allowed; box-shadow: none; }
-
-    /* FIX INPUTS NÚMERICOS */
-    input[type=number]::-webkit-inner-spin-button, 
-    input[type=number]::-webkit-outer-spin-button { 
-        -webkit-appearance: none; 
-        margin: 0; 
-    }
-    input[type=number] {
-        -moz-appearance: textfield;
-    }
-
-    .swal-high-priority { z-index: 99999 !important; }
-    .swal2-container { z-index: 1000000 !important; }
-    .swal-top-layer { z-index: 1000000 !important; }
-    
-    @media (max-width: 768px) {
-        .floating-cart-btn {
-            bottom: 20px;
-            right: 20px;
-            width: 55px;
-            height: 55px;
-        }
-        .store-tabs-container { flex-direction: column; align-items: center; gap: 10px; }
-        .store-tab { width: 90%; justify-content: center; }
-        .store-grid-container { grid-template-columns: 1fr; }
-    }
-    .floating-cart-btn.hidden { display: none !important; }
-    .cart-drawer:not(.open) { right: -150% !important; display: none !important; }
-`;
-
-const styleSheetTienda = document.createElement("style");
-styleSheetTienda.innerText = tiendaStyles;
-document.head.appendChild(styleSheetTienda);
