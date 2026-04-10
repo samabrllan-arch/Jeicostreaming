@@ -3,6 +3,16 @@
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
     {
+        version: "V.1.7.0",
+        fecha: "10/04/2026",
+        tipo: "Velocidad y Seguridad",
+        cambios: [
+            "¡Búsquedas relámpago en Códigos! El buscador de correos ahora escanea múltiples redes al mismo tiempo, entregándote tu código de acceso en tiempo récord.",
+            "Bandeja de entrada blindada: Reforzamos la seguridad del sistema al visualizar los correos originales de las plataformas, protegiendo tu dispositivo y tu cuenta en todo momento.",
+            "Sincronización horaria perfecta: Corregimos un detalle visual donde las compras y recargas hechas en la noche aparecían con la fecha del día siguiente. ¡Ahora todo cuadra exacto!"
+        ]
+    },
+    {
         version: "V.1.6.0",
         fecha: "05/04/2026",
         tipo: "Motor Mejorado",
