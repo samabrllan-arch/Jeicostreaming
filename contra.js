@@ -1,11 +1,26 @@
+/* =================================================================================
+   ARCHIVO: recuperacion_clave.js (LADO CLIENTE)
+   Lógica: Flujo seguro de restablecimiento de contraseñas.
+================================================================================= */
+
+// Variables globales mantenidas a petición (Mejora 4 Omitida)
 let dw_usuarioRecuperacion = "";
-let dw_correoRecuperacion = "";
-let dw_telRecuperacion = "";
+let dw_tokenRecuperacion = ""; // 🔥 MEJORA 1: Usamos Token en lugar de correo/teléfono en texto plano
 
 /**
  * 1. CAMBIO DE VISTA: SOLICITUD DE DATOS
  */
 window.mostrarRecuperacionPaso1 = function() {
+    // Limpiamos memoria por seguridad si se abre y cierra la modal
+    dw_usuarioRecuperacion = "";
+    dw_tokenRecuperacion = "";
+    const inputCorreo = document.getElementById('rec-correo');
+    const inputTel = document.getElementById('rec-tel');
+    const inputClave = document.getElementById('rec-nueva-clave');
+    if(inputCorreo) inputCorreo.value = "";
+    if(inputTel) inputTel.value = "";
+    if(inputClave) inputClave.value = "";
+
     const mainBox = document.getElementById('login-box-main');
     const step1 = document.getElementById('recover-step-1');
     
@@ -26,6 +41,16 @@ window.mostrarRecuperacionPaso1 = function() {
  * 2. REGRESO AL ACCESO PRINCIPAL
  */
 window.volverLogin = function() {
+    // Limpiamos memoria por seguridad al cancelar
+    dw_usuarioRecuperacion = "";
+    dw_tokenRecuperacion = "";
+    const inputCorreo = document.getElementById('rec-correo');
+    const inputTel = document.getElementById('rec-tel');
+    const inputClave = document.getElementById('rec-nueva-clave');
+    if(inputCorreo) inputCorreo.value = "";
+    if(inputTel) inputTel.value = "";
+    if(inputClave) inputClave.value = "";
+
     document.getElementById('recover-step-1')?.classList.add('hidden');
     document.getElementById('recover-step-2')?.classList.add('hidden');
     
@@ -39,7 +64,7 @@ window.volverLogin = function() {
 /**
  * 3. PASO 1: VALIDACIÓN DE IDENTIDAD (CORREO + TELÉFONO)
  */
-async function enviarSolicitudRecuperacion(e) {
+window.enviarSolicitudRecuperacion = async function(e) {
     if (e) e.preventDefault();
 
     const btn = document.getElementById('btn-recover-1');
@@ -49,11 +74,11 @@ async function enviarSolicitudRecuperacion(e) {
         if (window.verificarBloqueoBoton(btn, 'dw_rec1_cooldown', 'COMPROBAR IDENTIDAD')) return;
     }
 
-    dw_correoRecuperacion = document.getElementById('rec-correo').value.trim();
-    dw_telRecuperacion = document.getElementById('rec-tel').value.trim();
+    const correoIn = document.getElementById('rec-correo').value.trim();
+    const telIn = document.getElementById('rec-tel').value.trim();
 
     // Validación básica de formato
-    if (!dw_correoRecuperacion.includes('@') || dw_telRecuperacion.length < 7) {
+    if (!correoIn.includes('@') || telIn.length < 7) {
         return Swal.fire({ 
             icon: 'warning', 
             title: 'Formato Inválido', 
@@ -71,13 +96,16 @@ async function enviarSolicitudRecuperacion(e) {
     try {
         const res = await apiCall({ 
             accion: 'validarDatosRecuperacion', 
-            correo: dw_correoRecuperacion, 
-            telefono: dw_telRecuperacion 
+            correo: correoIn, 
+            telefono: telIn 
         });
 
         if (res.success) {
             localStorage.removeItem('dw_rec1_cooldown'); // Limpiar castigo al tener éxito
+            
+            // 🔥 MEJORA 1: Guardar Usuario y Token temporal (El backend devuelve token_recuperacion)
             dw_usuarioRecuperacion = res.usuario; 
+            dw_tokenRecuperacion = res.token_recuperacion || "token_fallback"; 
             
             document.getElementById('recover-step-1').classList.add('hidden');
             const step2 = document.getElementById('recover-step-2');
@@ -104,7 +132,7 @@ async function enviarSolicitudRecuperacion(e) {
             btn.innerHTML = "COMPROBAR IDENTIDAD";
             btn.disabled = false;
         } else {
-            // 🔥 CASTIGO: Bloqueo de 30 segundos
+            // CASTIGO: Bloqueo de 30 segundos
             if (typeof window.iniciarBloqueoBoton === 'function') {
                 window.iniciarBloqueoBoton(btn, 'dw_rec1_cooldown', 'COMPROBAR IDENTIDAD', 30);
             }
@@ -133,12 +161,12 @@ async function enviarSolicitudRecuperacion(e) {
             customClass: { popup: 'premium-modal-radius' }
         });
     }
-}
+};
 
 /**
  * 4. PASO 2: ACTUALIZACIÓN DEFINITIVA DE CLAVE
  */
-async function procesarNuevaClave(e) {
+window.procesarNuevaClave = async function(e) {
     if (e) e.preventDefault(); 
     const btn = document.getElementById('btn-recover-2');
 
@@ -149,11 +177,12 @@ async function procesarNuevaClave(e) {
 
     const nuevaClave = document.getElementById('rec-nueva-clave').value.trim();
 
-    if (nuevaClave.length < 4) {
+    // 🔥 MEJORA 2: Aumentar longitud mínima de contraseña a 8 caracteres
+    if (nuevaClave.length < 8) {
         return Swal.fire({ 
             icon: 'warning', 
             title: 'Clave Vulnerable', 
-            text: 'Por seguridad, ingresa una clave de al menos 4 caracteres.', 
+            text: 'Por seguridad, ingresa una contraseña de al menos 8 caracteres.', 
             background: document.body.classList.contains('dark-mode') ? 'var(--bg-card)' : '#ffffff',
             color: 'var(--text-main)',
             confirmButtonColor: 'var(--accent-text)',
@@ -165,11 +194,11 @@ async function procesarNuevaClave(e) {
     btn.disabled = true;
 
     try {
+        // 🔥 MEJORA 1: Enviar Token en lugar de datos sensibles
         const res = await apiCall({ 
             accion: 'cambiarClaveOlvidada', 
             usuario: dw_usuarioRecuperacion, 
-            correo: dw_correoRecuperacion,
-            telefono: dw_telRecuperacion,
+            token_recuperacion: dw_tokenRecuperacion, // Enviamos el Token
             nuevaClave: nuevaClave 
         });
 
@@ -185,17 +214,12 @@ async function procesarNuevaClave(e) {
                 confirmButtonColor: 'var(--accent-text)',
                 customClass: { popup: 'premium-modal-radius' }
             }).then(() => {
-                // Limpieza de campos y reinicio
-                document.getElementById('rec-correo').value = "";
-                document.getElementById('rec-tel').value = "";
-                document.getElementById('rec-nueva-clave').value = "";
-                dw_usuarioRecuperacion = "";
+                volverLogin(); // Limpia campos y regresa
                 btn.innerHTML = "ACTUALIZAR CONTRASEÑA";
                 btn.disabled = false;
-                volverLogin();
             });
         } else {
-            // 🔥 CASTIGO: Bloqueo de 30 segundos
+            // CASTIGO: Bloqueo de 30 segundos
             if (typeof window.iniciarBloqueoBoton === 'function') {
                 window.iniciarBloqueoBoton(btn, 'dw_rec2_cooldown', 'ACTUALIZAR CONTRASEÑA', 30);
             }
@@ -223,147 +247,6 @@ async function procesarNuevaClave(e) {
             customClass: { popup: 'premium-modal-radius' }
         });
     }
-}
+};
 
-/**
- * ===============================================================
- * ESTILOS CSS PREMIUM PARA RECUPERACIÓN (NEÓN & MODERN UI)
- * ===============================================================
- */
-const contraStyles = `
-    /* Forzar ocultamiento absoluto para las transiciones */
-    #recover-step-1.hidden, #recover-step-2.hidden {
-        display: none !important;
-    }
-
-    /* Rediseño de los Inputs de Recuperación */
-    #recover-step-1 .input-field, 
-    #recover-step-2 .input-field {
-        width: 100% !important;
-        box-sizing: border-box !important;
-        background: rgba(0, 0, 0, 0.03) !important;
-        border: 2px solid var(--border-color) !important;
-        color: var(--text-main) !important;
-        padding: 16px 20px !important;
-        border-radius: 14px !important;
-        font-size: 0.95rem !important;
-        font-weight: 600 !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        outline: none !important;
-        margin-bottom: 15px !important;
-        text-align: center !important;
-        letter-spacing: 1px !important;
-    }
-    
-    body.dark-mode #recover-step-1 .input-field, 
-    body.dark-mode #recover-step-2 .input-field {
-        background: rgba(0, 0, 0, 0.3) !important;
-    }
-
-    #recover-step-1 .input-field:focus, 
-    #recover-step-2 .input-field:focus {
-        border-color: var(--accent-text) !important;
-        box-shadow: 0 0 20px var(--accent-glow) !important;
-        transform: translateY(-2px) !important;
-        background: var(--bg-card) !important;
-    }
-    
-    #recover-step-1 .input-field::placeholder,
-    #recover-step-2 .input-field::placeholder {
-        color: var(--text-gray) !important;
-        font-weight: 400 !important;
-    }
-
-    /* Estilo Premium de los Botones Principales */
-    #btn-recover-1, #btn-recover-2 {
-        background: var(--accent-gradient) !important;
-        color: #ffffff !important;
-        border: none !important;
-        padding: 18px !important;
-        border-radius: 14px !important;
-        font-weight: 800 !important;
-        font-size: 0.95rem !important;
-        letter-spacing: 2px !important;
-        text-transform: uppercase !important;
-        width: 100% !important;
-        cursor: pointer !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 8px 20px var(--accent-glow) !important;
-        margin-top: 10px !important;
-    }
-
-    #btn-recover-1:hover:not(:disabled), 
-    #btn-recover-2:hover:not(:disabled) {
-        transform: translateY(-3px) scale(1.02) !important;
-        box-shadow: 0 12px 25px var(--accent-glow) !important;
-        filter: brightness(1.1) !important;
-    }
-    
-    #btn-recover-1:active:not(:disabled), 
-    #btn-recover-2:active:not(:disabled) {
-        transform: translateY(1px) scale(0.98) !important;
-    }
-
-    /* Botón Moderno de "Volver al Inicio" */
-    .back-container {
-        display: flex !important;
-        flex-direction: row !important;
-        align-items: center !important;
-        justify-content: center !important;
-        gap: 10px !important;
-        width: 100% !important;
-        margin: 20px auto 0 auto !important;
-        padding: 15px !important;
-        color: var(--text-gray) !important;
-        background: var(--bg-dark) !important;
-        border: 1px solid var(--border-color) !important;
-        font-size: 0.85rem !important;
-        font-weight: 800 !important;
-        letter-spacing: 1px !important;
-        cursor: pointer !important;
-        border-radius: 14px !important;
-        transition: all 0.3s ease !important;
-        text-transform: uppercase !important;
-        box-sizing: border-box !important;
-    }
-    
-    .back-container:hover {
-        color: var(--text-white) !important;
-        border-color: var(--accent-text) !important;
-        box-shadow: 0 5px 15px var(--accent-glow) !important;
-        transform: translateY(-2px) !important;
-    }
-
-    /* EL BLINDAJE: Esto evita que el icono se rompa y se vuelva texto */
-    .back-container .material-icons-round {
-        font-family: 'Material Icons Round', sans-serif !important;
-        font-size: 1.4rem !important;
-        text-transform: none !important;
-        font-style: normal !important;
-        font-weight: normal !important;
-        letter-spacing: normal !important;
-        transition: transform 0.3s ease, color 0.3s ease !important;
-    }
-
-    .back-container:hover .material-icons-round {
-        transform: translateX(-5px) !important;
-        color: var(--accent-text) !important;
-    }
-
-    /* Animación fluida al cambiar de vista */
-    @keyframes fadeInScale {
-        0% { opacity: 0; transform: scale(0.95) translateY(10px); }
-        100% { opacity: 1; transform: scale(1) translateY(0); }
-    }
-    
-    .fa-spin { animation: spin 1s infinite linear; }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-`;
-
-const styleSheetContra = document.createElement("style");
-styleSheetContra.innerText = contraStyles;
-document.head.appendChild(styleSheetContra);
+// MEJORA 3 APLICADA: EL CSS FUE EXTRAÍDO PARA NO CARGAR LA LÓGICA JAVASCRIPT
