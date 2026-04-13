@@ -230,6 +230,7 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
         await fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ usuario: user, monto: monto, bono: bonoCalculado, email_usuario: email, hora_pago: horaPago, fecha_pago: fechaPago, nombre: nombreTitular }) });
 
         let recargaExitosa = false;
+        let saldoActualizado = 0; // Variable para guardar el saldo seguro que responda Google
         
         // 2. Bucle de escaneo IA
         for (let i = 1; i <= 2; i++) {
@@ -241,74 +242,59 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
             
             if (data.estado === 'APROBADO') { 
                 recargaExitosa = true; 
+                saldoActualizado = data.nuevo_saldo; // Tomamos el saldo que el PHP le dio al GS
                 break; 
+            } else if (data.estado === 'ERROR_DB') {
+                // Falla de comunicación entre Google y tu Base de datos
+                Swal.fire({ title: 'Error de Servidor', text: 'Se validó el pago pero hubo un error guardándolo: ' + data.msg, icon: 'error', background: 'var(--bg-card)', color: 'var(--text-white)', customClass: { popup: 'banco-swal-popup' } });
+                return;
             }
             
-            // MEJORA 2 APLICADA: Solo esperamos los 10s si habrá un siguiente intento.
-            // Si i == 2 (último intento) y falló, no esperamos más, terminamos de inmediato.
             if (i < 2) {
                 await new Promise(r => setTimeout(r, 10000));
             }
         }
 
         if (recargaExitosa) {
-            // 🔥 AVISAR AL PHP Y ACTUALIZAR SALDO DINÁMICAMENTE 🔥
+            // 🔥 ACTUALIZAR INTERFAZ DIRECTAMENTE (EL PHP YA FUE AVISADO POR GOOGLE) 🔥
             const statusText = document.getElementById('ia-status');
-            if(statusText) statusText.innerText = `> ¡PAGO ENCONTRADO! ACREDITANDO SALDO...`;
+            if(statusText) statusText.innerText = `> ¡PAGO ENCONTRADO! ACTUALIZANDO INTERFAZ...`;
             
-            const totalRecarga = monto + bonoCalculado;
-            const orderId = "REC-" + Math.random().toString(36).substring(2, 8).toUpperCase();
-
-            const respDb = await fetch(API_CLIENTE_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    accion: 'procesarRecargaAutomatica',
-                    usuario: user,
-                    token: token,
-                    monto: totalRecarga,
-                    order_id: orderId,
-                    metodo: 'Bancolombia'
-                })
-            });
-
-            const finalData = await respDb.json();
+            const nuevoSaldoFormat = new Intl.NumberFormat('es-CO').format(saldoActualizado);
             
-            if (finalData.success) {
-                const nuevoSaldoFormat = new Intl.NumberFormat('es-CO').format(finalData.nuevo_saldo);
-                
-                localStorage.setItem('dw_saldo', finalData.nuevo_saldo);
-                if (typeof window.sincronizarSaldo === 'function') {
-                    window.sincronizarSaldo(); 
-                } else if (typeof window.updateBalanceUI === 'function') {
-                    if (typeof userBalance !== 'undefined') userBalance = finalData.nuevo_saldo;
-                    window.updateBalanceUI();
-                }
+            localStorage.setItem('dw_saldo', saldoActualizado);
+            if (typeof window.sincronizarSaldo === 'function') {
+                window.sincronizarSaldo(); 
+            } else if (typeof window.updateBalanceUI === 'function') {
+                if (typeof userBalance !== 'undefined') userBalance = saldoActualizado;
+                window.updateBalanceUI();
+            }
 
-                Swal.fire({
-                    html: `
-                        <div class="banco-success-container" style="text-align: center; padding: 10px;">
-                            <div style="margin-bottom:20px; animation: floatPremium 3s ease-in-out infinite;">
-                                <div style="width:90px; height:90px; border-radius:50%; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)); display:flex; align-items:center; justify-content:center; margin: 0 auto; box-shadow: 0 10px 30px rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.4);">
-                                    <span class="material-icons-round" style="font-size: 45px; color: #10b981; text-shadow: 0 0 15px rgba(16, 185, 129, 0.8);">check_circle</span>
-                                </div>
-                            </div>
-                            <h2 class="banco-title" style="margin-top:10px; color:var(--text-white); font-size:26px; font-weight:900; letter-spacing:-0.5px;">¡Recarga Exitosa!</h2>
-                            <p style="color: var(--text-gray); font-size: 15px; margin-top: 15px; line-height: 1.5;">Tu transferencia ha sido validada y acreditada al instante.</p>
-                            
-                            <div style="margin-top:25px; padding: 15px; border: 1px dashed rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05); border-radius: 12px; display:flex; align-items:center; justify-content:center; gap: 10px;">
-                                <span class="material-icons-round" style="color:#10b981; font-size: 18px;">account_balance_wallet</span>
-                                <p style="color: #10b981; font-size: 14px; font-weight: 800; margin: 0; letter-spacing: 0.5px; text-transform:uppercase;">NUEVO SALDO: $ ${nuevoSaldoFormat}</p>
+            Swal.fire({
+                html: `
+                    <div class="banco-success-container" style="text-align: center; padding: 10px;">
+                        <div style="margin-bottom:20px; animation: floatPremium 3s ease-in-out infinite;">
+                            <div style="width:90px; height:90px; border-radius:50%; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.05)); display:flex; align-items:center; justify-content:center; margin: 0 auto; box-shadow: 0 10px 30px rgba(16,185,129,0.2); border: 1px solid rgba(16,185,129,0.4);">
+                                <span class="material-icons-round" style="font-size: 45px; color: #10b981; text-shadow: 0 0 15px rgba(16, 185, 129, 0.8);">check_circle</span>
                             </div>
                         </div>
-                    `,
-                    background: 'var(--bg-card)', showConfirmButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'EXCELENTE',
-                    customClass: { popup: 'banco-swal-popup', confirmButton: 'banco-btn-confirm' }
-                }).then(() => {
-                    if(document.getElementById('custom-recharge')) document.getElementById('custom-recharge').value = "";
-                    limpiarSeleccionTarjetas();
-                });
-            } else {
+                        <h2 class="banco-title" style="margin-top:10px; color:var(--text-white); font-size:26px; font-weight:900; letter-spacing:-0.5px;">¡Recarga Exitosa!</h2>
+                        <p style="color: var(--text-gray); font-size: 15px; margin-top: 15px; line-height: 1.5;">Tu transferencia ha sido validada y acreditada al instante.</p>
+                        
+                        <div style="margin-top:25px; padding: 15px; border: 1px dashed rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.05); border-radius: 12px; display:flex; align-items:center; justify-content:center; gap: 10px;">
+                            <span class="material-icons-round" style="color:#10b981; font-size: 18px;">account_balance_wallet</span>
+                            <p style="color: #10b981; font-size: 14px; font-weight: 800; margin: 0; letter-spacing: 0.5px; text-transform:uppercase;">NUEVO SALDO: $ ${nuevoSaldoFormat}</p>
+                        </div>
+                    </div>
+                `,
+                background: 'var(--bg-card)', showConfirmButton: true, confirmButtonColor: '#10b981', confirmButtonText: 'EXCELENTE',
+                customClass: { popup: 'banco-swal-popup', confirmButton: 'banco-btn-confirm' }
+            }).then(() => {
+                if(document.getElementById('custom-recharge')) document.getElementById('custom-recharge').value = "";
+                limpiarSeleccionTarjetas();
+            });
+            
+        } else {
                 Swal.fire({
                     title: 'Error de Acreditación',
                     text: 'El banco lo aprobó pero el servidor rechazó el saldo: ' + finalData.msg,
