@@ -206,7 +206,6 @@ async function procesarPagoBancolombia() {
  */
 async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fechaPago, bonoCalculado) {
     const user = localStorage.getItem('dw_user') || 'Cliente';
-    const token = localStorage.getItem('dw_token') || '';
     const email = localStorage.getItem('dw_email') || 'Sin correo'; 
 
     Swal.fire({ 
@@ -294,14 +293,6 @@ async function enviarAlServidorBancolombia(monto, nombreTitular, horaPago, fecha
                 limpiarSeleccionTarjetas();
             });
             
-        } else {
-                Swal.fire({
-                    title: 'Error de Acreditación',
-                    text: 'El banco lo aprobó pero el servidor rechazó el saldo: ' + finalData.msg,
-                    icon: 'error', background: 'var(--bg-card)', color: 'var(--text-white)', confirmButtonColor: '#dc2626',
-                    customClass: { popup: 'banco-swal-popup' }
-                });
-            }
         } else {
             fetch(GS_RECARGA, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'rechazar_timeout', usuario: user, monto: monto }) });
             
