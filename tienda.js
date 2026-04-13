@@ -668,7 +668,10 @@ window.finalizePurchase = async function() {
 
     let errores = [];
     let exitos = 0;
+    let paqueteParaGoogle = []; // 🔥 RECOLECTOR MASIVO
     
+    const fechaLocal = new Date().toISOString().split('T')[0];
+
     for (const item of cart) {
         Swal.update({
             html: `
@@ -681,28 +684,52 @@ window.finalizePurchase = async function() {
         });
 
         try {
-            // 🔥 BLINDAJE APLICADO: Mandamos la cantidad total en una sola petición.
-            // El backend se encarga de validar límites, cobrar, sacar el stock masivo y avisar a Google.
             const res = await apiCall({ 
                 accion: 'comprar', 
                 usuario: u, 
                 token: t, 
                 producto: item.nombre,
-                cantidad: item.cantidad, // La API ahora procesa en bloque
+                cantidad: item.cantidad,
                 order_id: orderId
             });
             
             if(res.success) { 
-                // Sumamos la cantidad real de cuentas entregadas
                 exitos += item.cantidad; 
                 userBalance = res.nuevoSaldo; 
                 localStorage.setItem('dw_saldo', userBalance);
+
+                // 🔥 PREPARAMOS EL PAQUETE PARA GOOGLE
+                let diasExtraidos = 30;
+                const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
+                if (matchDias) {
+                    diasExtraidos = matchDias[2].toLowerCase().includes('mes') ? parseInt(matchDias[1]) * 30 : parseInt(matchDias[1]);
+                }
+
+                if (res.datos && res.datos.cuentas) {
+                    res.datos.cuentas.forEach(cuentaEntregada => {
+                        paqueteParaGoogle.push({
+                            cuenta: cuentaEntregada,
+                            fecha: fechaLocal,
+                            dias: diasExtraidos,
+                            servicio: item.nombre
+                        });
+                    });
+                }
             } else { 
                 errores.push(`${item.nombre}: ${res.msg}`); 
             }
         } catch (error) {
             errores.push(`${item.nombre}: Error de conexión`); 
         }
+    }
+
+    // 🔥 ENVÍO A GOOGLE DESDE EL NAVEGADOR USANDO GS_CODIGO
+    if (paqueteParaGoogle.length > 0) {
+        fetch(GS_CODIGO, {
+            method: "POST",
+            body: JSON.stringify({ accion: "registro_masivo", compras: paqueteParaGoogle }),
+            headers: { "Content-Type": "text/plain" } // Evita bloqueos CORS
+        }).catch(e => console.error("Error enviando a Google:", e));
     }
 
     if(typeof updateBalanceUI === 'function') updateBalanceUI();
