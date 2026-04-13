@@ -670,69 +670,38 @@ window.finalizePurchase = async function() {
     let exitos = 0;
     
     for (const item of cart) {
-        for(let i=0; i<item.cantidad; i++) {
-            Swal.update({
-                html: `
-                    <div style="margin-top: 10px; color: var(--text-gray); font-weight: 500;">
-                        Activando: <b style="color:var(--accent);">${escapeHTML(item.nombre)}</b><br>
-                        (Unidad ${i + 1} de ${item.cantidad})
-                    </div>
-                    <div class="spinner" style="margin: 25px auto;"></div>
-                `
+        Swal.update({
+            html: `
+                <div style="margin-top: 10px; color: var(--text-gray); font-weight: 500;">
+                    Procesando: <b style="color:var(--accent);">${escapeHTML(item.nombre)}</b><br>
+                    (x${item.cantidad} unidades)
+                </div>
+                <div class="spinner" style="margin: 25px auto;"></div>
+            `
+        });
+
+        try {
+            // 🔥 BLINDAJE APLICADO: Mandamos la cantidad total en una sola petición.
+            // El backend se encarga de validar límites, cobrar, sacar el stock masivo y avisar a Google.
+            const res = await apiCall({ 
+                accion: 'comprar', 
+                usuario: u, 
+                token: t, 
+                producto: item.nombre,
+                cantidad: item.cantidad, // La API ahora procesa en bloque
+                order_id: orderId
             });
-
-            try {
-                // MEJORA 1 APLICADA: No enviamos precio_pagado, solo la cantidad 1
-                const res = await apiCall({ 
-                    accion: 'comprar', 
-                    usuario: u, 
-                    token: t, 
-                    producto: item.nombre,
-                    cantidad: 1, 
-                    order_id: orderId
-                });
-                
-                if(res.success) { 
-                    exitos++; 
-                    userBalance = res.nuevoSaldo; 
-                    localStorage.setItem('dw_saldo', userBalance);
-
-                    try {
-                        let diasExtraidos = 30;
-                        const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
-                        if(matchDias) {
-                            diasExtraidos = matchDias[2].toLowerCase().includes('mes') 
-                                            ? parseInt(matchDias[1]) * 30 
-                                            : parseInt(matchDias[1]);
-                        }
-                        
-                        const params = new URLSearchParams();
-                        params.append('accion', 'nueva_compra');
-                        params.append('cuenta', res.datos.cuenta);
-                        
-                        const hoyLoc = new Date();
-                        const fechaLocalFix = hoyLoc.getFullYear() + '-' + String(hoyLoc.getMonth() + 1).padStart(2, '0') + '-' + String(hoyLoc.getDate()).padStart(2, '0');
-                        params.append('fecha', fechaLocalFix);
-                        
-                        params.append('dias', diasExtraidos);
-                        params.append('servicio', item.nombre);
-
-                        if (typeof GS_CODIGO !== 'undefined') {
-                            await fetch(GS_CODIGO, {
-                                method: 'POST',
-                                mode: 'no-cors', 
-                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: params
-                            });
-                        }
-                    } catch(e) { console.error("Error Webhook:", e); }
-                    
-                } else { 
-                    errores.push(`${item.nombre}: ${res.msg}`); 
-                }
-            } catch (error) {
-                errores.push(`${item.nombre}: Error de conexión`); 
+            
+            if(res.success) { 
+                // Sumamos la cantidad real de cuentas entregadas
+                exitos += item.cantidad; 
+                userBalance = res.nuevoSaldo; 
+                localStorage.setItem('dw_saldo', userBalance);
+            } else { 
+                errores.push(`${item.nombre}: ${res.msg}`); 
             }
+        } catch (error) {
+            errores.push(`${item.nombre}: Error de conexión`); 
         }
     }
 
