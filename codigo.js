@@ -50,7 +50,7 @@ function cargarCodigos() {
                             <button type="button" class="btn-service-brand" data-asunto="Verificación de Amazon" data-brand="Amazon">
                                 <span class="brand-icon">AMZ</span> Amazon
                             </button>
-                            <button type="button" class="btn-service-brand" data-asunto="Reset Your Crunchyroll Password||Restablece tu contraseña de Crunchyroll" data-brand="Crunchyroll">
+                            <button type="button" class="btn-service-brand" data-asunto="Reset Your Crunchyroll Password||Restablece tu contraseña de Crunchyroll" data-brand="Crunchy">
                                 <span class="brand-icon">CR</span> Crunchy
                             </button>
                         </div>
