@@ -605,7 +605,7 @@ window.invocarModalFacturaExterna = function(orderId) {
             if (estado === 'reemplazada' || estado === 'vencida') {
                 opacityAccount = 'opacity: 0.4; filter: grayscale(100%);';
                 if (!notaReal) {
-                    badgeVencida = `<div style="margin-top: 4px; font-size: 0.7rem; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3); font-weight: bold;"><i class="material-icons-round" style="font-size:0.8rem; vertical-align:middle; margin-right:3px;">history</i> Cuenta Expirada/Reemplazada</div>`;
+                    badgeVencida = `<div style="margin-top: 4px; font-size: 0.7rem; color: var(--danger); background: rgba(239, 68, 68, 0.1); padding: 4px 8px; border-radius: 6px; border: 1px dashed rgba(239, 68, 68, 0.3); font-weight: bold;"><i class="material-icons-round" style="font-size:0.8rem; vertical-align:middle; margin-right:3px;">history</i> Cuenta vencida</div>`;
                 }
             }
 
