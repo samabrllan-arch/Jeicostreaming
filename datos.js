@@ -81,6 +81,17 @@ async function cargarDatos() {
                         </p>
                     </div>
 
+                    <div class="input-group-premium" style="margin-top: 25px;">
+                        <label>NOTIFICACIONES DE WHATSAPP</label>
+                        <div class="toggle-wrapper">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="perfil-consentimiento">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="toggle-label-text">¿Aceptas el envío de info al WhatsApp como recordatorios de cuentas por vencer, movimientos extraños y demás?</span>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn-submit-datos" id="btn-guardar-datos">
                         <span class="material-icons-round">save</span> GUARDAR CAMBIOS
                     </button>
@@ -108,6 +119,10 @@ async function cargarDatos() {
             document.getElementById('perfil-apellido').value = cache.datos.apellido || "";
             document.getElementById('perfil-correo').value = cache.datos.correo || "";
             
+            // Cargar el switch de consentimiento (Puede venir como 'consentimiento' o 'Consentimiento')
+            const consVal = cache.datos.consentimiento || cache.datos.Consentimiento || 'No';
+            document.getElementById('perfil-consentimiento').checked = (consVal.toLowerCase() === 'si' || consVal.toLowerCase() === 'sí');
+            
             // Función para desensamblar el teléfono y el código de país
             setTelefonoDesensamblado(cache.datos.telefono || "");
             
@@ -134,6 +149,9 @@ async function cargarDatos() {
             document.getElementById('perfil-apellido').value = res.datos.apellido || "";
             document.getElementById('perfil-correo').value = res.datos.correo || "";
             
+            const consValSrv = res.datos.consentimiento || res.datos.Consentimiento || 'No';
+            document.getElementById('perfil-consentimiento').checked = (consValSrv.toLowerCase() === 'si' || consValSrv.toLowerCase() === 'sí');
+
             setTelefonoDesensamblado(res.datos.telefono || "");
 
             // Guardamos en LocalStorage. Si ya tenía fecha de guardado (bloqueo), la mantenemos intacta.
@@ -141,6 +159,9 @@ async function cargarDatos() {
             if(rawCache) {
                 try { timeGuardadoAnterior = JSON.parse(rawCache).timestamp_guardado; } catch(e){}
             }
+
+            // Normalizamos el nombre a 'consentimiento' para la caché
+            res.datos.consentimiento = consValSrv;
 
             localStorage.setItem('dw_perfil_datos_v2', JSON.stringify({
                 timestamp: Date.now(),
@@ -208,8 +229,8 @@ function verificarBloqueoSeguridad(tiempoGuardado) {
     const msgContainer = document.getElementById('datos-cooldown-container');
     const msgText = document.getElementById('datos-cooldown-msg');
     
-    // Ahora cod-pais es un input normal, por lo que querySelectorAll lo atrapará sin problema
     const inputs = document.querySelectorAll('.datos-input');
+    const toggleConsentimiento = document.getElementById('perfil-consentimiento');
 
     const actualizarContador = () => {
         const tiempoPasado = Date.now() - tiempoGuardado;
@@ -220,6 +241,7 @@ function verificarBloqueoSeguridad(tiempoGuardado) {
             btn.classList.remove('hidden');
             msgContainer.classList.add('hidden');
             inputs.forEach(input => input.removeAttribute('readonly'));
+            if(toggleConsentimiento) toggleConsentimiento.removeAttribute('disabled');
             if(cooldownInterval) clearInterval(cooldownInterval);
             return;
         }
@@ -230,6 +252,7 @@ function verificarBloqueoSeguridad(tiempoGuardado) {
         inputs.forEach(input => {
             if(input.tagName === 'INPUT') input.setAttribute('readonly', 'true');
         });
+        if(toggleConsentimiento) toggleConsentimiento.setAttribute('disabled', 'true');
 
         // Calcular formato HH:MM:SS
         const horas = Math.floor(tiempoRestante / (1000 * 60 * 60));
@@ -252,6 +275,9 @@ async function actualizarMisDatos(e) {
     const nombre = document.getElementById('perfil-nombre').value.trim();
     const apellido = document.getElementById('perfil-apellido').value.trim();
     const correo = document.getElementById('perfil-correo').value.trim();
+    
+    // Capturamos el switch
+    const consentimiento = document.getElementById('perfil-consentimiento').checked ? 'Si' : 'No';
     
     // Unimos el código de país y el número antes de guardar
     let codPais = document.getElementById('perfil-cod-pais').value.trim();
@@ -315,7 +341,8 @@ async function actualizarMisDatos(e) {
             nombre, 
             apellido, 
             correo, 
-            telefono: telefonoFinal // Enviamos el número ya ensamblado
+            telefono: telefonoFinal,
+            consentimiento: consentimiento // Lo mandamos al backend
         });
 
         if (res.success) {
@@ -324,7 +351,7 @@ async function actualizarMisDatos(e) {
             localStorage.setItem('dw_perfil_datos_v2', JSON.stringify({
                 timestamp: tiempoAhora,
                 timestamp_guardado: tiempoAhora, // Sello de bloqueo exacto
-                datos: { nombre, apellido, correo, telefono: telefonoFinal }
+                datos: { nombre, apellido, correo, telefono: telefonoFinal, consentimiento }
             }));
 
             Swal.fire({
@@ -428,11 +455,11 @@ const datosStyles = `
         background: var(--bg-sidebar);
     }
 
-    /* --- NUEVOS ESTILOS PARA EL GRUPO DEL TELÉFONO --- */
+    /* --- ESTILOS PARA EL GRUPO DEL TELÉFONO --- */
     .datos-phone-group {
         display: flex;
         align-items: center;
-        gap: 0; /* Sin espacio porque los inputs se tocarán */
+        gap: 0; 
     }
 
     .datos-select-wrapper {
@@ -441,7 +468,7 @@ const datosStyles = `
     }
 
     .datos-select-pais {
-        padding: 16px 15px; /* Quitamos el padding extra porque ya no hay flecha SVG */
+        padding: 16px 15px;
         border-top-right-radius: 0;
         border-bottom-right-radius: 0;
         border-right: none;
@@ -451,12 +478,12 @@ const datosStyles = `
     .input-phone-number {
         border-top-left-radius: 0;
         border-bottom-left-radius: 0;
-        padding-left: 40px; /* Espacio solo para el icono del phone */
+        padding-left: 40px; 
     }
     
     .datos-phone-group:focus-within .datos-input {
         border-color: var(--accent-text);
-        box-shadow: none; /* Quitamos la sombra grupal para evitar cortes feos */
+        box-shadow: none; 
     }
     .datos-phone-group:focus-within {
         box-shadow: 0 0 0 3px var(--accent-glow);
@@ -469,6 +496,75 @@ const datosStyles = `
         margin-top: 5px;
     }
 
+    /* --- ESTILOS PARA EL SWITCH DE CONSENTIMIENTO --- */
+    .toggle-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background: var(--bg-dark);
+        padding: 15px;
+        border-radius: 12px;
+        border: 1px solid var(--border-color);
+    }
+
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+        flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: var(--bg-sidebar);
+        transition: .4s;
+        border-radius: 34px;
+        border: 1px solid var(--border-color);
+    }
+
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: var(--text-gray);
+        transition: .4s;
+        border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+        background-color: var(--success);
+        border-color: var(--success);
+    }
+
+    input:checked + .toggle-slider:before {
+        transform: translateX(22px);
+        background-color: #fff;
+    }
+
+    input[disabled] + .toggle-slider {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .toggle-label-text {
+        color: var(--text-main);
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+
+    /* --- BOTONES Y COOLDOWN --- */
     .btn-submit-datos {
         width: 100%;
         background: var(--accent-text);
@@ -498,7 +594,6 @@ const datosStyles = `
         display: none !important;
     }
 
-    /* Cooldown Box Premium */
     .cooldown-box {
         text-align: center;
         margin-top: 25px;
@@ -533,6 +628,7 @@ const datosStyles = `
     @media (max-width: 600px) {
         .datos-grid { grid-template-columns: 1fr; }
         .card-datos-premium { padding: 25px 20px; }
+        .toggle-wrapper { flex-direction: column; align-items: flex-start; }
     }
 `;
 
