@@ -55,10 +55,30 @@ async function cargarDatos() {
 
                     <div class="input-group-premium" style="margin-top: 20px;">
                         <label>TELÉFONO / WHATSAPP</label>
-                        <div class="datos-input-wrapper">
-                            <span class="material-icons-round datos-input-icon">phone_iphone</span>
-                            <input type="tel" id="perfil-telefono" class="datos-input" placeholder="+57 300 000 0000">
+                        <div class="datos-phone-group">
+                            <div class="datos-select-wrapper">
+                                <input type="text" id="perfil-cod-pais" class="datos-input datos-select-pais" list="lista-paises" placeholder="+57" value="+57">
+                                <datalist id="lista-paises">
+                                    <option value="+57">🇨🇴 Colombia</option>
+                                    <option value="+52">🇲🇽 México</option>
+                                    <option value="+51">🇵🇪 Perú</option>
+                                    <option value="+56">🇨🇱 Chile</option>
+                                    <option value="+54">🇦🇷 Argentina</option>
+                                    <option value="+593">🇪🇨 Ecuador</option>
+                                    <option value="+58">🇻🇪 Venezuela</option>
+                                    <option value="+1">🇺🇸 USA</option>
+                                    <option value="+34">🇪🇸 España</option>
+                                </datalist>
+                            </div>
+                            <div class="datos-input-wrapper" style="flex: 1;">
+                                <span class="material-icons-round datos-input-icon" style="left: 10px;">phone_iphone</span>
+                                <input type="tel" id="perfil-telefono" class="datos-input input-phone-number" placeholder="300 000 0000" inputmode="numeric" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                            </div>
                         </div>
+                        <p class="datos-help-text" style="color: var(--accent-text); font-weight: bold; margin-top: 8px;">
+                            <i class="material-icons-round" style="font-size: 14px; vertical-align: middle;">lightbulb</i> 
+                            Recomendado: Ingresa el mismo número que usas en WhatsApp.
+                        </p>
                     </div>
 
                     <button type="submit" class="btn-submit-datos" id="btn-guardar-datos">
@@ -84,11 +104,12 @@ async function cargarDatos() {
         try {
             const cache = JSON.parse(rawCache);
             
-            // Llenamos la pantalla con la data vieja para que no espere
             document.getElementById('perfil-nombre').value = cache.datos.nombre || "";
             document.getElementById('perfil-apellido').value = cache.datos.apellido || "";
             document.getElementById('perfil-correo').value = cache.datos.correo || "";
-            document.getElementById('perfil-telefono').value = cache.datos.telefono || "";
+            
+            // Función para desensamblar el teléfono y el código de país
+            setTelefonoDesensamblado(cache.datos.telefono || "");
             
             document.getElementById('loading-datos').classList.add('hidden');
             document.getElementById('form-datos-perfil').classList.remove('hidden');
@@ -96,7 +117,6 @@ async function cargarDatos() {
             // Verificamos si tiene bloqueo de seguridad
             verificarBloqueoSeguridad(cache.timestamp_guardado);
             
-            // 🔥 NOTA: Ya NO ponemos "return;" aquí. Queremos que siga y consulte a la BD en silencio.
         } catch (e) {
             localStorage.removeItem('dw_perfil_datos_v2');
         }
@@ -110,11 +130,11 @@ async function cargarDatos() {
         document.getElementById('form-datos-perfil').classList.remove('hidden');
 
         if (res.success && res.datos) {
-            // Actualizamos silenciosamente los inputs por si el admin cambió algo
             document.getElementById('perfil-nombre').value = res.datos.nombre || "";
             document.getElementById('perfil-apellido').value = res.datos.apellido || "";
             document.getElementById('perfil-correo').value = res.datos.correo || "";
-            document.getElementById('perfil-telefono').value = res.datos.telefono || "";
+            
+            setTelefonoDesensamblado(res.datos.telefono || "");
 
             // Guardamos en LocalStorage. Si ya tenía fecha de guardado (bloqueo), la mantenemos intacta.
             let timeGuardadoAnterior = null;
@@ -139,6 +159,46 @@ async function cargarDatos() {
 }
 
 /**
+ * Función auxiliar para dividir el teléfono completo en País y Número
+ */
+function setTelefonoDesensamblado(telefonoCompleto) {
+    if (!telefonoCompleto) return;
+    
+    let codPaisInput = document.getElementById('perfil-cod-pais');
+    let inputTel = document.getElementById('perfil-telefono');
+    
+    // Lista de códigos ordenados del más largo al más corto para evitar falsos positivos
+    const codigosFrecuentes = ["+593", "+57", "+52", "+51", "+56", "+54", "+58", "+34", "+1"];
+    let codigoEncontrado = "+57"; // Default
+    let numeroPuro = telefonoCompleto;
+
+    if (telefonoCompleto.startsWith("+")) {
+        let found = false;
+        // Primero intentamos hacer match con los conocidos
+        for (let cod of codigosFrecuentes) {
+            if (telefonoCompleto.startsWith(cod)) {
+                codigoEncontrado = cod;
+                numeroPuro = telefonoCompleto.substring(cod.length).trim();
+                found = true;
+                break;
+            }
+        }
+        
+        // Si el usuario puso un código raro (ej. +49), la IA lo adivina separando el + y los siguientes números
+        if (!found) {
+            const match = telefonoCompleto.match(/^(\+\d{1,4})(\d+)$/);
+            if (match) {
+                codigoEncontrado = match[1];
+                numeroPuro = match[2];
+            }
+        }
+    }
+
+    codPaisInput.value = codigoEncontrado;
+    inputTel.value = numeroPuro;
+}
+
+/**
  * 4. GESTIÓN DEL BLOQUEO (COOLDOWN DE 24 HORAS)
  */
 function verificarBloqueoSeguridad(tiempoGuardado) {
@@ -148,7 +208,7 @@ function verificarBloqueoSeguridad(tiempoGuardado) {
     const msgContainer = document.getElementById('datos-cooldown-container');
     const msgText = document.getElementById('datos-cooldown-msg');
     
-    // Convertir Inputs a readonly
+    // Ahora cod-pais es un input normal, por lo que querySelectorAll lo atrapará sin problema
     const inputs = document.querySelectorAll('.datos-input');
 
     const actualizarContador = () => {
@@ -167,7 +227,9 @@ function verificarBloqueoSeguridad(tiempoGuardado) {
         // Aún está bloqueado
         btn.classList.add('hidden');
         msgContainer.classList.remove('hidden');
-        inputs.forEach(input => input.setAttribute('readonly', 'true'));
+        inputs.forEach(input => {
+            if(input.tagName === 'INPUT') input.setAttribute('readonly', 'true');
+        });
 
         // Calcular formato HH:MM:SS
         const horas = Math.floor(tiempoRestante / (1000 * 60 * 60));
@@ -190,18 +252,35 @@ async function actualizarMisDatos(e) {
     const nombre = document.getElementById('perfil-nombre').value.trim();
     const apellido = document.getElementById('perfil-apellido').value.trim();
     const correo = document.getElementById('perfil-correo').value.trim();
-    const telefono = document.getElementById('perfil-telefono').value.trim();
+    
+    // Unimos el código de país y el número antes de guardar
+    let codPais = document.getElementById('perfil-cod-pais').value.trim();
+    const numeroTel = document.getElementById('perfil-telefono').value.trim();
+    
+    // Asegurarnos de que el código de país lleve el +
+    if (!codPais.startsWith('+')) codPais = '+' + codPais;
+    
+    const telefonoFinal = codPais + numeroTel;
 
     const isDark = document.body.classList.contains('dark-mode');
     const swalBg = isDark ? '#1e293b' : '#ffffff';
     const swalColor = isDark ? '#f8fafc' : '#0f172a';
 
     // 1. VALIDACIÓN ESTRICTA
-    if (!nombre || !apellido || !correo || !telefono) {
+    if (!nombre || !apellido || !correo || !numeroTel) {
         return Swal.fire({
             icon: 'warning',
             title: 'Faltan Datos',
-            text: 'Debes completar todos los campos para poder guardar los cambios.',
+            text: 'Debes completar todos los campos (incluyendo el teléfono) para poder guardar los cambios.',
+            background: swalBg, color: swalColor, confirmButtonColor: '#3b82f6'
+        });
+    }
+
+    if (numeroTel.length < 7) {
+        return Swal.fire({
+            icon: 'warning',
+            title: 'Teléfono Inválido',
+            text: 'Por favor, ingresa un número de teléfono válido (sin el código de país).',
             background: swalBg, color: swalColor, confirmButtonColor: '#3b82f6'
         });
     }
@@ -233,7 +312,10 @@ async function actualizarMisDatos(e) {
             accion: 'setDatosPerfil', 
             usuario: u, 
             token: t,
-            nombre, apellido, correo, telefono
+            nombre, 
+            apellido, 
+            correo, 
+            telefono: telefonoFinal // Enviamos el número ya ensamblado
         });
 
         if (res.success) {
@@ -242,7 +324,7 @@ async function actualizarMisDatos(e) {
             localStorage.setItem('dw_perfil_datos_v2', JSON.stringify({
                 timestamp: tiempoAhora,
                 timestamp_guardado: tiempoAhora, // Sello de bloqueo exacto
-                datos: { nombre, apellido, correo, telefono }
+                datos: { nombre, apellido, correo, telefono: telefonoFinal }
             }));
 
             Swal.fire({
@@ -339,11 +421,46 @@ const datosStyles = `
         box-shadow: 0 0 0 3px var(--accent-glow);
     }
     
-    .datos-input[readonly] {
+    .datos-input[readonly], .datos-input[disabled] {
         color: var(--text-gray);
         border-color: var(--border-color);
         cursor: not-allowed;
         background: var(--bg-sidebar);
+    }
+
+    /* --- NUEVOS ESTILOS PARA EL GRUPO DEL TELÉFONO --- */
+    .datos-phone-group {
+        display: flex;
+        align-items: center;
+        gap: 0; /* Sin espacio porque los inputs se tocarán */
+    }
+
+    .datos-select-wrapper {
+        width: 110px;
+        flex-shrink: 0;
+    }
+
+    .datos-select-pais {
+        padding: 16px 15px; /* Quitamos el padding extra porque ya no hay flecha SVG */
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+        text-align: center;
+    }
+
+    .input-phone-number {
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+        padding-left: 40px; /* Espacio solo para el icono del phone */
+    }
+    
+    .datos-phone-group:focus-within .datos-input {
+        border-color: var(--accent-text);
+        box-shadow: none; /* Quitamos la sombra grupal para evitar cortes feos */
+    }
+    .datos-phone-group:focus-within {
+        box-shadow: 0 0 0 3px var(--accent-glow);
+        border-radius: 12px;
     }
 
     .datos-help-text {
