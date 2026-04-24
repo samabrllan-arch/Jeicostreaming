@@ -1,7 +1,7 @@
 /* =================================================================================
    ARCHIVO: mistickets.js
    Lógica: Renderizado de Tickets, Buscador en Tiempo Real, Modal de Detalles.
-   (ACTUALIZADO: BUSCADOR PREMIUM INTEGRADO E IMÁGENES ADJUNTAS)
+   (ACTUALIZADO: BUSCADOR PREMIUM INTEGRADO E IMÁGENES ADJUNTAS CON THUMBNAIL)
 ================================================================================= */
 
 let cargandoTickets = false;
@@ -32,6 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
         observer.observe(secMisTickets, { attributes: true });
     }
 });
+
+/**
+ * 🔥 FUNCIÓN AUXILIAR: Convertir a Thumbnail
+ */
+function convertirAThumbnailTicket(url) {
+    if (!url || url.trim() === "") return "";
+    if (url.includes("uc?export=view&id=")) {
+        return url.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w600";
+    }
+    return url;
+}
 
 /**
  * 2. FUNCIÓN PRINCIPAL: Obtener y renderizar los tickets (TIEMPO REAL)
@@ -279,7 +290,10 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
     
     const textoLimpio = decodeURIComponent(textoCodificado).replace(/%27/g, "'").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const textoRespuesta = decodeURIComponent(respCodificada).replace(/%27/g, "'").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    const imgUrl = decodeURIComponent(imgCodificada);
+    const imgUrlOriginal = decodeURIComponent(imgCodificada);
+    
+    // Generar la versión miniatura para que cargue rápido
+    const imgUrlMiniatura = convertirAThumbnailTicket(imgUrlOriginal);
 
     let htmlModal = `
         <div class="modal-ticket-section client-msg">
@@ -291,7 +305,7 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
     `;
 
     // Si hay texto de respuesta o una imagen adjunta
-    if (textoRespuesta.trim() !== "" || imgUrl !== "") {
+    if (textoRespuesta.trim() !== "" || imgUrlOriginal !== "") {
         htmlModal += `
             <div class="modal-ticket-section admin-msg">
                 <div class="modal-ticket-title">
@@ -305,15 +319,15 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
         }
         
         // Si hay una imagen, creamos la miniatura cliqueable
-        if (imgUrl !== "") {
+        if (imgUrlOriginal !== "") {
             htmlModal += `
                 <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
                     <span style="font-size: 0.8rem; color: var(--success); font-weight: bold; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 1px;">
                         <i class="material-icons-round" style="font-size: 1.1rem; vertical-align: middle;">image</i> Archivo Adjunto (Clic para ampliar):
                     </span>
-                    <img src="${imgUrl}" 
+                    <img src="${imgUrlMiniatura}" 
                          style="max-width: 100%; max-height: 180px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" 
-                         onclick="abrirImagenTicketExpandida('${imgUrl}')" 
+                         onclick="abrirImagenTicketExpandida('${imgUrlOriginal}')" 
                          onmouseover="this.style.transform='scale(1.03)'" 
                          onmouseout="this.style.transform='scale(1)'">
                 </div>
@@ -347,10 +361,10 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
 /**
  * 4.5. VISOR EXPANDIDO DE IMAGEN
  */
-window.abrirImagenTicketExpandida = function(url) {
+window.abrirImagenTicketExpandida = function(urlOriginal) {
     const isDark = document.body.classList.contains('dark-mode');
     Swal.fire({
-        imageUrl: url,
+        imageUrl: urlOriginal,
         imageAlt: 'Evidencia de soporte',
         showConfirmButton: false,
         showCloseButton: true,
