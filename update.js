@@ -8,8 +8,7 @@ const historicoVersiones = [
         tipo: "Soporte Visual Premium",
         cambios: [
             "📸 Evidencia fotográfica en Soporte: Ahora los administradores pueden adjuntar capturas de pantalla y evidencias directamente en las respuestas de tus tickets.",
-            "🚀 Visor de Imágenes Nativo: Al hacer clic en la foto de un ticket, esta se expandirá en pantalla completa sin forzar descargas en tu dispositivo. ¡Rápido y limpio!",
-            "☁️ Optimización en la Nube: Todo el sistema de imágenes funciona con tecnología Serverless conectada a Google Drive, garantizando cero lag en la tienda."
+            "🚀 Visor de Imágenes Nativo: Al hacer clic en la foto de un ticket, esta se expandirá en pantalla completa sin forzar descargas en tu dispositivo. ¡Rápido y limpio!"
         ]
     },
     {
