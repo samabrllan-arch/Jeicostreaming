@@ -3,6 +3,16 @@
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
     {
+        version: "V.1.9.0",
+        fecha: "24/04/2026",
+        tipo: "Soporte Visual Premium",
+        cambios: [
+            "📸 Evidencia fotográfica en Soporte: Ahora los administradores pueden adjuntar capturas de pantalla y evidencias directamente en las respuestas de tus tickets.",
+            "🚀 Visor de Imágenes Nativo: Al hacer clic en la foto de un ticket, esta se expandirá en pantalla completa sin forzar descargas en tu dispositivo. ¡Rápido y limpio!",
+            "☁️ Optimización en la Nube: Todo el sistema de imágenes funciona con tecnología Serverless conectada a Google Drive, garantizando cero lag en la tienda."
+        ]
+    },
+    {
         version: "V.1.8.0",
         fecha: "13/04/2026",
         tipo: "Máxima Velocidad y Blindaje",
