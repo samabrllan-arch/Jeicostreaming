@@ -47,8 +47,8 @@ function cargarCodigos() {
                             <button type="button" class="btn-service-brand" data-asunto="Urgente: Tu código de un solo uso||Tu enlace para restablecer tu contraseña requerido" data-brand="HBO">
                                 <span class="brand-icon">H+</span> HBO+
                             </button>
-                            <button type="button" class="btn-service-brand" data-asunto="Verificación de Amazon" data-brand="Amazon">
-                                <span class="brand-icon">AMZ</span> Amazon
+                            <button type="button" class="btn-service-brand" data-asunto="Tu código de acceso temporal de Netflix||Importante: Cómo actualizar tu Hogar con Netflix" data-brand="Netflix">
+                                <span class="brand-icon">N</span> Netflix
                             </button>
                             <button type="button" class="btn-service-brand" data-asunto="Reset Your Crunchyroll Password||Restablece tu contraseña de Crunchyroll" data-brand="Crunchy">
                                 <span class="brand-icon">CR</span> Crunchy
