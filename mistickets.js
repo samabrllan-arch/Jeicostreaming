@@ -1,7 +1,7 @@
 /* =================================================================================
    ARCHIVO: mistickets.js
    Lógica: Renderizado de Tickets, Buscador en Tiempo Real, Modal de Detalles.
-   (ACTUALIZADO: BUSCADOR PREMIUM INTEGRADO E IMÁGENES ADJUNTAS CON THUMBNAIL)
+   (ACTUALIZADO: BUSCADOR PREMIUM INTEGRADO E IMÁGENES ADJUNTAS CON THUMBNAIL Y VISOR)
 ================================================================================= */
 
 let cargandoTickets = false;
@@ -318,16 +318,16 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
             htmlModal += `<div class="modal-ticket-text">${textoRespuesta}</div>`;
         }
         
-        // Si hay una imagen, creamos la miniatura cliqueable
+        // Si hay una imagen, creamos la miniatura cliqueable Y CENTRADA
         if (imgUrlOriginal !== "") {
             htmlModal += `
-                <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px;">
+                <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px; text-align: center;">
                     <span style="font-size: 0.8rem; color: var(--success); font-weight: bold; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 1px;">
                         <i class="material-icons-round" style="font-size: 1.1rem; vertical-align: middle;">image</i> Archivo Adjunto (Clic para ampliar):
                     </span>
                     <img src="${imgUrlMiniatura}" 
-                         style="max-width: 100%; max-height: 180px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1);" 
-                         onclick="abrirImagenTicketExpandida('${imgUrlOriginal}')" 
+                         style="max-width: 100%; max-height: 180px; border-radius: 8px; cursor: zoom-in; border: 1px solid var(--border-color); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(0,0,0,0.1); display: inline-block;" 
+                         onclick="abrirImagenTicketExpandida('${encodeURIComponent(imgUrlOriginal)}')" 
                          onmouseover="this.style.transform='scale(1.03)'" 
                          onmouseout="this.style.transform='scale(1)'">
                 </div>
@@ -361,10 +361,13 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
 /**
  * 4.5. VISOR EXPANDIDO DE IMAGEN
  */
-window.abrirImagenTicketExpandida = function(urlOriginal) {
+window.abrirImagenTicketExpandida = function(urlCodificada) {
+    // Decodificamos la URL justo antes de usarla para evitar errores de sintaxis en el HTML
+    const urlLimpia = decodeURIComponent(urlCodificada);
     const isDark = document.body.classList.contains('dark-mode');
+    
     Swal.fire({
-        imageUrl: urlOriginal,
+        imageUrl: urlLimpia,
         imageAlt: 'Evidencia de soporte',
         showConfirmButton: false,
         showCloseButton: true,
