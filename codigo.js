@@ -133,25 +133,11 @@ function initServiceButtonsCodigos() {
             const brand = boton.getAttribute("data-brand");
             inputAsunto.value = asuntoSeleccionado;
 
-            // LÓGICA DE BLOQUEO (AMAZON)
-            if (brand === "Amazon") {
-                btnVerificar.disabled = true;
-                btnText.innerText = "Próximamente";
-                
-                Swal.fire({
-                    toast: true, position: 'top-end', icon: 'info',
-                    title: 'Servicio en Mantenimiento',
-                    text: 'Amazon estará disponible pronto.',
-                    showConfirmButton: false, timer: 3000,
-                    background: document.body.classList.contains('dark-mode') ? 'var(--bg-card)' : '#ffffff',
-                    color: 'var(--text-main)'
-                });
-            } else {
-                if (!enCooldownCodigos) {
-                    btnVerificar.disabled = false;
-                    btnText.innerText = "BUSCAR CORREO";
-                }
-            }
+            // LÓGICA DE SERVICIOS
+if (!enCooldownCodigos) {
+    btnVerificar.disabled = false;
+    btnText.innerText = "BUSCAR CORREO";
+}
         });
     });
 }
@@ -474,6 +460,8 @@ const codigosStyles = `
         gap: 5px;
         transition: all 0.3s ease;
     }
+    .btn-service-brand[data-brand="Netflix"]:hover:not(:disabled) { border-color: #E50914; color: #E50914; background: rgba(229,9,20,0.05); }
+.btn-service-brand[data-brand="Netflix"].active { background: #E50914; color: #fff; border-color: #E50914; box-shadow: 0 5px 15px rgba(229,9,20,0.3); }
 
     .brand-icon { font-size: 1.4rem; font-family: 'Righteous', cursive; }
 
