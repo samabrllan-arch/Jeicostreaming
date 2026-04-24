@@ -320,7 +320,6 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
         
         // Si hay una imagen, creamos la miniatura cliqueable Y CENTRADA
         if (imgUrlOriginal !== "") {
-            // 🔥 TRUCO MAGICO: Evitamos las comillas simples en el onclick usando comillas dobles escapadas (\")
             const urlSeguraParaClic = encodeURIComponent(imgUrlOriginal);
             htmlModal += `
                 <div style="margin-top: 15px; border-top: 1px dashed var(--border-color); padding-top: 15px; text-align: center;">
@@ -361,15 +360,22 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
 };
 
 /**
- * 4.5. VISOR EXPANDIDO DE IMAGEN
+ * 4.5. VISOR EXPANDIDO DE IMAGEN (SIN DESCARGAS)
  */
 window.abrirImagenTicketExpandida = function(urlCodificada) {
-    // Decodificamos la URL justo antes de usarla para evitar errores de sintaxis en el HTML
     const urlLimpia = decodeURIComponent(urlCodificada);
+    
+    // 🔥 TRUCO: Transformamos el link original a un thumbnail GIGANTE (w2500) 
+    // para que el navegador lo dibuje como imagen en vez de forzar una descarga.
+    let urlAltaResolucion = urlLimpia;
+    if (urlLimpia.includes("uc?export=view&id=")) {
+        urlAltaResolucion = urlLimpia.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w2500";
+    }
+
     const isDark = document.body.classList.contains('dark-mode');
     
     Swal.fire({
-        imageUrl: urlLimpia,
+        imageUrl: urlAltaResolucion,
         imageAlt: 'Evidencia de soporte',
         showConfirmButton: false,
         showCloseButton: true,
