@@ -625,11 +625,20 @@ const ticketStyles = `
     .client-msg { background: var(--bg-dark); border: 1px solid var(--border-color); }
     .client-msg .modal-ticket-title { color: var(--accent-text); }
     .client-msg .modal-ticket-text { color: var(--text-main); }
+    
+    /* 🔥 FIX MODO OSCURO: Textos más blancos para lectura perfecta */
+    body.dark-mode .client-msg .modal-ticket-text { color: #f8fafc; }
 
     /* Variante: Respuesta del Admin */
     .admin-msg { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
     .admin-msg .modal-ticket-title { color: var(--success); }
     .admin-msg .modal-ticket-text { color: var(--text-main); }
+    
+    /* 🔥 FIX MODO OSCURO: Textos más blancos para lectura perfecta */
+    body.dark-mode .admin-msg .modal-ticket-text { color: #f8fafc; }
+    
+    /* FIX MODO OSCURO: El estado "En Espera" también requiere más brillo */
+    body.dark-mode .admin-msg .modal-ticket-text[style*="italic"] { color: #cbd5e1 !important; }
     
     /* --- ESTILOS DEL BUSCADOR DE TICKETS --- */
     .faq-search-wrapper {
