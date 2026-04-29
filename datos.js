@@ -57,7 +57,7 @@ async function cargarDatos() {
                         <label>TELÉFONO / WHATSAPP</label>
                         <div class="datos-phone-group">
                             <div class="datos-select-wrapper">
-                                <input type="text" id="perfil-cod-pais" class="datos-input datos-select-pais" list="lista-paises" placeholder="+57" value="+57">
+                                <input type="tel" id="perfil-cod-pais" class="datos-input datos-select-pais" list="lista-paises" placeholder="+57" value="+57" inputmode="numeric" oninput="this.value = '+' + this.value.replace(/[^0-9]/g, '')">
                                 <datalist id="lista-paises">
                                     <option value="+57">🇨🇴 Colombia</option>
                                     <option value="+52">🇲🇽 México</option>
