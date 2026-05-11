@@ -1,7 +1,18 @@
 /* update.js */
-// Historial amigable para el cliente final. 
+// Historial amigable para el cliente final.
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
+    {
+        version: "V.2.0.0",
+        fecha: "10/05/2026",
+        tipo: "Rediseño Premium",
+        cambios: [
+    "🎨 Nuevo look de bienvenida: Cambiamos la cara del inicio de sesión. Ahora tiene un diseño mucho más moderno y animado para darte una experiencia VIP desde que entras.",
+    "🌗 Modo oscuro 100% pulido: Ahora sí, el tema que elijas (claro u oscuro) te acompaña perfecto por toda la plataforma sin desconfigurarse.",
+    "🔒 Acceso directo y sin trabas: Arreglamos ese molesto detalle donde la pantalla se quedaba 'pegada' después de poner tus datos. Ahora entras de una a lo que importa.",
+    "⚡ Tienda en modo flash: Le metimos turbo al sistema para que el catálogo de cuentas te cargue en un abrir y cerrar de ojos."
+]
+    },
     {
         version: "V.1.9.0",
         fecha: "24/04/2026",
@@ -39,7 +50,7 @@ const historicoVersiones = [
         tipo: "Motor Mejorado",
         cambios: [
             "Filtros de Fechas Inteligentes: La Billetera y el Historial de Compras ahora ordenan tus movimientos a la perfección, sin importar de qué mes o año sean.",
-            "Facturas Consilidadas: Tus compras antiguas ahora se agrupan en bloques por fecha bajo el formato 'Sin Orden' para que tu historial luzca mucho más ordenado y fácil de leer.",
+            "Facturas Consolidadas: Tus compras antiguas ahora se agrupan en bloques por fecha bajo el formato 'Sin Orden' para que tu historial luzca mucho más ordenado y fácil de leer.",
             "Billetera en Tiempo Real: Tu lista de movimientos ahora cargará siempre desde la compra más reciente hasta la más antigua por defecto.",
             "Visualización del Mes Actual: El sistema de Movimientos ahora se enfoca en mostrarte tus gastos del mes en curso, dándote un total de compras mucho más exacto."
         ]
@@ -117,37 +128,37 @@ const historicoVersiones = [
     }
 ];
 
+// ===============================================================
+// MODAL DE ACTUALIZACIONES
+// ===============================================================
 function abrirModalUpdates() {
-    const overlay = document.getElementById('update-overlay');
-    const modal = document.getElementById('update-modal');
+    const overlay  = document.getElementById('update-overlay');
+    const modal    = document.getElementById('update-modal');
     const timeline = document.getElementById('update-timeline');
-    
     if (!overlay || !modal || !timeline) return;
 
-    // Renderizar la línea de tiempo dinámica
     timeline.innerHTML = historicoVersiones.map((v, index) => {
-        let isLatest = index === 0;
-        let dotColor = isLatest ? "var(--success)" : "var(--accent)";
-        let badgeStyle = isLatest 
-            ? "background: rgba(16, 185, 129, 0.1); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);" 
-            : "background: var(--accent-glow); color: var(--accent-text); border: 1px solid var(--accent);";
-        
-        let listHTML = v.cambios.map(c => `<li><span class="material-icons-round">chevron_right</span> ${c}</li>`).join('');
+        const isLatest   = index === 0;
+        const dotColor   = isLatest ? 'var(--success)' : 'var(--accent)';
+        const badgeStyle = isLatest
+            ? 'background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3);'
+            : 'background:var(--accent-glow); color:var(--accent-text); border:1px solid var(--accent);';
+
+        const listHTML = v.cambios
+            .map(c => `<li><span class="material-icons-round">chevron_right</span> ${c}</li>`)
+            .join('');
 
         return `
             <div class="timeline-item">
-                <div class="timeline-dot" style="box-shadow: 0 0 10px ${dotColor}; background: ${dotColor};"></div>
+                <div class="timeline-dot" style="box-shadow:0 0 10px ${dotColor}; background:${dotColor};"></div>
                 <div class="timeline-content">
                     <div class="timeline-header">
                         <h3>${v.version} <span class="version-badge-tag" style="${badgeStyle}">${v.tipo}</span></h3>
                         <span class="timeline-date">${v.fecha}</span>
                     </div>
-                    <ul class="timeline-list">
-                        ${listHTML}
-                    </ul>
+                    <ul class="timeline-list">${listHTML}</ul>
                 </div>
-            </div>
-        `;
+            </div>`;
     }).join('');
 
     overlay.classList.remove('hidden');
@@ -156,21 +167,21 @@ function abrirModalUpdates() {
 
 function cerrarModalUpdates() {
     const overlay = document.getElementById('update-overlay');
-    const modal = document.getElementById('update-modal');
+    const modal   = document.getElementById('update-modal');
     if (overlay) overlay.classList.add('hidden');
-    if (modal) modal.classList.remove('active');
+    if (modal)   modal.classList.remove('active');
 }
 
 // ===============================================================
-// INYECCIÓN DE ESTILOS DEL MODAL Y EL BADGE (Adaptable Light/Dark)
+// ESTILOS DEL MODAL Y DEL BADGE (Adaptable Light/Dark)
 // ===============================================================
 const updateStyles = `
     /* BADGE FLOTANTE */
     .version-badge {
-        position: fixed; 
+        position: fixed;
         top: 25px;
         right: 30px;
-        background: var(--bg-card); /* Adaptable a claro/oscuro */
+        background: var(--bg-card);
         backdrop-filter: blur(10px);
         border: 1px solid var(--border-color);
         padding: 10px 22px;
@@ -186,7 +197,7 @@ const updateStyles = `
         user-select: none;
     }
     body.dark-mode .version-badge {
-        background: #121214; /* Gris ultra oscuro, casi negro, limpio */
+        background: #121214;
         border: 1px solid #27272a;
         box-shadow: 0 5px 20px rgba(0,0,0,0.5);
     }
@@ -196,15 +207,14 @@ const updateStyles = `
         box-shadow: 0 8px 25px var(--accent-glow);
     }
     .v-num {
-        color: var(--text-white); /* 🔥 Negro en Claro, Blanco en Oscuro 🔥 */
+        color: var(--text-white);
         font-family: 'Righteous', cursive;
         font-size: 1.2rem;
         letter-spacing: 2px;
         line-height: 1.2;
-        text-shadow: none; 
     }
     .v-date {
-        color: var(--text-gray); /* Color uniforme para texto y fecha */
+        color: var(--text-gray);
         font-size: 0.65rem;
         text-transform: uppercase;
         letter-spacing: 1px;
@@ -212,27 +222,21 @@ const updateStyles = `
         line-height: 1;
         margin-top: 4px;
     }
-
     @media (max-width: 768px) {
-        .version-badge {
-            top: 15px; 
-            right: 15px;
-            padding: 8px 16px;
-        }
+        .version-badge { top: 15px; right: 15px; padding: 8px 16px; }
     }
 
-    /* MODAL DE ACTUALIZACIONES */
+    /* MODAL */
     .update-modal {
         position: fixed;
-        top: 50%;
-        left: 50%;
+        top: 50%; left: 50%;
         transform: translate(-50%, -50%) scale(0.9);
         width: 90%;
         max-width: 600px;
-        background: var(--bg-dark); /* Adaptable */
+        background: var(--bg-dark);
         border: 1px solid var(--border-color);
         border-radius: 20px;
-        z-index: 11000; /* Superposición máxima */
+        z-index: 11000;
         box-shadow: 0 25px 50px rgba(0,0,0,0.2);
         opacity: 0;
         pointer-events: none;
@@ -250,7 +254,7 @@ const updateStyles = `
         transform: translate(-50%, -50%) scale(1);
     }
     .update-header {
-        background: var(--bg-card); /* Adaptable */
+        background: var(--bg-card);
         padding: 20px 25px;
         display: flex;
         justify-content: space-between;
@@ -265,31 +269,31 @@ const updateStyles = `
         color: var(--text-white);
     }
     .update-header-title span { color: var(--accent); font-size: 1.6rem; }
-    .update-header-title h2 { font-size: 1.1rem; margin: 0; font-weight: 800; letter-spacing: 1px; color: var(--text-white); }
+    .update-header-title h2 {
+        font-size: 1.1rem; margin: 0;
+        font-weight: 800; letter-spacing: 1px;
+        color: var(--text-white);
+    }
     .btn-close-update {
         background: transparent;
         border: 1px solid var(--border-color);
         color: var(--text-gray);
-        width: 32px;
-        height: 32px;
+        width: 32px; height: 32px;
         border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        display: flex; align-items: center; justify-content: center;
         cursor: pointer;
         transition: 0.3s;
     }
-    .btn-close-update:hover { background: var(--danger); color: #fff; border-color: var(--danger); transform: scale(1.1); }
-    
-    .update-body {
-        padding: 30px 25px;
-        overflow-y: auto;
+    .btn-close-update:hover {
+        background: var(--danger); color: #fff;
+        border-color: var(--danger); transform: scale(1.1);
     }
+    .update-body { padding: 30px 25px; overflow-y: auto; }
     .update-body::-webkit-scrollbar { width: 6px; }
     .update-body::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
     .update-body::-webkit-scrollbar-thumb:hover { background: var(--text-gray); }
 
-    /* TIMELINE (LÍNEA DE TIEMPO) */
+    /* TIMELINE */
     .timeline-item {
         position: relative;
         padding-left: 30px;
@@ -299,14 +303,12 @@ const updateStyles = `
     .timeline-item:last-child { margin-bottom: 0; border-left-color: transparent; }
     .timeline-dot {
         position: absolute;
-        left: -6px;
-        top: 0;
-        width: 10px;
-        height: 10px;
+        left: -6px; top: 0;
+        width: 10px; height: 10px;
         border-radius: 50%;
     }
     .timeline-content {
-        background: var(--bg-card); /* Adaptable */
+        background: var(--bg-card);
         border: 1px solid var(--border-color);
         padding: 15px 20px;
         border-radius: 12px;
@@ -325,9 +327,7 @@ const updateStyles = `
         margin: 0;
         color: var(--text-white);
         font-size: 1.1rem;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        display: flex; align-items: center; gap: 10px;
     }
     .version-badge-tag {
         font-size: 0.6rem;
@@ -343,76 +343,57 @@ const updateStyles = `
         font-family: monospace;
         font-weight: 600;
     }
-    .timeline-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
+    .timeline-list { list-style: none; padding: 0; margin: 0; }
     .timeline-list li {
         color: var(--text-gray);
         font-size: 0.85rem;
         margin-bottom: 8px;
-        display: flex;
-        align-items: flex-start;
-        gap: 5px;
-        line-height: 1.5;
+        display: flex; align-items: flex-start;
+        gap: 5px; line-height: 1.5;
     }
-    body.dark-mode .timeline-list li {
-        color: #aaa;
-    }
-    .timeline-list li .material-icons-round {
-        font-size: 1.1rem;
-        color: var(--accent);
-        margin-top: 0px;
-    }
+    body.dark-mode .timeline-list li { color: #aaa; }
+    .timeline-list li .material-icons-round { font-size: 1.1rem; color: var(--accent); }
     .timeline-list li:last-child { margin-bottom: 0; }
 `;
 
-const styleSheetUpdate = document.createElement("style");
+const styleSheetUpdate = document.createElement('style');
 styleSheetUpdate.innerText = updateStyles;
 document.head.appendChild(styleSheetUpdate);
 
 // ===============================================================
-// INYECTAR LÓGICA DEL BOTÓN Y MANEJO DE PESTAÑAS (TIENDA E INICIO)
+// INICIALIZACIÓN DEL BADGE
+// ---------------------------------------------------------------
+// La visibilidad del badge la maneja el evento 'moduloCargado'
+// que dispara nav() en client.js cada vez que se cambia de sección.
+// Solo mostramos el badge en la sección 'inicio'.
+// Esto elimina la necesidad de escuchar clicks en cada .nav-item
+// y mantiene una única fuente de verdad para la navegación.
 // ===============================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener('DOMContentLoaded', () => {
     const ultimaVersion = historicoVersiones[0];
-    const badge = document.getElementById("version-badge");
-    
-    if (badge) {
-        // Asignar los valores de versión y fecha
-        const numEl = document.getElementById("badge-v-num");
-        const dateEl = document.getElementById("badge-v-date");
-        
-        if (numEl) numEl.innerText = ultimaVersion.version;
-        
-        // 🔥 TEXTO SÓLIDO SIN DEGRADADO 🔥
-        if (dateEl) dateEl.innerText = `ÚLTIMA ACT. ${ultimaVersion.fecha}`;
+    const badge  = document.getElementById('version-badge');
+    if (!badge) return;
 
-        // Mover el botón al body para que flote independientemente de la sección
-        document.body.appendChild(badge);
+    // Rellenar texto del badge
+    const numEl  = document.getElementById('badge-v-num');
+    const dateEl = document.getElementById('badge-v-date');
+    if (numEl)  numEl.innerText  = ultimaVersion.version;
+    if (dateEl) dateEl.innerText = `ÚLTIMA ACT. ${ultimaVersion.fecha}`;
 
-        // Controlar visibilidad: Oculto en login, visible en tienda/inicio
-        badge.style.display = 'none';
+    // Mover el badge al body para que el position:fixed no quede
+    // atrapado dentro de un contenedor con transform o overflow.
+    document.body.appendChild(badge);
 
-        const navItems = document.querySelectorAll('.nav-item');
-        navItems.forEach(btn => {
-            btn.addEventListener('click', () => {
-                const text = btn.innerText.toLowerCase();
-                if(text.includes('inicio') || text.includes('tienda')) {
-                    badge.style.display = 'flex';
-                } else {
-                    badge.style.display = 'none';
-                }
-            });
-        });
+    // Oculto por defecto: nav() lo mostrará cuando corresponda.
+    badge.style.display = 'none';
+});
 
-        // Mostrar el badge automáticamente si NO estamos en la pantalla de login 
-        // (Asumiendo que si existe el sidebar o navbar, ya pasó el login)
-        const sidebarMenu = document.querySelector('.sidebar');
-        const bottomNav = document.querySelector('.bottom-nav');
-        if ((sidebarMenu && sidebarMenu.style.display !== 'none') || (bottomNav && bottomNav.style.display !== 'none')) {
-             badge.style.display = 'flex';
-        }
-    }
+// Escuchar el evento de navegación que emite nav() en client.js.
+// Esta es la única lógica de visibilidad del badge — sin duplicados.
+document.addEventListener('moduloCargado', (e) => {
+    const badge  = document.getElementById('version-badge');
+    if (!badge) return;
+
+    // El badge solo aparece en la sección de inicio.
+    badge.style.display = e.detail.modulo === 'inicio' ? 'flex' : 'none';
 });
