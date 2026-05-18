@@ -785,19 +785,33 @@ function arrancarModulos() {
             cartBtn.classList.add('hidden');
             cartBtn.style.display = 'none';
         }
-        const btnTienda = document.querySelector('.nav-item[onclick*="tienda"]');
-        if (btnTienda) {
-            nav('tienda', btnTienda);
+
+        // ── Versión nueva o primera visita → Inicio | Ya la vio → Tienda ──
+        const versionActual = (typeof historicoVersiones !== 'undefined' && historicoVersiones[0])
+            ? historicoVersiones[0].version : 'unknown';
+        const versionVista = localStorage.getItem('dw_version_vista');
+
+        if (versionVista !== versionActual) {
+            // Primera vez o hay versión nueva: mostrar Inicio y guardar versión
+            localStorage.setItem('dw_version_vista', versionActual);
+            const btnInicio = document.querySelector('.nav-item[onclick*="inicio"]');
+            nav('inicio', btnInicio);
         } else {
-            document.querySelectorAll('.main-content > div').forEach(el => el.classList.add('hidden'));
-            const secTienda = document.getElementById('sec-tienda');
-            if (secTienda) secTienda.classList.remove('hidden');
-            if (cartBtn) {
-                cartBtn.classList.remove('hidden');
-                cartBtn.style.display = '';
+            // Ya vio esta versión: ir directo a la tienda
+            const btnTienda = document.querySelector('.nav-item[onclick*="tienda"]');
+            if (btnTienda) {
+                nav('tienda', btnTienda);
+            } else {
+                document.querySelectorAll('.main-content > div').forEach(el => el.classList.add('hidden'));
+                const secTienda = document.getElementById('sec-tienda');
+                if (secTienda) secTienda.classList.remove('hidden');
+                if (cartBtn) {
+                    cartBtn.classList.remove('hidden');
+                    cartBtn.style.display = '';
+                }
+                if (typeof cargarTienda === 'function') cargarTienda();
+                document.dispatchEvent(new CustomEvent('moduloCargado', { detail: { modulo: 'tienda' } }));
             }
-            if (typeof cargarTienda === 'function') cargarTienda();
-            document.dispatchEvent(new CustomEvent('moduloCargado', { detail: { modulo: 'tienda' } }));
         }
     };
     const delay = typeof cargarTienda === 'function' ? 100 : 500;
