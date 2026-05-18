@@ -562,7 +562,7 @@ let userBalance = 0;
             const datos = JSON.parse(cache);
             if (datos.banner) rightPanel.style.setProperty('--dw-banner-url', `url('${datos.banner}')`);
         }
-    } catch(e) {}
+    } catch (e) { }
     // 3. Inyectar contenido hero dentro del #login-banner existente
     const banner = document.getElementById('login-banner');
     if (banner) {
@@ -571,14 +571,14 @@ let userBalance = 0;
         banner.style.setProperty('mask-image', 'none');
         banner.style.opacity = '1';
         banner.style.position = 'relative';
-        banner.style.height   = '100vh';
-        banner.style.width    = '';
-        banner.style.top      = '';
-        banner.style.left     = '';
-        banner.style.zIndex   = '';
+        banner.style.height = '100vh';
+        banner.style.width = '';
+        banner.style.top = '';
+        banner.style.left = '';
+        banner.style.zIndex = '';
         banner.style.backgroundBlendMode = 'normal';
-        banner.style.backgroundColor     = 'transparent';
-        banner.style.overflow            = 'hidden';
+        banner.style.backgroundColor = 'transparent';
+        banner.style.overflow = 'hidden';
         banner.innerHTML = `
             <div class="dw-banner-overlay"></div>
             <div class="dw-grid-overlay"></div>
@@ -622,12 +622,14 @@ let userBalance = 0;
     if (mainBox) {
         const footerDiv = mainBox.querySelector('div[style*="margin-top"]');
         if (footerDiv) {
-            footerDiv.style.cssText = 'text-align:center; margin-top:28px; padding-top:18px; border-top:1px solid rgba(124,58,237,0.10);';
+            footerDiv.style.cssText = 'text-align:center; margin-top:28px; padding-top:18px; border-top:1px dashed var(--border-color); display:flex; flex-direction:column; align-items:center; gap:8px;';
             footerDiv.innerHTML = `
-                <span style="font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:#a09bb8; letter-spacing:0.5px; line-height:1.8;">
-                    &copy; 2026 Desarrollado por <strong style="color:#7c3aed; font-weight:600;">Brallan Ariza</strong><br>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:0.62rem; color:var(--text-gray); letter-spacing:1px; text-transform:uppercase;">
+                    &copy; 2026 Desarrollado por <strong style="background:linear-gradient(135deg, #7c3aed, #a855f7); -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:900; letter-spacing:2px;">BRALLAN ARIZA</strong>
+                </div>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:0.55rem; color:var(--text-gray); opacity:0.7; letter-spacing:1.5px; text-transform:uppercase;">
                     Todos los derechos reservados
-                </span>
+                </div>
             `;
         }
         const brand = document.createElement('div');
@@ -694,7 +696,7 @@ function _mostrarLogin(el) {
 // =======================================================================
 // --- 1. API FETCH GLOBAL ---
 // =======================================================================
-window.apiCall = async function(params) {
+window.apiCall = async function (params) {
     try {
         const formData = new URLSearchParams();
         for (const key in params) {
@@ -714,7 +716,7 @@ window.apiCall = async function(params) {
 // =======================================================================
 // --- 1.5 MOTOR DE SEGURIDAD (COOLDOWN CON LOCALSTORAGE) ---
 // =======================================================================
-window.verificarBloqueoBoton = function(btnElement, storageKey, textoOriginal) {
+window.verificarBloqueoBoton = function (btnElement, storageKey, textoOriginal) {
     if (!btnElement) return false;
     const bloqueoHasta = localStorage.getItem(storageKey);
     if (bloqueoHasta) {
@@ -747,14 +749,14 @@ window.verificarBloqueoBoton = function(btnElement, storageKey, textoOriginal) {
     }
     return false;
 };
-window.iniciarBloqueoBoton = function(btnElement, storageKey, textoOriginal, segundos = 30) {
+window.iniciarBloqueoBoton = function (btnElement, storageKey, textoOriginal, segundos = 30) {
     localStorage.setItem(storageKey, (Date.now() + (segundos * 1000)).toString());
     window.verificarBloqueoBoton(btnElement, storageKey, textoOriginal);
 };
 // =======================================================================
 // --- 2. NOTIFICACIONES GLOBALES ---
 // =======================================================================
-window.mostrarToast = function(mensaje, tipo = 'success') {
+window.mostrarToast = function (mensaje, tipo = 'success') {
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             toast: true,
@@ -805,10 +807,10 @@ function arrancarModulos() {
 // --- 4. LÓGICA DE SESIÓN Y RENDERIZADO INICIAL ---
 // =======================================================================
 document.addEventListener('DOMContentLoaded', async () => {
-    const formLogin        = document.getElementById('login-form');
-    const loginSection     = document.getElementById('login-view');
+    const formLogin = document.getElementById('login-form');
+    const loginSection = document.getElementById('login-view');
     const dashboardSection = document.getElementById('app-view');
-    const userNameDisplay  = document.getElementById('display-user');
+    const userNameDisplay = document.getElementById('display-user');
     // TEMA OSCURO/CLARO
     const themeToggle = document.getElementById('client-theme-toggle');
     const aplicarTemaCliente = (esOscuro) => {
@@ -847,10 +849,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (t && u) {
         // ✅ FIX: usar _ocultarLogin() en lugar de .style.display = 'none'
         _ocultarLogin(loginSection);
-if (dashboardSection) dashboardSection.style.display = 'flex';
-const _fab = document.querySelector('.dw-theme-fab');
-if (_fab) _fab.style.display = 'none'; //
-        if (userNameDisplay)  userNameDisplay.innerText = u;
+        if (dashboardSection) dashboardSection.style.display = 'flex';
+        const _fab = document.querySelector('.dw-theme-fab');
+        if (_fab) _fab.style.display = 'none'; //
+        if (userNameDisplay) userNameDisplay.innerText = u;
         userBalance = Number(localStorage.getItem('dw_saldo')) || 0;
         updateBalanceUI();
         sincronizarSaldo();
@@ -879,10 +881,10 @@ if (_fab) _fab.style.display = 'none'; //
                 localStorage.setItem('dw_saldo', res.saldo || 0);
                 userBalance = Number(res.saldo || 0);
                 _ocultarLogin(loginSection);
-if (dashboardSection) dashboardSection.style.display = 'flex';
-const _fab = document.querySelector('.dw-theme-fab');
-if (_fab) _fab.style.display = 'none'; //
-                if (userNameDisplay)  userNameDisplay.innerText = res.usuario;
+                if (dashboardSection) dashboardSection.style.display = 'flex';
+                const _fab = document.querySelector('.dw-theme-fab');
+                if (_fab) _fab.style.display = 'none'; //
+                if (userNameDisplay) userNameDisplay.innerText = res.usuario;
                 updateBalanceUI();
                 mostrarToast(`¡Bienvenido, ${res.usuario}!`, 'success');
                 arrancarModulos();
@@ -898,7 +900,7 @@ if (_fab) _fab.style.display = 'none'; //
 // =======================================================================
 // --- 5. SINCRONIZACIÓN DE SALDO ---
 // =======================================================================
-window.sincronizarSaldo = async function() {
+window.sincronizarSaldo = async function () {
     const u = localStorage.getItem('dw_user');
     const t = localStorage.getItem('dw_token');
     if (!u || !t) return;
@@ -909,24 +911,28 @@ window.sincronizarSaldo = async function() {
         updateBalanceUI();
     }
 };
-window.updateBalanceUI = function() {
+window.updateBalanceUI = function () {
     const formatted = `$ ${new Intl.NumberFormat('es-CO').format(userBalance)}`;
     const dBalance = document.getElementById('display-balance');
     const wBalance = document.getElementById('wallet-balance-big');
+    const iBalance = document.getElementById('inicio-user-balance-display');
+    const iName = document.getElementById('inicio-user-name-display');
     if (dBalance) dBalance.innerText = formatted;
     if (wBalance) wBalance.innerText = formatted;
+    if (iBalance) iBalance.innerText = formatted;
+    if (iName) iName.innerText = localStorage.getItem('dw_user') || 'Cliente';
 };
 // =======================================================================
 // --- 6. NAVEGACIÓN (SPA) CON CONTROL DE CARRITO Y BADGE DE VERSIÓN ---
 // =======================================================================
-window.nav = function(targetId, element) {
+window.nav = function (targetId, element) {
     document.querySelectorAll('.nav-item, .submenu-item').forEach(el => el.classList.remove('active'));
     if (element) element.classList.add('active');
     document.querySelectorAll('.main-content > div').forEach(el => el.classList.add('hidden'));
     const target = document.getElementById('sec-' + targetId);
     if (target) target.classList.remove('hidden');
-    const cartBtn     = document.getElementById('main-cart-btn');
-    const cartDrawer  = document.getElementById('cart-drawer');
+    const cartBtn = document.getElementById('main-cart-btn');
+    const cartDrawer = document.getElementById('cart-drawer');
     const cartOverlay = document.getElementById('cart-overlay');
     const versionBadge = document.getElementById('version-badge');
     if (targetId === 'tienda') {
@@ -941,28 +947,30 @@ window.nav = function(targetId, element) {
             cartBtn.classList.add('hidden');
             cartBtn.style.display = 'none';
         }
-        if (cartDrawer)  cartDrawer.classList.remove('open');
+        if (cartDrawer) cartDrawer.classList.remove('open');
         if (cartOverlay) cartOverlay.classList.add('hidden');
         if (versionBadge) {
             versionBadge.style.display = targetId === 'inicio' ? '' : 'none';
         }
     }
     if (window.innerWidth <= 768) toggleSidebar(false);
-    if (targetId === 'pedidos'    && typeof cargarPedidos    === 'function') cargarPedidos();
-    if (targetId === 'billetera'  && typeof cargarBilletera  === 'function') cargarBilletera();
-    if (targetId === 'recarga'    && typeof cargarRecarga    === 'function') cargarRecarga();
-    if (targetId === 'soporte'    && typeof cargarSoporte    === 'function') cargarSoporte();
-    if (targetId === 'codigos'    && typeof cargarCodigos    === 'function') cargarCodigos();
-    if (targetId === 'datos'      && typeof cargarDatos      === 'function') cargarDatos();
+    if (targetId === 'pedidos' && typeof cargarPedidos === 'function') cargarPedidos();
+    if (targetId === 'billetera' && typeof cargarBilletera === 'function') cargarBilletera();
+    if (targetId === 'recarga' && typeof cargarRecarga === 'function') cargarRecarga();
+    if (targetId === 'soporte' && typeof cargarSoporte === 'function') cargarSoporte();
+    if (targetId === 'codigos' && typeof cargarCodigos === 'function') cargarCodigos();
+    if (targetId === 'datos' && typeof cargarDatos === 'function') cargarDatos();
     if (targetId === 'mistickets' && typeof cargarMisTickets === 'function') cargarMisTickets();
-    if (targetId === 'ranking'    && typeof cargarRanking    === 'function') cargarRanking();
+    if (targetId === 'ranking' && typeof cargarRanking === 'function') cargarRanking();
+    // Sincronizar dashboard de inicio al navegar allí
+    if (targetId === 'inicio' && typeof updateBalanceUI === 'function') updateBalanceUI();
     document.dispatchEvent(new CustomEvent('moduloCargado', { detail: { modulo: targetId } }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 // =======================================================================
 // --- 7. CONTROLES DE INTERFAZ (SIDEBAR / SUBMENÚS) ---
 // =======================================================================
-window.toggleSubmenu = function(elemento) {
+window.toggleSubmenu = function (elemento) {
     const submenu = elemento.nextElementSibling;
     if (submenu && submenu.classList.contains('submenu')) {
         submenu.classList.toggle('hidden');
@@ -971,14 +979,14 @@ window.toggleSubmenu = function(elemento) {
         if (icon) icon.textContent = submenu.classList.contains('hidden') ? 'expand_more' : 'expand_less';
     }
 };
-window.toggleSidebar = function(force) {
+window.toggleSidebar = function (force) {
     const sidebar = document.getElementById('sidebar');
     const overlay = document.querySelector('.sidebar-overlay');
     const isOpen = typeof force === 'boolean' ? force : !sidebar.classList.contains('open');
     sidebar.classList.toggle('open', isOpen);
     if (overlay) overlay.classList.toggle('active', isOpen);
 };
-window.logout = function() {
+window.logout = function () {
     localStorage.clear();
     sessionStorage.clear();
     window.location.reload();
