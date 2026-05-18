@@ -3,15 +3,28 @@
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
     {
+        version: "V.2.1.0",
+        fecha: "17/05/2026",
+        tipo: "Personalización Total",
+        cambios: [
+            "🏠 Nuevo inicio personalizado: Ahora al entrar ves tu nombre y tu saldo disponible de un solo vistazo, con accesos rápidos a la Tienda, tus Credenciales y el Centro de Ayuda.",
+            "🎨 Elige tu estilo: Añadimos 4 temas de colores (Fuego, Tecnología, Océano y Esmeralda) para que personalices toda la plataforma a tu gusto. ¡Tu elección se guarda para siempre!",
+            "🖌️ Mezcla tus propios colores: ¿No te convence ninguno? Ahora puedes crear tu propia combinación personalizada eligiendo hasta 3 colores con un selector visual. Experimenta y haz la plataforma tuya.",
+            "💰 Saldo siempre visible: Corregimos un problema donde el nombre y el saldo no aparecían en la pantalla de inicio. Ahora se actualizan al instante cada vez que navegas.",
+            "📋 Botón de copiar arreglado: Solucionamos un error donde el botón de 'Copiar' en tus pedidos y billetera se quedaba en verde y no volvía a la normalidad después de usarlo.",
+            "👋 Toque de bienvenida: Añadimos una animación de saludo junto a tu nombre en el inicio para que te sientas como en casa cada vez que entres."
+        ]
+    },
+    {
         version: "V.2.0.0",
         fecha: "10/05/2026",
         tipo: "Rediseño Premium",
         cambios: [
-    "🎨 Nuevo look de bienvenida: Cambiamos la cara del inicio de sesión. Ahora tiene un diseño mucho más moderno y animado para darte una experiencia VIP desde que entras.",
-    "🌗 Modo oscuro 100% pulido: Ahora sí, el tema que elijas (claro u oscuro) te acompaña perfecto por toda la plataforma sin desconfigurarse.",
-    "🔒 Acceso directo y sin trabas: Arreglamos ese molesto detalle donde la pantalla se quedaba 'pegada' después de poner tus datos. Ahora entras de una a lo que importa.",
-    "⚡ Tienda en modo flash: Le metimos turbo al sistema para que el catálogo de cuentas te cargue en un abrir y cerrar de ojos."
-]
+            "🎨 Nuevo look de bienvenida: Cambiamos la cara del inicio de sesión. Ahora tiene un diseño mucho más moderno y animado para darte una experiencia VIP desde que entras.",
+            "🌗 Modo oscuro 100% pulido: Ahora sí, el tema que elijas (claro u oscuro) te acompaña perfecto por toda la plataforma sin desconfigurarse.",
+            "🔒 Acceso directo y sin trabas: Arreglamos ese molesto detalle donde la pantalla se quedaba 'pegada' después de poner tus datos. Ahora entras de una a lo que importa.",
+            "⚡ Tienda en modo flash: Le metimos turbo al sistema para que el catálogo de cuentas te cargue en un abrir y cerrar de ojos."
+        ]
     },
     {
         version: "V.1.9.0",
@@ -132,14 +145,14 @@ const historicoVersiones = [
 // MODAL DE ACTUALIZACIONES
 // ===============================================================
 function abrirModalUpdates() {
-    const overlay  = document.getElementById('update-overlay');
-    const modal    = document.getElementById('update-modal');
+    const overlay = document.getElementById('update-overlay');
+    const modal = document.getElementById('update-modal');
     const timeline = document.getElementById('update-timeline');
     if (!overlay || !modal || !timeline) return;
 
     timeline.innerHTML = historicoVersiones.map((v, index) => {
-        const isLatest   = index === 0;
-        const dotColor   = isLatest ? 'var(--success)' : 'var(--accent)';
+        const isLatest = index === 0;
+        const dotColor = isLatest ? 'var(--success)' : 'var(--accent)';
         const badgeStyle = isLatest
             ? 'background:rgba(16,185,129,0.1); color:#10b981; border:1px solid rgba(16,185,129,0.3);'
             : 'background:var(--accent-glow); color:var(--accent-text); border:1px solid var(--accent);';
@@ -167,9 +180,9 @@ function abrirModalUpdates() {
 
 function cerrarModalUpdates() {
     const overlay = document.getElementById('update-overlay');
-    const modal   = document.getElementById('update-modal');
+    const modal = document.getElementById('update-modal');
     if (overlay) overlay.classList.add('hidden');
-    if (modal)   modal.classList.remove('active');
+    if (modal) modal.classList.remove('active');
 }
 
 // ===============================================================
@@ -363,37 +376,17 @@ document.head.appendChild(styleSheetUpdate);
 // ===============================================================
 // INICIALIZACIÓN DEL BADGE
 // ---------------------------------------------------------------
-// La visibilidad del badge la maneja el evento 'moduloCargado'
-// que dispara nav() en client.js cada vez que se cambia de sección.
-// Solo mostramos el badge en la sección 'inicio'.
-// Esto elimina la necesidad de escuchar clicks en cada .nav-item
-// y mantiene una única fuente de verdad para la navegación.
+// El badge vive DENTRO de #sec-inicio en el HTML.
+// Cuando esa sección tiene clase 'hidden', el badge también se oculta
+// automáticamente porque está anidado dentro.
+// El JS solo rellena el texto — no mueve el elemento.
 // ===============================================================
 document.addEventListener('DOMContentLoaded', () => {
     const ultimaVersion = historicoVersiones[0];
-    const badge  = document.getElementById('version-badge');
-    if (!badge) return;
-
-    // Rellenar texto del badge
-    const numEl  = document.getElementById('badge-v-num');
+    const numEl = document.getElementById('badge-v-num');
     const dateEl = document.getElementById('badge-v-date');
-    if (numEl)  numEl.innerText  = ultimaVersion.version;
+    if (numEl) numEl.innerText = ultimaVersion.version;
     if (dateEl) dateEl.innerText = `ÚLTIMA ACT. ${ultimaVersion.fecha}`;
-
-    // Mover el badge al body para que el position:fixed no quede
-    // atrapado dentro de un contenedor con transform o overflow.
-    document.body.appendChild(badge);
-
-    // Oculto por defecto: nav() lo mostrará cuando corresponda.
-    badge.style.display = 'none';
-});
-
-// Escuchar el evento de navegación que emite nav() en client.js.
-// Esta es la única lógica de visibilidad del badge — sin duplicados.
-document.addEventListener('moduloCargado', (e) => {
-    const badge  = document.getElementById('version-badge');
-    if (!badge) return;
-
-    // El badge solo aparece en la sección de inicio.
-    badge.style.display = e.detail.modulo === 'inicio' ? 'flex' : 'none';
+    // ⚠️ NO mover el badge al body — debe quedarse dentro de #sec-inicio
+    // para que se oculte automáticamente junto con esa sección.
 });
