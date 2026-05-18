@@ -10,9 +10,11 @@ const historicoVersiones = [
             "🏠 Nuevo inicio personalizado: Ahora al entrar ves tu nombre y tu saldo disponible de un solo vistazo, con accesos rápidos a la Tienda, tus Credenciales y el Centro de Ayuda.",
             "🎨 Elige tu estilo: Añadimos 4 temas de colores (Fuego, Tecnología, Océano y Esmeralda) para que personalices toda la plataforma a tu gusto. ¡Tu elección se guarda para siempre!",
             "🖌️ Mezcla tus propios colores: ¿No te convence ninguno? Ahora puedes crear tu propia combinación personalizada eligiendo hasta 3 colores con un selector visual. Experimenta y haz la plataforma tuya.",
+            "🚀 Bienvenida inteligente: La primera vez que entras, la plataforma te recibe en la pantalla de Inicio para que conozcas todo. A partir de la segunda vez, vas directo a la Tienda para comprar más rápido.",
             "💰 Saldo siempre visible: Corregimos un problema donde el nombre y el saldo no aparecían en la pantalla de inicio. Ahora se actualizan al instante cada vez que navegas.",
             "📋 Botón de copiar arreglado: Solucionamos un error donde el botón de 'Copiar' en tus pedidos y billetera se quedaba en verde y no volvía a la normalidad después de usarlo.",
-            "👋 Toque de bienvenida: Añadimos una animación de saludo junto a tu nombre en el inicio para que te sientas como en casa cada vez que entres."
+            "👋 Toque de bienvenida: Añadimos una animación de saludo junto a tu nombre en el inicio para que te sientas como en casa cada vez que entres.",
+            "🔐 Seguridad reforzada: Tu sesión ahora se cuenta con una capa mas de seguridad."
         ]
     },
     {
