@@ -279,12 +279,15 @@ document.addEventListener('moduloCargado', (e) => {
     }
 });
 
+// ── Carga Inicial ─────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
-    window.aplicarTema(localStorage.getItem(TEMA_KEY) || 'fuego', false);
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    window.aplicarTema(localStorage.getItem(TEMA_KEY) || 'fuego', false);
+    const temaGuardado = localStorage.getItem(TEMA_KEY);
+    if (!temaGuardado) {
+        // Primera vez: guardar el tema por defecto
+        window.aplicarTema('fuego', true);
+    } else {
+        window.aplicarTema(temaGuardado, false);
+    }
 });
 
 // ── Inyección de Estilos CSS ──────────────────────────────────
