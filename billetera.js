@@ -834,39 +834,48 @@ function ejecutarPlanB(texto, elementoIcono) {
 
 function animarCopia(icono) {
     if (!icono) return;
-    const originalClass = icono.className;
-    const originalText = icono.innerText;
-    
-    icono.innerText = 'check';
-    icono.classList.add('copy-success-anim');
-    
-    const btnTodo = icono.closest('#btn-copiar-todo-modal');
+
+    // Caso especial: se pasó el botón #btn-copiar-todo-modal completo como "icono"
+    const btnTodo = icono.id === 'btn-copiar-todo-modal'
+        ? icono
+        : icono.closest('#btn-copiar-todo-modal');
+
     if (btnTodo) {
-        let oldBg = btnTodo.style.background;
-        let oldColor = btnTodo.style.color;
-        let oldBorder = btnTodo.style.borderColor;
-        
-        btnTodo.style.background = 'var(--success)';
-        btnTodo.style.color = '#fff';
-        btnTodo.style.borderColor = 'var(--success)';
-        icono.innerText = 'check COPIADO';
-        
+        // Guardar estado original del BOTÓN completo
+        const originalHTML   = btnTodo.innerHTML;
+        const originalBg     = btnTodo.style.background;
+        const originalColor  = btnTodo.style.color;
+        const originalBorder = btnTodo.style.borderColor;
+
+        // Estado de éxito
+        btnTodo.style.background   = 'var(--success)';
+        btnTodo.style.color        = '#fff';
+        btnTodo.style.borderColor  = 'var(--success)';
+        btnTodo.innerHTML = `<i class="material-icons-round" style="font-size:1.1rem;">check</i> COPIADO`;
+
+        // Restaurar completamente después de 1.5s
         setTimeout(() => {
-            icono.innerText = 'receipt COPIAR';
-            btnTodo.style.background = oldBg;
-            btnTodo.style.color = oldColor;
-            btnTodo.style.borderColor = oldBorder;
-            icono.classList.remove('copy-success-anim');
-        }, 2000);
+            btnTodo.innerHTML        = originalHTML;
+            btnTodo.style.background = originalBg;
+            btnTodo.style.color      = originalColor;
+            btnTodo.style.borderColor = originalBorder;
+        }, 1500);
         return;
     }
 
+    // Caso normal: es un icono de material-icons (copy_grupo o copy_cuenta)
+    const originalClass = icono.className;
+    const originalText  = icono.innerText;
+
+    icono.innerText = 'check';
+    icono.classList.add('copy-success-anim');
+
     setTimeout(() => {
-        icono.innerText = originalText;
-        icono.className = originalClass;
-        icono.classList.remove('copy-success-anim');
+        icono.innerText   = originalText;
+        icono.className   = originalClass;
     }, 1500);
 }
+
 
 if (!window.radarCopiaIniciado) {
     window.radarCopiaIniciado = true;
