@@ -237,7 +237,7 @@ function renderizarPedidosMovil(respuestaServidor) {
             </div>
             
             <div class="mobile-order-footer">
-                <button class="btn-mobile-factura" onclick="invocarModalFacturaExterna('${pedido.orderId}')">
+                <button class="btn-mobile-factura" onclick="abrirFacturaGlobal('${pedido.orderId}', pedidosGlobalesBrutos)">
                     <i class="material-icons-round">open_in_new</i> ABRIR FACTURA
                 </button>
             </div>
