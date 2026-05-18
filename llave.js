@@ -832,6 +832,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.body.classList.toggle('dark-mode', esOscuro);
         if (themeToggle) themeToggle.checked = esOscuro;
         localStorage.setItem('dw_theme', esOscuro ? 'dark' : 'light');
+        // Re-aplicar el tema de color para que use la paleta correcta (light/dark)
+        if (typeof window.aplicarTema === 'function') {
+            const temaColor = localStorage.getItem('dw_tema_color') || 'fuego';
+            window.aplicarTema(temaColor, false);
+        }
     };
     const temaGuardado = localStorage.getItem('dw_theme');
     if (temaGuardado) aplicarTemaCliente(temaGuardado === 'dark');
