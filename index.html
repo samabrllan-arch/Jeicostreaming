@@ -1,589 +1,85 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Cargando...</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sitio en Mantenimiento</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            text-align: center;
+        }
+        
+        .mantenimiento-contenedor {
+            background: #ffffff;
+            padding: 50px 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+            max-width: 500px;
+            width: 85%;
+        }
 
-  <link href="https://fonts.googleapis.com/css2?family=Righteous&family=Inter:wght@300;400;600;800&display=swap"
-    rel="stylesheet">
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+        .icono {
+            font-size: 4rem;
+            margin-bottom: 15px;
+            animation: rotar 4s linear infinite;
+            display: inline-block;
+        }
 
-  <link rel="stylesheet" href="estilo1.css">
+        h1 {
+            font-size: 2.2rem;
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: #555;
+            margin: 0 0 20px 0;
+        }
+
+        .contacto {
+            font-size: 0.9rem;
+            color: #888;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+
+        .contacto a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .contacto a:hover {
+            text-decoration: underline;
+        }
+
+        /* Pequeña animación opcional para el icono de engranaje */
+        @keyframes rotar {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
-
 <body>
 
-  <div id="login-view">
-
-    <div class="login-banner-bg" id="login-banner"
-      style="background-image: url('uploads/categorias/banner.png'); background-size: cover; background-position: center;">
+    <div class="mantenimiento-contenedor">
+        <div class="icono">⚙️</div>
+        <h1>¡Volvemos pronto!</h1>
+        <p>Estamos realizando tareas de mantenimiento para mejorar tu experiencia en nuestro sitio web.</p>
+        <p>Disculpa las molestias. Estaremos de vuelta en línea lo más rápido posible.</p>
     </div>
-
-    <div class="login-box" id="login-box-main">
-      <h2 class="vault-header">ACCESO A LA BÓVEDA</h2>
-
-      <form id="login-form">
-        <div class="input-group">
-          <input type="text" id="user" class="input-field" placeholder="USUARIO" required="">
-        </div>
-
-        <div class="input-group">
-          <input type="password" id="pass" class="input-field" placeholder="CONTRASEÑA" required="">
-          <span class="material-icons-round eye-icon" id="togglePassword">visibility_off</span>
-        </div>
-
-        <button type="submit" class="btn-login">ENTRAR</button>
-      </form>
-
-      <p class="forgot-password-link" onclick="mostrarRecuperacionPaso1()">¿Olvidaste tu contraseña?</p>
-
-      <div style="text-align: center; margin-top: 30px; font-size: 0.7rem; color: var(--text-muted);">
-        &copy; 2026 Desarrollado por <span style="font-weight: bold;">Brallan Ariza</span>
-      </div>
-    </div>
-
-    <div class="login-box hidden" id="recover-step-1">
-      <h2 class="verify-header">VERIFICAR IDENTIDAD</h2>
-      <p class="reminder-text">Recuerda colocar tu correo y número registrados.</p>
-
-      <form id="recover-form-1" onsubmit="enviarSolicitudRecuperacion(event)">
-        <div class="input-group">
-          <input type="email" id="rec-correo" class="input-field" placeholder="CORREO ELECTRÓNICO" required="">
-        </div>
-        <div class="input-group">
-          <input type="tel" id="rec-tel" class="input-field" placeholder="TELÉFONO REGISTRADO" required="">
-        </div>
-        <button type="submit" class="btn-login" id="btn-recover-1"
-          style="background: #3b82f6 !important;">COMPROBAR</button>
-
-        <div class="back-container" onclick="volverLogin()">
-          <span class="material-icons-round">keyboard_backspace</span>
-          <span>VOLVER AL INICIO</span>
-        </div>
-      </form>
-    </div>
-
-    <div class="login-box hidden" id="recover-step-2">
-      <h2 class="success-header">NUEVA CONTRASEÑA</h2>
-      <p style="color: var(--text-gray); margin-bottom: 25px; font-size: 0.75rem; text-align: center;">Identidad
-        confirmada. Define tu nueva clave de acceso.</p>
-
-      <form id="recover-form-2" onsubmit="procesarNuevaClave(event)">
-        <div class="input-group">
-          <input type="password" id="rec-nueva-clave" class="input-field" placeholder="ASIGNAR NUEVA CLAVE" required="">
-        </div>
-        <button type="submit" class="btn-login" id="btn-recover-2"
-          style="background: #10b981 !important; color: #000 !important;">ACTUALIZAR</button>
-      </form>
-    </div>
-
-  </div>
-
-  <div id="app-view" style="display: none;">
-
-    <button class="hamburger-menu" id="hamburger-btn" onclick="toggleSidebar()">
-      <span class="material-icons-round">menu</span>
-    </button>
-
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-
-    <aside class="sidebar" id="sidebar">
-      <div class="logo">
-        <img src="uploads/categorias/logo.png" alt="Logo" class="logo-img" id="site-logo">
-      </div>
-
-      <div style="padding: 0 10px;">
-        <button class="nav-item" id="btn-toggle-desktop"
-          onclick="document.getElementById('sidebar').classList.toggle('collapsed');"
-          style="background: transparent; border: none; width: 100%; cursor: pointer;">
-          <span class="material-icons-round">menu_open</span>
-          <span class="menu-text">OCULTAR MENÚ</span>
-        </button>
-      </div>
-
-      <ul class="nav-links">
-
-        <li class="nav-item" onclick="nav('inicio', this)">
-          <span class="material-icons-round">home</span>
-          <span class="menu-text">INICIO</span>
-        </li>
-
-        <li class="nav-item active" onclick="nav('tienda', this)">
-          <span class="material-icons-round">storefront</span>
-          <span class="menu-text">TIENDA</span>
-        </li>
-
-        <li class="nav-item has-submenu" onclick="toggleSubmenu(this)">
-          <div style="display:flex; align-items:center; gap:12px; width:100%;">
-            <span class="material-icons-round">person</span>
-            <span class="menu-text">MI CUENTA</span>
-            <span class="material-icons-round arrow-icon menu-text"
-              style="margin-left:auto; font-size:1.2rem;">expand_more</span>
-          </div>
-        </li>
-        <ul class="submenu hidden" id="submenu-cuenta">
-          <li class="submenu-item" onclick="nav('pedidos', this)">
-            <span class="material-icons-round">receipt_long</span>
-            <span class="menu-text">Mis Pedidos</span>
-          </li>
-          <li class="submenu-item" onclick="nav('billetera', this)">
-            <span class="material-icons-round">account_balance_wallet</span>
-            <span class="menu-text">Mi Billetera</span>
-          </li>
-          <li class="submenu-item" onclick="nav('datos', this)">
-            <span class="material-icons-round">manage_accounts</span>
-            <span class="menu-text">Mis Datos</span>
-          </li>
-        </ul>
-
-        <li class="nav-item" onclick="nav('recarga', this)">
-          <span class="material-icons-round">savings</span>
-          <span class="menu-text">RECARGAR</span>
-        </li>
-
-        <li class="nav-item has-submenu" onclick="toggleSubmenu(this)">
-          <div style="display:flex; align-items:center; gap:12px; width:100%;">
-            <span class="material-icons-round">support_agent</span>
-            <span class="menu-text">SOPORTE</span>
-            <span class="material-icons-round arrow-icon menu-text"
-              style="margin-left:auto; font-size:1.2rem;">expand_more</span>
-          </div>
-        </li>
-        <ul class="submenu hidden" id="submenu-soporte">
-          <li class="submenu-item" onclick="nav('soporte', this)">
-            <span class="material-icons-round">bug_report</span>
-            <span class="menu-text">Crear Ticket</span>
-          </li>
-          <li class="submenu-item" onclick="nav('mistickets', this)">
-            <span class="material-icons-round">history_edu</span>
-            <span class="menu-text">Mis Tickets</span>
-          </li>
-        </ul>
-
-        <li class="nav-item" onclick="nav('codigos', this)">
-          <span class="material-icons-round">vpn_key</span>
-          <span class="menu-text">CÓDIGOS</span>
-        </li>
-        <li class="nav-item" onclick="nav('ranking', this)">
-          <span class="material-icons-round">emoji_events</span>
-          <span class="menu-text">RANKING</span>
-        </li>
-
-        <div class="theme-switch-wrapper">
-          <div class="theme-switch-label menu-text">
-            <span class="material-icons-round">dark_mode</span>
-            <span>OSCURO</span>
-          </div>
-          <label class="theme-switch">
-            <input type="checkbox" id="client-theme-toggle">
-            <span class="theme-slider"></span>
-          </label>
-        </div>
-
-        <li class="nav-item logout-link" onclick="logout()" style="margin-top: 0;">
-          <span class="material-icons-round">logout</span>
-          <span class="menu-text">SALIR</span>
-        </li>
-      </ul>
-
-      <div class="user-sidebar-info">
-        <div class="user-avatar-circle">
-          <span class="material-icons-round">account_circle</span>
-        </div>
-        <div class="user-data-text menu-text">
-          <span class="user-name" id="display-user">...</span>
-          <div class="user-balance" id="display-balance">$ 0</div>
-        </div>
-      </div>
-    </aside>
-
-    <main class="main-content">
-
-      <div id="sec-inicio" class="hidden">
-
-        <div id="version-badge" class="version-badge" onclick="abrirModalUpdates()">
-          <span class="v-num" id="badge-v-num"></span>
-          <span class="v-date" id="badge-v-date"></span>
-        </div>
-
-        <div class="inicio-dashboard-hero">
-          <div class="dashboard-user-info">
-            <div class="dashboard-greeting">Bienvenido de vuelta,</div>
-            <h1 class="dashboard-name" id="inicio-user-name-display">Cliente</h1>
-          </div>
-          <div class="dashboard-balance-card">
-            <div class="balance-text-group">
-              <span class="balance-label">SALDO DISPONIBLE</span>
-              <h2 class="balance-amount" id="inicio-user-balance-display">$ 0</h2>
-            </div>
-            <button class="btn-recarga-quick" onclick="nav('recarga')">
-              <span class="material-icons-round">add_circle</span> RECARGAR
-            </button>
-          </div>
-        </div>
-
-        <div class="inicio-quick-actions">
-          <div class="quick-card action-tienda" onclick="nav('tienda')">
-            <div class="quick-icon"><span class="material-icons-round">storefront</span></div>
-            <div class="quick-text">
-              <h3>Ir a la Tienda</h3>
-              <p>Adquirir nuevas cuentas</p>
-            </div>
-            <span class="material-icons-round quick-arrow">arrow_forward</span>
-          </div>
-
-          <div class="quick-card action-pedidos" onclick="nav('pedidos')">
-            <div class="quick-icon"><span class="material-icons-round">vpn_key</span></div>
-            <div class="quick-text">
-              <h3>Mis Credenciales</h3>
-              <p>Ver mis cuentas activas</p>
-            </div>
-            <span class="material-icons-round quick-arrow">arrow_forward</span>
-          </div>
-
-          <div class="quick-card action-soporte" onclick="nav('soporte')">
-            <div class="quick-icon"><span class="material-icons-round">support_agent</span></div>
-            <div class="quick-text">
-              <h3>Centro de Ayuda</h3>
-              <p>Reportar fallas o dudas</p>
-            </div>
-            <span class="material-icons-round quick-arrow">arrow_forward</span>
-          </div>
-        </div>
-
-        <div class="temas-section">
-          <h3 class="temas-section-title">
-            <span class="material-icons-round">palette</span>
-            Aspecto Visual
-          </h3>
-          <div id="panel-temas"></div>
-        </div>
-
-        <div class="inicio-footer-premium">
-          <div class="footer-content">
-            <span class="footer-copy">&copy; 2026 Desarrollado por <strong class="footer-brand-name">BRALLAN
-                ARIZA</strong></span>
-            <span class="footer-dot"></span>
-            <span class="footer-rights">Todos los derechos reservados</span>
-          </div>
-          <div class="footer-tech-badge">
-            <span class="material-icons-round">verified_user</span>
-            Plataforma Protegida
-          </div>
-        </div>
-
-      </div>
-
-      <div id="sec-tienda">
-        <div class="section-header-premium">
-          <h1 class="page-title">CATÁLOGO PREMIUM</h1>
-          <p class="section-description">Selecciona el servicio que deseas activar en tu cuenta.</p>
-        </div>
-        <div id="shop-container" class="products-grid">
-          <div class="spinner-container">
-            <div class="spinner"></div>
-          </div>
-        </div>
-      </div>
-
-      <div id="sec-billetera" class="hidden">
-        <h1 class="page-title">MI BILLETERA</h1>
-        <div class="wallet-layout">
-          <div class="wallet-card">
-            <div class="wallet-label">SALDO DISPONIBLE ACTUAL</div>
-            <div class="wallet-amount" id="wallet-balance-big">$ 0.00</div>
-            <div class="wallet-actions">
-              <button onclick="nav('recarga')" class="btn-wallet-action">
-                <span class="material-icons-round">add_circle</span>
-                <span>SOLICITAR RECARGA</span>
-              </button>
-            </div>
-          </div>
-          <div class="history-container-premium">
-            <div class="history-header">
-              <h3>MOVIMIENTOS RECIENTES</h3>
-              <span class="material-icons-round" style="color: var(--accent);">history</span>
-            </div>
-            <div class="table-responsive-wrapper">
-              <table class="premium-table">
-                <thead>
-                  <tr>
-                    <th>FECHA</th>
-                    <th>DESCRIPCIÓN / TIPO</th>
-                    <th style="text-align:center;">MONTO (COP)</th>
-                    <th style="text-align:right;">NUEVO SALDO</th>
-                  </tr>
-                </thead>
-                <tbody id="wallet-history">
-                  <tr>
-                    <td colspan="4" style="text-align:center; padding: 60px; color:#555;">Sincronizando movimientos...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div id="sec-pedidos" class="hidden">
-        <div class="page-header-premium">
-          <h1 class="page-title">MIS ADQUISICIONES</h1>
-          <p class="page-subtitle">Acceso directo a tus credenciales y bóveda personal.</p>
-        </div>
-
-        <div class="search-premium-container">
-          <span class="material-icons-round search-icon">search</span>
-          <input type="text" id="input-busqueda-pedidos" placeholder="Buscar servicio o usuario..."
-            onkeydown="if(event.key === 'Enter') ejecutarBusquedaPedidos()">
-          <button class="btn-search-action" onclick="ejecutarBusquedaPedidos()">BUSCAR</button>
-        </div>
-
-        <div id="orders-container" class="orders-premium-grid">
-          <div style="grid-column: 1/-1; text-align:center; padding:60px;">
-            <div class="spinner"></div>
-            <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">AUTENTICANDO
-              ACCESO...</p>
-          </div>
-        </div>
-      </div>
-
-      <div id="sec-recarga" class="hidden">
-        <div style="text-align:center; padding:100px;">
-          <div class="spinner"></div>
-          <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px;">PREPARANDO PASARELA...</p>
-        </div>
-      </div>
-
-      <div id="sec-soporte" class="hidden">
-        <h1 class="page-title">CENTRO DE AYUDA</h1>
-        <div class="support-card-premium">
-          <div class="support-header">
-            <span class="material-icons-round" style="font-size: 3.5rem; color: var(--accent);">gpp_maybe</span>
-            <h3>SOPORTE TÉCNICO</h3>
-          </div>
-          <p>¿Problemas con el acceso? Reporta fallos en cuentas, perfiles o renovaciones. Estamos para servirte.</p>
-          <div class="support-info-grid">
-            <div class="info-item">
-              <strong>DISPONIBILIDAD</strong>
-              <span>9:00 AM a 11:00 PM</span>
-            </div>
-            <div class="info-item">
-              <strong>GARANTÍA</strong>
-              <span>Protección total 30 días</span>
-            </div>
-          </div>
-          <a href="https://wa.me/573172391419?text=Hola,%20tengo%20un%20problema%20con%20mi%20cuenta" target="_blank"
-            class="cta-button" style="width: 100%; margin-top: 25px;">REPORTAR FALLA AHORA</a>
-        </div>
-      </div>
-
-      <div id="sec-mistickets" class="hidden">
-        <div class="page-header-premium">
-          <h1 class="page-title">HISTORIAL DE SOPORTE</h1>
-          <p class="page-subtitle">Seguimiento y estado de tus reportes de incidencias.</p>
-        </div>
-        <div id="tickets-container" class="orders-premium-grid">
-          <div style="grid-column: 1/-1; text-align:center; padding:60px;">
-            <div class="spinner"></div>
-            <p style="color:var(--text-gray); margin-top:20px; letter-spacing:2px; font-size:0.8rem;">CARGANDO
-              TICKETS...</p>
-          </div>
-        </div>
-      </div>
-
-      <div id="sec-codigos" class="hidden"></div>
-      <div id="sec-datos" class="hidden"></div>
-      <div id="sec-ranking" class="hidden">
-        <div class="page-header-premium">
-          <h1 class="page-title">SALÓN DE LA FAMA</h1>
-          <p class="page-subtitle">Descubre a los mayores líderes de la bóveda.</p>
-        </div>
-      </div>
-
-    </main>
-
-    <button class="floating-cart-btn hidden" id="main-cart-btn" onclick="toggleCart()">
-      <span class="material-icons-round" style="font-size: 32px;">shopping_cart</span>
-      <div class="cart-badge" id="cart-count">0</div>
-    </button>
-
-    <div class="overlay hidden" id="cart-overlay" onclick="toggleCart()"></div>
-
-    <div class="cart-drawer" id="cart-drawer">
-      <div class="drawer-header">
-        <h2>MI CARRITO</h2>
-        <button class="btn-close-drawer" onclick="toggleCart()">
-          <span class="material-icons-round">close</span>
-        </button>
-      </div>
-      <div class="drawer-body" id="cart-items-list">
-        <p style="text-align:center; color:#444; margin-top:30px;">Tu carrito está esperando.</p>
-      </div>
-      <div class="drawer-footer">
-        <div class="drawer-total">
-          <span>TOTAL ESTIMADO:</span>
-          <span id="cart-total-display">$ 0</span>
-        </div>
-        <button class="btn-checkout" onclick="goToCheckout()">PAGAR CON MI SALDO</button>
-        <button class="btn-continue" onclick="toggleCart()">CONTINUAR COMPRANDO</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="checkout-overlay"></div>
-    <div class="checkout-modal" id="checkout-modal">
-      <div class="checkout-header">CONFIRMACIÓN DE PAGO</div>
-      <div class="checkout-body">
-        <p style="color:#777; margin-bottom:20px; font-size: 0.85rem; text-align: center;">Estás a un paso de activar
-          tus servicios. Revisa tu pedido:</p>
-        <div id="checkout-summary-list" class="checkout-list-container"></div>
-        <div class="checkout-total-row">
-          <span>DÉBITO TOTAL:</span>
-          <span id="checkout-final-total">$ 0</span>
-        </div>
-      </div>
-      <div class="checkout-actions">
-        <button class="btn-final-cancel" onclick="closeCheckout()">ATRÁS</button>
-        <button class="btn-final-pay" onclick="finalizePurchase()">CONFIRMAR Y PAGAR</button>
-      </div>
-    </div>
-
-    <div class="overlay hidden" id="update-overlay" onclick="cerrarModalUpdates()"></div>
-    <div class="update-modal" id="update-modal">
-      <div class="update-header">
-        <div class="update-header-title">
-          <span class="material-icons-round">system_update_alt</span>
-          <h2>HISTORIAL DE VERSIONES</h2>
-        </div>
-        <button class="btn-close-update" onclick="cerrarModalUpdates()">
-          <span class="material-icons-round">close</span>
-        </button>
-      </div>
-      <div class="update-body" id="update-timeline">
-      </div>
-    </div>
-
-  </div>
-  <script src="config_cliente.js"></script>
-  <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-
-      // =======================================================================
-      // INYECCIÓN DE MARCA BLANCA (TÍTULO Y LOGO)
-      // =======================================================================
-      if (typeof NOMBRE_NEGOCIO !== 'undefined') {
-        document.title = NOMBRE_NEGOCIO;
-        const logoMain = document.getElementById('site-logo');
-        if (logoMain) {
-          logoMain.alt = `Logo ${NOMBRE_NEGOCIO}`;
-        }
-      }
-      // =======================================================================
-
-      const CACHE_KEY = 'dw_branding_cache';
-      const TIEMPO_EXPIRACION = 60 * 60 * 1000; // 1 Hora en milisegundos
-
-      // Función auxiliar para pintar las imágenes en el HTML
-      const aplicarBrandingAlHTML = (logo, banner) => {
-        if (logo) {
-          const logoImg = document.getElementById('site-logo');
-          if (logoImg) logoImg.src = logo;
-        }
-        if (banner) {
-          const bannerDiv = document.getElementById('login-banner');
-          if (bannerDiv) bannerDiv.style.backgroundImage = `url('${banner}')`;
-        }
-      };
-
-      try {
-        // 1. Verificamos si hay datos guardados en LocalStorage
-        const cacheGuardado = localStorage.getItem(CACHE_KEY);
-        if (cacheGuardado) {
-          const datosCache = JSON.parse(cacheGuardado);
-          const tiempoActual = new Date().getTime();
-
-          // Si NO ha pasado 1 hora, usamos la memoria y detenemos la ejecución aquí
-          if (tiempoActual - datosCache.timestamp < TIEMPO_EXPIRACION) {
-            aplicarBrandingAlHTML(datosCache.logo, datosCache.banner);
-            return;
-          }
-        }
-
-        // 2. Si no hay caché o ya pasó 1 hora, hacemos el llamado al servidor
-        const response = await fetch(`${API_BASE_URL_CLIENTE}/dw_api.php`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'accion=getConfiguracion'
-        });
-        const data = await response.json();
-
-        if (data.success && data.datos) {
-          let urlLogo = data.datos.logo || '';
-          let urlBanner = data.datos.banner || '';
-
-          // --- PROCESAR LOGO ---
-          if (urlLogo) {
-            if (urlLogo.includes("uc?export=view&id=")) {
-              urlLogo = urlLogo.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w400";
-            } else if (!urlLogo.startsWith("http") && !urlLogo.startsWith("data:")) {
-              urlLogo = API_BASE_URL_CLIENTE + "/uploads/categorias/" + urlLogo;
-            }
-          }
-
-          // --- PROCESAR BANNER (Fondo del Login) ---
-          if (urlBanner) {
-            if (urlBanner.includes("uc?export=view&id=")) {
-              urlBanner = urlBanner.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w1200";
-            } else if (!urlBanner.startsWith("http") && !urlBanner.startsWith("data:")) {
-              urlBanner = API_BASE_URL_CLIENTE + "/uploads/categorias/" + urlBanner;
-            }
-          }
-
-          // 3. Lo mostramos en la pantalla
-          aplicarBrandingAlHTML(urlLogo, urlBanner);
-
-          // 4. Guardamos los enlaces limpios en LocalStorage con la hora actual
-          localStorage.setItem(CACHE_KEY, JSON.stringify({
-            logo: urlLogo,
-            banner: urlBanner,
-            timestamp: new Date().getTime()
-          }));
-        }
-      } catch (e) {
-        console.warn("No se pudo cargar el branding dinámico, usando plan de respaldo:", e);
-        // Plan de respaldo: si se cae el internet, intenta mostrar la memoria vieja para no dejar la página en blanco
-        const cacheGuardado = localStorage.getItem(CACHE_KEY);
-        if (cacheGuardado) {
-          const datosCache = JSON.parse(cacheGuardado);
-          aplicarBrandingAlHTML(datosCache.logo, datosCache.banner);
-        }
-      }
-    });
-  </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-  <script src="llave.js"></script>
-  <script src="billetera.js"></script>
-  <script src="billetera_cel.js"></script>
-  <script src="recarga.js"></script>
-  <script src="datos.js"></script>
-  <script src="contra.js"></script>
-  <script src="ranking.js"></script>
-  <script src="tienda.js"></script>
-  <script src="codigo.js"></script>
-  <script src="mistickets.js"></script>
-  <script src="soporte.js"></script>
-  <script src="pedidos_cel.js"></script>
-  <script src="pedido.js"></script>
-  <script src="modal.js"></script>
-
-  <script src="temas.js"></script>
-  <script src="update.js"></script>
 
 </body>
-
 </html>
