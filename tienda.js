@@ -3,6 +3,94 @@
    Lógica: Renderizado de la tienda, carrito de compras y proceso de Checkout.
 ================================================================================= */
 
+// 🔥 INYECCIÓN DE ESTILOS PARA TARJETAS JEICOSTREAMING (SE EJECUTA UNA SOLA VEZ) 🔥
+if (!document.getElementById('jeico-premium-styles')) {
+    const style = document.createElement('style');
+    style.id = 'jeico-premium-styles';
+    style.innerHTML = `
+        /* Variables dinámicas para el borde (Negro en claro, Blanco en oscuro) */
+        :root {
+            --card-strong-border: #0f172a; /* Negro muy oscuro para modo claro */
+            --card-shadow-color: rgba(0, 0, 0, 0.15); /* Sombra suave para modo claro */
+        }
+        body.dark-mode {
+            --card-strong-border: #f8fafc; /* Blanco tiza para modo oscuro */
+            --card-shadow-color: rgba(0, 0, 0, 0.6); /* Sombra intensa para modo oscuro */
+        }
+
+        /* 1. EL ENVOLTORIO: Aquí va la sombra, fuera del clip-path */
+        .jeico-card-wrapper {
+            height: 100%;
+            filter: drop-shadow(0px 8px 16px var(--card-shadow-color));
+            transition: filter 0.3s ease; /* Se eliminó el transform para que la tarjeta no se mueva */
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Efecto al pasar el mouse sobre toda la tarjeta (solo brillo) */
+        .jeico-card-wrapper:hover {
+            filter: drop-shadow(0px 15px 25px var(--accent-glow, rgba(124, 58, 237, 0.5)));
+        }
+
+        /* 2. EL BORDE GRUESO: Este tiene el clip-path y el color dinámico */
+        .jeico-card-border {
+            background: var(--card-strong-border);
+            padding: 3px; /* Borde más grueso para resaltar */
+            clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
+            height: 100%;
+            transition: background 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Al hacer hover, el borde cambia al color principal (Morado/Acento) */
+        .jeico-card-wrapper:hover .jeico-card-border {
+            background: var(--accent);
+        }
+
+        /* 3. EL FONDO INTERIOR */
+        .jeico-card-inner {
+            background: var(--bg-card);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+        }
+
+        /* 4. LA IMAGEN: Conectada al hover del wrapper */
+        .jeico-card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.9;
+            transition: transform 0.5s ease, opacity 0.5s ease;
+        }
+        
+        .jeico-card-wrapper:hover .jeico-card-img {
+            transform: scale(1.1); /* Efecto zoom activado desde la tarjeta */
+            opacity: 1;
+        }
+
+        /* 5. TARJETAS AGOTADAS (Neutralizadas sin hover) */
+        .jeico-card-wrapper.is-sold-out {
+            filter: grayscale(1) drop-shadow(0px 4px 6px rgba(0,0,0,0.1));
+            opacity: 0.75;
+        }
+        .jeico-card-wrapper.is-sold-out:hover {
+            filter: grayscale(1) drop-shadow(0px 4px 6px rgba(0,0,0,0.1)); /* Mantiene la sombra estática */
+        }
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-border {
+            background: var(--card-strong-border); /* Mantiene el borde gris/muerto */
+        }
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-img {
+            transform: scale(1); /* Desactiva el zoom de la imagen */
+            opacity: 0.9; /* Mantiene la opacidad original */
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 const STORE_CACHE_KEY = "dw_store_cache";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 🔥 1 HORA EN MILISEGUNDOS
 
@@ -10,9 +98,10 @@ if (typeof cart === 'undefined') {
     var cart = [];
 }
 
-// Variables globales para el manejo de las pestañas
+// Variables globales para el manejo de las pestañas y buscador
 let lastProductos = [];
 let currentStoreTab = 'pantallas'; // Pestaña por defecto
+let currentSearchTerm = ''; // Termino de búsqueda actual
 
 // --- FUNCIÓN GLOBAL DE SANITIZACIÓN (MITIGACIÓN XSS) ---
 function escapeHTML(str) {
@@ -34,7 +123,6 @@ const Toast = Swal.mixin({
     background: '#0a0a0a',
     color: '#fff',
     iconColor: '#7c3aed',
-    // Forzamos que el contenedor de la alerta esté por encima de todo (z-index)
     customClass: {
         container: 'swal-high-priority'
     }
@@ -43,17 +131,12 @@ const Toast = Swal.mixin({
 // 🔥 LA MAGIA: Función que convierte enlaces de Drive a Thumbnails ultrarrápidos
 function convertirAThumbnail(url) {
     if (!url || url.trim() === "") return "";
-
-    // 1. Si es link de Google Drive, lo convertimos
     if (url.includes("uc?export=view&id=")) {
         return url.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w600";
     }
-
-    // 2. Si es una foto antigua del servidor local
     if (!url.startsWith("http") && !url.startsWith("data:")) {
         return `${API_BASE_URL_CLIENTE}/uploads/categorias/${url}`;
     }
-
     return url;
 }
 
@@ -69,7 +152,6 @@ async function cargarTienda(silencioso = false) {
     let cachedProducts = [];
     let timestampAntiguo = new Date().getTime();
 
-    // A. CARGA INSTANTÁNEA (EXPERIENCIA ULTRA RÁPIDA)
     if (cachedData) {
         try {
             const data = JSON.parse(cachedData);
@@ -85,7 +167,6 @@ async function cargarTienda(silencioso = false) {
                 window.userBalance = Number(localStorage.getItem('dw_saldo')) || 0;
                 if (typeof updateBalanceUI === 'function') updateBalanceUI();
                 
-                // --- Sincronización del Inicio (Dashboard) ---
                 const nombreInicio = document.getElementById('inicio-user-name-display');
                 const saldoInicio = document.getElementById('inicio-user-balance-display');
                 if (nombreInicio) nombreInicio.innerText = localStorage.getItem('dw_user') || 'Cliente';
@@ -101,7 +182,6 @@ async function cargarTienda(silencioso = false) {
         if (!silencioso) container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:50px;"><div class="spinner"></div></div>';
     }
 
-    // B. ACTUALIZACIÓN SILENCIOSA
     const u = localStorage.getItem('dw_user');
     const t = localStorage.getItem('dw_token');
 
@@ -113,7 +193,6 @@ async function cargarTienda(silencioso = false) {
             localStorage.setItem('dw_saldo', window.userBalance);
             if (typeof updateBalanceUI === 'function') updateBalanceUI();
 
-            // --- Sincronización del Inicio (Dashboard) ---
             const nombreInicio = document.getElementById('inicio-user-name-display');
             const saldoInicio = document.getElementById('inicio-user-balance-display');
             if (nombreInicio) nombreInicio.innerText = localStorage.getItem('dw_user') || 'Cliente';
@@ -145,6 +224,9 @@ async function cargarTienda(silencioso = false) {
                 timestamp: useCachedStatic ? timestampAntiguo : new Date().getTime()
             }));
 
+            if (currentSearchTerm === '') {
+                lastProductos = finalProducts.filter(p => !(p.oculto && (p.oculto.toString().trim().toLowerCase() === 'si' || p.oculto.toString().trim().toLowerCase() === 'sí')));
+            }
             renderizarTiendaPremium(finalProducts, false);
         } else {
             if (res && res.msg === "Sesión inválida") {
@@ -156,90 +238,125 @@ async function cargarTienda(silencioso = false) {
     }
 }
 
-/**
- * Función para cambiar entre pestañas
- */
 window.switchStoreTab = function (tabId) {
     currentStoreTab = tabId;
     renderizarTiendaPremium(lastProductos, false);
 }
 
+window.filtrarTienda = function(termino) {
+    currentSearchTerm = termino.toLowerCase();
+    renderizarTiendaPremium(lastProductos, false);
+}
+
 /**
- * 2. RENDERIZADOR DE TARJETAS (CATEGORÍAS, PESTAÑAS, FAVORITOS Y CANTIDADES)
+ * 2. RENDERIZADOR DISEÑO GAMER (AMIGABLE Y CLARO/OSCURO)
  */
 function renderizarTiendaPremium(productosDB, isCache) {
     const container = document.getElementById('shop-container');
     if (!container) return;
 
+    // 🔥 GUARDAR ESTADO DE FOCO DEL BUSCADOR ANTES DE RE-RENDERIZAR 🔥
+    let focusData = { isFocused: false, start: 0, end: 0 };
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.tagName === 'INPUT' && activeEl.placeholder.includes("Buscar plataforma")) {
+        focusData.isFocused = true;
+        focusData.start = activeEl.selectionStart || 0;
+        focusData.end = activeEl.selectionEnd || 0;
+    }
+
     const tempContainer = document.createElement('div');
     tempContainer.style.display = 'contents';
 
     if (!productosDB || productosDB.length === 0) {
-        container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#444; padding:50px;'>Catálogo vacío actualmente.</p>";
+        container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:var(--text-gray); padding:50px; font-weight: bold;'>Catálogo vacío actualmente.</p>";
         return;
     }
 
-    let productosValidos = productosDB.filter(p => {
-        const isOculto = p.oculto && (p.oculto.toString().trim().toLowerCase() === 'si' || p.oculto.toString().trim().toLowerCase() === 'sí');
-        return !isOculto;
-    });
-
-    if (productosValidos.length === 0) {
-        container.innerHTML = "<p style='grid-column: 1/-1; text-align:center; color:#444; padding:50px;'>No hay servicios disponibles por el momento.</p>";
-        return;
-    }
-
-    lastProductos = productosValidos;
-
-    const tabContainer = document.createElement('div');
-    tabContainer.className = 'store-tabs-container';
-    tabContainer.innerHTML = `
-        <button class="store-tab ${currentStoreTab === 'pantallas' ? 'active' : ''}" onclick="switchStoreTab('pantallas')"><i class="material-icons-round" style="font-size:1.1rem;">devices</i> Por Pantallas</button>
-        <button class="store-tab ${currentStoreTab === 'completas' ? 'active' : ''}" onclick="switchStoreTab('completas')"><i class="material-icons-round" style="font-size:1.1rem;">tv</i> Cuentas Completas</button>
-    `;
-    tempContainer.appendChild(tabContainer);
-
-    const cuentasCompletas = [];
-    const cuentasPantallas = [];
-
-    productosValidos.forEach(p => {
-        const esCompleta = p.cuenta_completa && (p.cuenta_completa.toString().trim().toLowerCase() === 'si' || p.cuenta_completa.toString().trim().toLowerCase() === 'sí');
-        if (esCompleta) {
-            cuentasCompletas.push(p);
-        } else {
-            cuentasPantallas.push(p);
+    let productosValidos = productosDB;
+    if (productosDB.length > 0 && productosDB[0].hasOwnProperty('oculto')) {
+        productosValidos = productosDB.filter(p => {
+            const isOculto = p.oculto && (p.oculto.toString().trim().toLowerCase() === 'si' || p.oculto.toString().trim().toLowerCase() === 'sí');
+            return !isOculto;
+        });
+        if (productosDB.length !== lastProductos.length && currentSearchTerm === '') {
+             lastProductos = productosValidos;
         }
-    });
+    }
+
+    let isSearching = currentSearchTerm !== '';
+
+    // Aplicar filtro global si hay búsqueda
+    if (isSearching) {
+        productosValidos = productosValidos.filter(p => 
+            p.nombre.toLowerCase().includes(currentSearchTerm) || 
+            (p.descripcion && p.descripcion.toLowerCase().includes(currentSearchTerm))
+        );
+    }
+
+    // 1. BARRA SUPERIOR UNIFICADA: Pestañas + Buscador lado a lado
+    const topBar = document.createElement('div');
+    topBar.style.cssText = 'grid-column: 1 / -1 !important; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 20px; margin-bottom: 25px; width: 100%;';
+    
+    topBar.innerHTML = `
+        <div class="store-tabs-container" style="display: flex; gap: 10px; margin: 0; flex-wrap: wrap;">
+            <button class="store-tab ${currentStoreTab === 'pantallas' ? 'active' : ''}" onclick="switchStoreTab('pantallas')" style="border-radius: 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;"><i class="material-icons-round" style="font-size:1.2rem; vertical-align: middle;">devices</i> Por Pantallas</button>
+            <button class="store-tab ${currentStoreTab === 'completas' ? 'active' : ''}" onclick="switchStoreTab('completas')" style="border-radius: 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;"><i class="material-icons-round" style="font-size:1.2rem; vertical-align: middle;">tv</i> Cuentas Completas</button>
+        </div>
+        
+        <div style="position: relative; flex-grow: 1; max-width: 450px; min-width: 250px;">
+            <i class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 1.4rem; pointer-events: none;">search</i>
+            <input type="text" placeholder="Buscar plataforma o servicio..." value="${currentSearchTerm}" 
+                style="width: 100%; padding: 14px 20px 14px 45px; border-radius: 0; border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-white); font-size: 0.95rem; font-weight: 600; outline: none; transition: 0.3s; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);"
+                oninput="filtrarTienda(this.value)"
+                onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 5px 15px var(--accent-glow)';"
+                onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='inset 0 2px 5px rgba(0,0,0,0.05)';">
+            ${currentSearchTerm ? `<i class="material-icons-round" onclick="filtrarTienda('');" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--danger); font-size: 1.2rem; cursor: pointer;">close</i>` : ''}
+        </div>
+    `;
+    tempContainer.appendChild(topBar);
+
+    // Si la búsqueda no arroja resultados
+    if (productosValidos.length === 0) {
+        const noResults = document.createElement('p');
+        noResults.style.cssText = 'grid-column: 1/-1 !important; text-align:center; color:var(--text-gray); padding:50px; font-weight:800; font-size: 1.1rem;';
+        noResults.innerHTML = isSearching ? `No encontramos resultados para "${currentSearchTerm}"` : "No hay servicios disponibles en este momento.";
+        tempContainer.appendChild(noResults);
+        container.innerHTML = tempContainer.innerHTML;
+        
+        const searchInput = container.querySelector('input[type="text"]');
+        if (searchInput && isSearching) { searchInput.focus(); const val = searchInput.value; searchInput.value = ''; searchInput.value = val; }
+        return;
+    }
 
     const ordenarGrupo = (grupo) => {
         return grupo.sort((a, b) => {
             const stockA = Number(a.stock) || 0;
             const minA = Number(a.minimo_compra) || 0;
             const isAgotadoA = stockA <= 0 || (minA > stockA) ? 1 : 0;
-
             const stockB = Number(b.stock) || 0;
             const minB = Number(b.minimo_compra) || 0;
             const isAgotadoB = stockB <= 0 || (minB > stockB) ? 1 : 0;
-
             if (isAgotadoA !== isAgotadoB) return isAgotadoA - isAgotadoB;
-
             const aFav = (a.favorito && (a.favorito.toString().trim().toLowerCase() === 'si' || a.favorito.toString().trim().toUpperCase() === 'X')) ? 1 : 0;
             const bFav = (b.favorito && (b.favorito.toString().trim().toLowerCase() === 'si' || b.favorito.toString().trim().toUpperCase() === 'X')) ? 1 : 0;
             if (aFav !== bFav) return bFav - aFav;
-
             return a.nombre.localeCompare(b.nombre);
         });
     };
 
-    ordenarGrupo(cuentasCompletas);
-    ordenarGrupo(cuentasPantallas);
-
     const renderGrupo = (grupo, titulo) => {
         const gridContainer = document.createElement('div');
-        gridContainer.className = 'store-grid-container';
+        gridContainer.style.cssText = `
+            grid-column: 1 / -1 !important;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 25px;
+            width: 100%;
+            padding-bottom: 40px;
+        `;
 
-        if (grupo.length === 0) {
-            gridContainer.innerHTML = `<p style='grid-column: 1/-1; text-align:center; color:var(--text-gray); padding: 30px; width: 100%;'>No hay ${titulo.toLowerCase()} disponibles en este momento.</p>`;
+        if (grupo.length === 0 && !isSearching) {
+            gridContainer.innerHTML = `<p style='grid-column: 1/-1; text-align:center; color:var(--text-gray); padding: 30px; width: 100%; font-weight: bold;'>No hay ${titulo.toLowerCase()} disponibles en este momento.</p>`;
             tempContainer.appendChild(gridContainer);
             return;
         }
@@ -248,17 +365,13 @@ function renderizarTiendaPremium(productosDB, isCache) {
 
         grupo.forEach((p, index) => {
             let img = p.img ? convertirAThumbnail(p.img) : '';
-
             const stockActual = Number(p.stock) || 0;
             let precioActual = Number(p.precio) || 0;
             const precioAnterior = Number(p.precioAnt) || 0;
-
-            // XSS MITIGATION: Utilizamos escapeHTML antes de inyectar variables de texto en el HTML
             const safeName = escapeHTML(p.nombre).replace(/'/g, "\\'");
             const safeDesc = escapeHTML(p.descripcion || 'Sin descripción adicional.').replace(/\r?\n/g, '<br>').replace(/'/g, "\\'");
 
             let tienePrecioEspecial = false;
-
             if (p.precios_especiales && usuarioLogueado) {
                 const reglasPrecios = p.precios_especiales.split(',');
                 for (let regla of reglasPrecios) {
@@ -271,19 +384,13 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 }
             }
 
-            let bajoDePrecio = false;
-            let subioDePrecio = false;
             let mostrarPrecioViejo = false;
-
             if (!tienePrecioEspecial) {
-                bajoDePrecio = precioAnterior > precioActual;
-                subioDePrecio = precioAnterior > 0 && precioAnterior < precioActual;
                 mostrarPrecioViejo = precioAnterior > 0 && precioAnterior !== precioActual;
             }
 
             let minCompra = Number(p.minimo_compra) || 0;
             let maxCompra = Number(p.maximo_compra) || 0;
-
             let limiteRealMaximo = maxCompra > 0 ? Math.min(maxCompra, stockActual) : stockActual;
             const isSoldOut = stockActual <= 0 || (minCompra > stockActual);
             let valorInicial = minCompra > 0 ? minCompra : 1;
@@ -295,90 +402,130 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 let txtMin = minCompra > 0 ? `Mín: ${minCompra}` : '';
                 let txtMax = maxCompra > 0 ? `Máx: ${maxCompra}` : '';
                 let sep = (txtMin && txtMax) ? ' | ' : '';
-                limitesTexto = `<div style="font-size: 0.75rem; color: var(--accent); font-weight: bold; text-align: center; margin-top: 5px;">${txtMin}${sep}${txtMax}</div>`;
+                limitesTexto = `<div style="font-size: 0.75rem; color: var(--accent-text); font-weight: 800; margin-top: 4px;">${txtMin}${sep}${txtMax}</div>`;
             }
 
             const inputId = `qty-card-${titulo.replace(/\s/g, '')}-${safeName.replace(/\s/g, '')}-${index}`;
 
+            // 🔥 BOTONES INTERACTIVOS (Limpios y claros)
             if (isCache) {
-                actionHtml = `<button class="bento-btn-add" style="opacity:0.5; cursor:wait; width: 100%;" disabled>SINCRONIZANDO...</button>`;
+                actionHtml = `<button style="width: 100%; background: var(--bg-dark); color: var(--text-gray); border: 2px solid var(--border-color); padding: 12px; font-weight: 800; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);" disabled>CARGANDO...</button>`;
             } else if (isSoldOut) {
-                actionHtml = `<button class="bento-btn-add" disabled style="width: 100%; background: var(--bg-dark); color: var(--text-muted); cursor: not-allowed;">AGOTADO</button>`;
+                actionHtml = `<button disabled style="width: 100%; background: var(--bg-dark); color: var(--text-gray); border: 2px solid var(--border-color); padding: 12px; font-weight: 900; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); letter-spacing: 1px;">AGOTADO</button>`;
             } else {
                 actionHtml = `
-                    <div class="bento-actions">
-                        <button class="bento-btn-info" onclick="mostrarDetallesModal('${safeName}', '${safeDesc}')">
-                            <i class="material-icons-round" style="font-size: 1.2rem;">info</i>
-                        </button>
-                        <div class="bento-qty-pill">
-                            <button class="bento-qty-btn" onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})">-</button>
-                            <input type="number" id="${inputId}" class="bento-qty-input" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})">
-                            <button class="bento-qty-btn" onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})">+</button>
+                    <div style="display: flex; gap: 8px; margin-top: 15px;">
+                        <div style="display: flex; background: var(--bg-dark); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border: 2px solid var(--border-color); overflow:hidden; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)';" onmouseout="this.style.borderColor='var(--border-color)';">
+                            <button onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.4rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">-</button>
+                            <input type="number" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})" style="width: 40px; text-align: center; background: transparent; border: none; border-left: 2px solid var(--border-color); border-right: 2px solid var(--border-color); color: var(--text-white); font-weight: 800; outline: none; -moz-appearance: textfield; font-size: 1rem;">
+                            <button onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.2rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">+</button>
                         </div>
-                        <button class="bento-btn-add" onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra})">
-                            AÑADIR
+                        
+                        <button onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra})" style="flex-grow: 1; background: var(--accent-gradient); color: #fff; border: none; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: 0.3s; box-shadow: 0 4px 10px var(--accent-glow);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
+                            <i class="material-icons-round" style="font-size: 1.2rem;">shopping_cart</i> AÑADIR
                         </button>
                     </div>
-                    ${limitesTexto}
                 `;
             }
 
+            // SOLO Etiqueta de Cuenta Completa
             let badgesHTML = '';
-
-            const esFav = p.favorito && (p.favorito.toString().trim().toLowerCase() === 'si' || p.favorito.toString().trim().toUpperCase() === 'X');
-            if (esFav) {
-                badgesHTML += `<span class="bento-badge destacado">⭐ DESTACADO</span>`;
-            }
-
             const esCuentaCompleta = p.cuenta_completa && (p.cuenta_completa.toString().trim().toLowerCase() === 'si' || p.cuenta_completa.toString().trim().toLowerCase() === 'sí');
+            
             if (esCuentaCompleta) {
-                badgesHTML += `<span class="bento-badge completa"><i class="material-icons-round" style="font-size: 0.8rem; vertical-align: middle;">tv</i> COMPLETA</span>`;
+                badgesHTML += `<div style="background: #3b82f6; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 4px 10px; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="material-icons-round" style="font-size: 0.8rem;">tv</i> COMPLETA</div><br>`;
             }
 
-            if (bajoDePrecio) {
-                badgesHTML += `<span class="bento-badge oferta">⬇ OFERTA</span>`;
-            } else if (subioDePrecio) {
-                badgesHTML += `<span class="bento-badge subio">⬆ SUBIÓ</span>`;
-            }
+            // 🔥 ESTRUCTURA DE LA TARJETA MEJORADA (Jeicostreaming Style) 🔥
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = `jeico-card-wrapper ${isSoldOut ? 'is-sold-out' : ''}`;
+            
+            cardWrapper.innerHTML = `
+                <div class="jeico-card-border">
+                    <div class="jeico-card-inner">
+                        
+                        <div style="position: relative; width: 100%; height: 160px; background: var(--bg-dark); overflow: hidden;">
+                            <img src="${img}" class="jeico-card-img">
+                            
+                            <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 50px; background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);"></div>
+                            
+                            <div style="position: absolute; top: -5px; left: -25px; width: 50px; height: 10px; background: var(--accent); transform: rotate(-45deg); z-index: 2;"></div>
+                            
+                            <button onclick="mostrarDetallesModal('${safeName}', '${safeDesc}')" style="position: absolute; top: 10px; right: 10px; background: var(--bg-dark); border: 2px solid var(--border-color); color: var(--text-white); border-radius: 0; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 3;" onmouseover="this.style.background='var(--accent)'; this.style.borderColor='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='var(--bg-dark)'; this.style.borderColor='var(--border-color)'; this.style.color='var(--text-white)';">
+                                <i class="material-icons-round" style="font-size: 1.2rem;">info</i>
+                            </button>
 
-            const card = document.createElement('div');
-            card.className = `bento-product-card ${isSoldOut ? 'sold-out' : ''}`;
-
-            card.innerHTML = `
-                <div class="bento-img-container">
-                    <img src="${img}" class="bento-img" alt="${escapeHTML(p.nombre)}" onerror="this.onerror=null; this.src='https://via.placeholder.com/300x200?text=Sin+Imagen';">
-                    ${badgesHTML ? `<div class="bento-badges-overlay">${badgesHTML}</div>` : ''}
-                    ${isSoldOut ? '<div class="bento-sold-out-badge">AGOTADO</div>' : ''}
-                </div>
-                <div class="bento-content">
-                    <h3 class="bento-title">${escapeHTML(p.nombre)}</h3>
-                    
-                    <div class="bento-price-row">
-                        <div>
-                            ${mostrarPrecioViejo ? `<span class="bento-price-old">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}
-                            <span class="bento-price ${bajoDePrecio ? 'oferta' : ''}">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
+                            <div style="position: absolute; bottom: 10px; left: 15px; z-index: 2;">
+                                ${badgesHTML}
+                            </div>
+                            
+                            ${isSoldOut ? '<div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; letter-spacing:2px; font-size:1.4rem; z-index: 3;">AGOTADO</div>' : ''}
                         </div>
-                        <div class="bento-stock">
-                            ${isSoldOut ? '<span style="color:#ef4444;">AGOTADO</span>' : `Stock: <b>${stockActual}</b>`}
+
+                        <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 1.15rem; color: var(--text-white); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">${escapeHTML(p.nombre)}</h3>
+
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+                                <span style="color: var(--accent-text); font-size: 1.5rem; font-weight: 900;">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
+                                ${mostrarPrecioViejo ? `<span style="text-decoration: line-through; color: var(--text-gray); font-size: 0.9rem; font-weight: 600;">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}
+                            </div>
+
+                            <div style="background: var(--bg-dark); border-left: 3px solid ${isSoldOut ? 'var(--text-gray)' : 'var(--accent)'}; padding: 8px 12px; color: var(--text-gray); font-size: 0.8rem; border-radius: 0 8px 8px 0;">
+                                ${isSoldOut ? '<span style="font-weight:800;">Estado: AGOTADO</span>' : `Stock Disponible: <span style="color:var(--text-white); font-weight:900; font-size:0.9rem;">${stockActual}</span>`}
+                                ${limitesTexto}
+                            </div>
+
+                            <div style="margin-top: auto; position: relative; z-index: 5;">
+                                ${actionHtml}
+                            </div>
                         </div>
                     </div>
-                    
-                    ${actionHtml}
                 </div>
             `;
-            gridContainer.appendChild(card);
+            gridContainer.appendChild(cardWrapper);
         });
 
         tempContainer.appendChild(gridContainer);
     };
 
-    if (currentStoreTab === 'completas') {
-        renderGrupo(cuentasCompletas, "Cuentas Completas");
+    // 🔥 LA MAGIA DEL FILTRO GLOBAL OCURRE AQUÍ 🔥
+    if (isSearching) {
+        // SI ESTÁ BUSCANDO: Ignoramos las pestañas y mostramos TODO mezclado
+        ordenarGrupo(productosValidos);
+        renderGrupo(productosValidos, "Resultados de búsqueda");
     } else {
-        renderGrupo(cuentasPantallas, "Cuentas por Pantallas");
+        // SI NO ESTÁ BUSCANDO: Separamos por pestañas normalmente
+        const cuentasCompletas = [];
+        const cuentasPantallas = [];
+        
+        productosValidos.forEach(p => {
+            const esCompleta = p.cuenta_completa && (p.cuenta_completa.toString().trim().toLowerCase() === 'si' || p.cuenta_completa.toString().trim().toLowerCase() === 'sí');
+            if (esCompleta) cuentasCompletas.push(p);
+            else cuentasPantallas.push(p);
+        });
+
+        ordenarGrupo(cuentasCompletas);
+        ordenarGrupo(cuentasPantallas);
+        
+        if (currentStoreTab === 'completas') {
+            renderGrupo(cuentasCompletas, "Cuentas Completas");
+        } else {
+            renderGrupo(cuentasPantallas, "Cuentas por Pantallas");
+        }
     }
 
     container.innerHTML = tempContainer.innerHTML;
+    
+    // 🔥 RESTAURAR EL FOCO Y EL CURSOR EXACTO AL BUSCADOR 🔥
+    if (focusData.isFocused) {
+        const searchInput = container.querySelector('input[type="text"]');
+        if (searchInput) {
+            searchInput.focus();
+            try {
+                searchInput.setSelectionRange(focusData.start, focusData.end);
+            } catch(e) {}
+        }
+    }
 }
 
 /**
@@ -418,34 +565,29 @@ window.mostrarDetallesModal = function (nombre, detalles) {
     Swal.fire({
         html: `
             <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 25px; text-align: left;">
-                <div style="width: 55px; height: 55px; border-radius: 14px; background: rgba(37, 99, 235, 0.1); display: flex; align-items: center; justify-content: center; border: 1px solid var(--accent); flex-shrink: 0; box-shadow: 0 0 15px var(--accent-glow);">
-                    <i class="material-icons-round" style="color:var(--accent); font-size: 2.2rem;">gavel</i>
+                <div style="width: 55px; height: 55px; background: var(--bg-dark); display: flex; align-items: center; justify-content: center; border: 2px solid var(--accent); flex-shrink: 0; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);">
+                    <i class="material-icons-round" style="color:var(--accent); font-size: 2.2rem;">description</i>
                 </div>
                 <div>
-                    <h2 style="margin:0; font-size: 1.25rem; font-family: 'Righteous', sans-serif; color: var(--text-main); letter-spacing: 0.5px;">TÉRMINOS Y CONDICIONES</h2>
-                    <div style="background: var(--bg-dark); color: var(--text-gray); border: 1px dashed var(--border-color); padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 0.8rem; display: inline-block; margin-top: 6px; font-weight: bold;">
+                    <h2 style="margin:0; font-size: 1.15rem; font-weight: 800; color: var(--text-white); letter-spacing: 0.5px; text-transform: uppercase;">Términos y Condiciones</h2>
+                    <div style="background: var(--bg-dark); color: var(--accent-text); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; display: inline-block; margin-top: 6px; font-weight: bold;">
                         ${nombre}
                     </div>
                 </div>
             </div>
 
-            <div style="background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 12px; padding: 25px; text-align: left; position: relative; overflow: hidden; box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);">
-                <div style="position: absolute; top: -10px; right: -10px; opacity: 0.03;">
-                    <i class="material-icons-round" style="font-size: 7rem;">description</i>
-                </div>
-                <p style="color: var(--text-muted); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-top: 0; margin-bottom: 12px; letter-spacing: 1px; display: flex; align-items: center; gap: 5px;">
-                    <i class="material-icons-round" style="font-size: 1.1rem;">notes</i> Descripción del Servicio
+            <div style="background: var(--bg-dark); border: 2px solid var(--border-color); padding: 25px; text-align: left; position: relative; overflow: hidden; clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);">
+                <p style="color: var(--text-gray); font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-top: 0; margin-bottom: 15px; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                    <i class="material-icons-round" style="font-size: 1rem; vertical-align: middle;">info</i> Descripción del Servicio
                 </p>
-                <div style="color: var(--text-main); line-height: 1.7; font-weight: 500; font-size: 1rem; position: relative; z-index: 1; word-break: break-word; white-space: pre-wrap;">
-                    ${detalles}
-                </div>
+                <div style="color: var(--text-white); line-height: 1.6; font-weight: 500; font-size: 0.95rem; position: relative; z-index: 1; word-break: break-word; white-space: pre-wrap;">${detalles}</div>
             </div>
         `,
         showConfirmButton: true,
-        confirmButtonText: '<i class="material-icons-round" style="font-size: 1.2rem; vertical-align: middle; margin-right: 5px;">check_circle</i> ENTENDIDO',
+        confirmButtonText: '<i class="material-icons-round" style="font-size: 1.2rem; vertical-align: middle; margin-right: 5px;">check</i> ENTENDIDO',
         confirmButtonColor: 'var(--accent)',
         background: isDark ? 'var(--bg-card)' : '#ffffff',
-        customClass: { popup: 'premium-modal-radius' }
+        customClass: { popup: 'cyber-modal-style' }
     });
 };
 
@@ -453,41 +595,35 @@ window.addToCartFromCard = function (nombre, precio, img, stockReal, inputId, mi
     const input = document.getElementById(inputId);
     const cantidadSeleccionada = input ? (parseInt(input.value) || 1) : 1;
 
-    // Buscar el botón que fue clickeado (usando event.currentTarget)
     const btnClicked = event.currentTarget;
     const textoOriginal = btnClicked.innerHTML;
 
-    // Ejecutar tu lógica original
     addToCart(nombre, precio, img, stockReal, cantidadSeleccionada, minCompra, maxCompra);
-
     if (input) input.value = minCompra > 0 ? minCompra : 1;
 
-    // --- EFECTO UX VISUAL ---
-    // Cambiar a estado de éxito temporalmente
+    // --- EFECTO VISUAL DE COMPRA ---
     btnClicked.style.background = 'var(--success)';
-    btnClicked.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.4)';
-    btnClicked.innerHTML = '<i class="material-icons-round" style="font-size: 1.1rem; margin-right: 5px;">check</i> LISTO';
+    btnClicked.style.color = '#fff';
+    btnClicked.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
+    btnClicked.innerHTML = '<i class="material-icons-round" style="font-size: 1.2rem; margin-right: 5px;">check_circle</i> AÑADIDO';
 
-    // Restaurar el botón después de 1.5 segundos
     setTimeout(() => {
-        btnClicked.style.background = '';
-        btnClicked.style.boxShadow = '';
+        btnClicked.style.background = 'var(--accent-gradient)';
+        btnClicked.style.color = '#fff';
+        btnClicked.style.boxShadow = '0 4px 10px var(--accent-glow)';
         btnClicked.innerHTML = textoOriginal;
     }, 1500);
 }
 
-
 /**
- * 3. LÓGICA DEL CARRITO (CANTIDADES DINÁMICAS Y STOCK MÁXIMO)
+ * 3. LÓGICA DEL CARRITO 
  */
 function addToCart(nombre, precio, img, stockReal, cantidad, minCompra, maxCompra) {
     const existe = cart.find(item => item.nombre === nombre);
-
     let limiteMaximoCombinado = maxCompra > 0 ? Math.min(maxCompra, stockReal) : stockReal;
 
     if (existe) {
         let nuevaCantidadTotal = existe.cantidad + cantidad;
-
         if (nuevaCantidadTotal <= limiteMaximoCombinado) {
             existe.cantidad = nuevaCantidadTotal;
             Toast.fire({ icon: 'success', title: 'Cantidad actualizada' });
@@ -504,11 +640,9 @@ function addToCart(nombre, precio, img, stockReal, cantidad, minCompra, maxCompr
         if (cantidad > limiteMaximoCombinado) {
             return Toast.fire({ icon: 'error', title: 'Límite Máximo', text: `Solo puedes pedir hasta ${limiteMaximoCombinado} unidades.` });
         }
-
         cart.push({ nombre, precio, img, cantidad: cantidad, stockMax: limiteMaximoCombinado, minCompra: minCompra });
         Toast.fire({ icon: 'success', title: 'Producto añadido' });
     }
-
     if (typeof updateCartUI === 'function') updateCartUI();
 }
 
@@ -527,7 +661,6 @@ window.changeQty = function (index, delta) {
     else if (nuevaCant > item.stockMax) {
         return Toast.fire({ icon: 'info', title: 'Límite alcanzado' });
     }
-
     if (typeof updateCartUI === 'function') updateCartUI();
 }
 
@@ -544,12 +677,10 @@ window.setQty = function (index, inputObj) {
         nuevaCant = item.stockMax;
         Toast.fire({ icon: 'info', title: 'Límite máximo alcanzado' });
     }
-
     item.cantidad = nuevaCant;
     if (typeof updateCartUI === 'function') updateCartUI();
 }
 
-// MEJORA 3 Y 2 APLICADA: Optimización de DOM en bucle y mitigación de XSS en renderizado
 window.updateCartUI = function () {
     const list = document.getElementById('cart-items-list');
     const badge = document.getElementById('cart-count');
@@ -561,35 +692,33 @@ window.updateCartUI = function () {
     let count = 0;
 
     if (cart.length === 0) {
-        list.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px; font-weight:bold;">Carrito vacío</div>';
+        list.innerHTML = '<div style="text-align:center; color:var(--text-gray); margin-top:50px; font-weight:bold;">El carrito está vacío</div>';
     } else {
         const htmlString = cart.map((item, index) => {
             total += item.precio * item.cantidad;
             count += item.cantidad;
 
             return `
-                <div class="cart-item-row-premium" style="display: flex !important; align-items: center !important; gap: 15px !important; padding: 15px 0 !important; border-bottom: 1px solid var(--border-color) !important;">
-                    <img src="${item.img}" class="cart-item-img" style="width: 60px !important; height: 60px !important; object-fit: cover !important; border-radius: 4px !important; border: 1px solid var(--border-color) !important;">
+                <div class="cart-item-row-premium" style="display: flex !important; align-items: center !important; gap: 15px !important; padding: 15px 0 !important; border-bottom: 1px dashed var(--border-color) !important;">
+                    <img src="${item.img}" class="cart-item-img" style="width: 60px !important; height: 60px !important; object-fit: cover !important; border: 2px solid var(--border-color) !important; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);">
                     <div class="cart-item-info" style="flex-grow: 1 !important;">
-                        <h4 class="cart-item-title" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; margin-bottom: 5px !important;">${escapeHTML(item.nombre)}</h4>
-                        <div class="cart-item-price" style="color: var(--accent) !important; font-weight: 700 !important; font-size: 0.85rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio)}</div>
+                        <h4 class="cart-item-title" style="color: var(--text-white) !important; font-size: 0.85rem !important; font-weight: 800 !important; margin-bottom: 5px !important; text-transform: uppercase;">${escapeHTML(item.nombre)}</h4>
+                        <div class="cart-item-price" style="color: var(--accent-text) !important; font-weight: 800 !important; font-size: 0.9rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio)}</div>
                         
-                        <div class="qty-selector" style="display: flex !important; align-items: center !important; justify-content: space-between !important; margin-top: 8px !important; background: var(--bg-dark) !important; border-radius: 4px !important; border: 1px solid var(--border-color) !important; overflow: hidden !important; width: 90px !important;">
-                            <button class="btn-qty" onclick="changeQty(${index}, -1)" style="background: var(--accent-light) !important; border: none !important; border-right: 1px solid var(--border-color) !important; color: var(--accent) !important; font-size: 1.1rem !important; font-weight: 800 !important; width: 25px !important; height: 25px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">-</button>
-                            <input type="number" class="qty-num-input" value="${item.cantidad}" min="${item.minCompra > 0 ? item.minCompra : 1}" max="${item.stockMax}" onchange="setQty(${index}, this)" style="background: transparent !important; border: none !important; color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: bold !important; width: 40px !important; text-align: center !important; -moz-appearance: textfield !important; outline: none !important; padding: 0 !important;">
-                            <button class="btn-qty" onclick="changeQty(${index}, 1)" style="background: var(--accent-light) !important; border: none !important; border-left: 1px solid var(--border-color) !important; color: var(--accent) !important; font-size: 1.1rem !important; font-weight: 800 !important; width: 25px !important; height: 25px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important;">+</button>
+                        <div class="qty-selector" style="display: flex !important; align-items: center !important; justify-content: space-between !important; margin-top: 8px !important; background: var(--bg-dark) !important; border: 1px solid var(--border-color) !important; overflow: hidden !important; width: 90px !important; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);">
+                            <button class="btn-qty" onclick="changeQty(${index}, -1)" style="background: transparent !important; border: none !important; border-right: 1px solid var(--border-color) !important; color: var(--text-white) !important; font-size: 1.1rem !important; font-weight: 900 !important; width: 28px !important; height: 28px !important; cursor: pointer !important;">-</button>
+                            <input type="number" class="qty-num-input" value="${item.cantidad}" min="${item.minCompra > 0 ? item.minCompra : 1}" max="${item.stockMax}" onchange="setQty(${index}, this)" style="background: transparent !important; border: none !important; color: var(--text-white) !important; font-size: 0.85rem !important; font-weight: bold !important; width: 34px !important; text-align: center !important; -moz-appearance: textfield !important; outline: none !important; padding: 0 !important;">
+                            <button class="btn-qty" onclick="changeQty(${index}, 1)" style="background: transparent !important; border: none !important; border-left: 1px solid var(--border-color) !important; color: var(--text-white) !important; font-size: 1.1rem !important; font-weight: 900 !important; width: 28px !important; height: 28px !important; cursor: pointer !important;">+</button>
                         </div>
                     </div>
                     <button class="btn-remove-item" onclick="removeFromCart(${index})" style="background: none !important; border: none !important; color: var(--danger) !important; cursor: pointer !important; transition: 0.3s !important; padding: 5px !important;">
-                        <span class="material-icons-round">close</span>
+                        <span class="material-icons-round" style="font-size: 1.4rem;">delete</span>
                     </button>
                 </div>
             `;
         }).join('');
-
         list.innerHTML = htmlString;
     }
-
     badge.innerText = count;
     totalDisplay.innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
 }
@@ -609,13 +738,10 @@ window.toggleCart = function () {
 /**
  * 4. PROCESO DE COMPRA Y CHECKOUT PREMIUM
  */
-// MEJORA 3 Y 2 APLICADA: Optimización de DOM en Checkout
 window.goToCheckout = function () {
     if (cart.length === 0) return;
 
     let total = 0;
-
-    // Última validación
     for (let item of cart) {
         if (item.minCompra > 0 && item.cantidad < item.minCompra) {
             toggleCart();
@@ -624,16 +750,15 @@ window.goToCheckout = function () {
     }
 
     const summaryList = document.getElementById('checkout-summary-list');
-
     const htmlSummary = cart.map((item) => {
         total += (item.precio * item.cantidad);
         return `
-            <div class="checkout-item-premium" style="display: flex !important; justify-content: space-between !important; align-items: center !important; background: var(--bg-card) !important; padding: 12px 15px !important; margin-bottom: 8px !important; border-radius: 6px !important; border-left: 3px solid var(--accent) !important; border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important; border-right: 1px solid var(--border-color) !important; box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
+            <div class="checkout-item-premium" style="display: flex !important; justify-content: space-between !important; align-items: center !important; background: var(--bg-dark) !important; padding: 12px 15px !important; margin-bottom: 8px !important; border-left: 4px solid var(--accent) !important; border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important; border-right: 1px solid var(--border-color) !important; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);">
                 <div>
-                    <div class="checkout-item-name" style="color: var(--text-main) !important; font-size: 0.85rem !important; font-weight: 800 !important; text-transform: uppercase !important;">${escapeHTML(item.nombre)}</div>
-                    <div class="checkout-item-qty" style="color: var(--text-gray) !important; font-size: 0.7rem !important; font-weight: 600;">Unidades: ${item.cantidad}</div>
+                    <div class="checkout-item-name" style="color: var(--text-white) !important; font-size: 0.85rem !important; font-weight: 800 !important; text-transform: uppercase !important;">${escapeHTML(item.nombre)}</div>
+                    <div class="checkout-item-qty" style="color: var(--text-gray) !important; font-size: 0.75rem !important; font-weight: 600;">Unidades: ${item.cantidad}</div>
                 </div>
-                <div class="checkout-item-price" style="color: var(--success) !important; font-weight: 900 !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
+                <div class="checkout-item-price" style="color: var(--success) !important; font-weight: 900 !important; font-size: 1.1rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
             </div>
         `;
     }).join('');
@@ -680,31 +805,31 @@ window.finalizePurchase = async function () {
     const u = localStorage.getItem('dw_user');
     const t = localStorage.getItem('dw_token');
     const orderId = generarOrderId();
-
     const isDark = document.body.classList.contains('dark-mode');
+
     Swal.fire({
-        title: '<span style="color:var(--text-main); font-family:\'Righteous\', cursive; letter-spacing:1px;">PROCESANDO PEDIDO</span>',
+        title: '<span style="color:var(--text-white); font-weight: 800; letter-spacing:1px; text-transform:uppercase;">Procesando Pedido</span>',
         html: `
-            <div style="margin-top: 10px; color: var(--text-gray); font-weight: 500;">Conectando con la base de datos...</div>
+            <div style="margin-top: 10px; color: var(--text-gray); font-size: 0.9rem; font-weight: 600;">Conectando con la base de datos...</div>
             <div class="spinner" style="margin: 25px auto;"></div>
         `,
         showConfirmButton: false,
         allowOutsideClick: false,
         background: isDark ? 'var(--bg-card)' : '#ffffff',
-        customClass: { container: 'swal-top-layer', popup: 'premium-modal-radius' }
+        customClass: { container: 'swal-top-layer', popup: 'cyber-modal-style' }
     });
 
     let errores = [];
     let exitos = 0;
-    let paqueteParaGoogle = []; // 🔥 RECOLECTOR MASIVO
+    let paqueteParaGoogle = []; 
 
     const fechaLocal = new Date().toISOString().split('T')[0];
 
     for (const item of cart) {
         Swal.update({
             html: `
-                <div style="margin-top: 10px; color: var(--text-gray); font-weight: 500;">
-                    Procesando: <b style="color:var(--accent);">${escapeHTML(item.nombre)}</b><br>
+                <div style="margin-top: 10px; color: var(--text-gray); font-size: 0.9rem; font-weight: 600; text-align: center; padding: 0 20px;">
+                    Procesando:<br><b style="color:var(--accent-text); font-size: 1.1rem; text-transform: uppercase;">${escapeHTML(item.nombre)}</b><br>
                     (x${item.cantidad} unidades)
                 </div>
                 <div class="spinner" style="margin: 25px auto;"></div>
@@ -712,21 +837,12 @@ window.finalizePurchase = async function () {
         });
 
         try {
-            const res = await apiCall({
-                accion: 'comprar',
-                usuario: u,
-                token: t,
-                producto: item.nombre,
-                cantidad: item.cantidad,
-                order_id: orderId
-            });
-
+            const res = await apiCall({ accion: 'comprar', usuario: u, token: t, producto: item.nombre, cantidad: item.cantidad, order_id: orderId });
             if (res.success) {
                 exitos += item.cantidad;
                 userBalance = res.nuevoSaldo;
                 localStorage.setItem('dw_saldo', userBalance);
 
-                // 🔥 PREPARAMOS EL PAQUETE PARA GOOGLE
                 let diasExtraidos = 30;
                 const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
                 if (matchDias) {
@@ -735,12 +851,7 @@ window.finalizePurchase = async function () {
 
                 if (res.datos && res.datos.cuentas) {
                     res.datos.cuentas.forEach(cuentaEntregada => {
-                        paqueteParaGoogle.push({
-                            cuenta: cuentaEntregada,
-                            fecha: fechaLocal,
-                            dias: diasExtraidos,
-                            servicio: item.nombre
-                        });
+                        paqueteParaGoogle.push({ cuenta: cuentaEntregada, fecha: fechaLocal, dias: diasExtraidos, servicio: item.nombre });
                     });
                 }
             } else {
@@ -751,47 +862,35 @@ window.finalizePurchase = async function () {
         }
     }
 
-    // 🔥 ENVÍO A GOOGLE DESDE EL NAVEGADOR USANDO GS_CODIGO
     if (paqueteParaGoogle.length > 0) {
-        fetch(GS_CODIGO, {
-            method: "POST",
-            body: JSON.stringify({ accion: "registro_masivo", compras: paqueteParaGoogle }),
-            headers: { "Content-Type": "text/plain" } // Evita bloqueos CORS
-        }).catch(e => console.error("Error enviando a Google:", e));
+        fetch(GS_CODIGO, { method: "POST", body: JSON.stringify({ accion: "registro_masivo", compras: paqueteParaGoogle }), headers: { "Content-Type": "text/plain" } })
+        .catch(e => console.error("Error enviando a Google:", e));
     }
 
     if (typeof updateBalanceUI === 'function') updateBalanceUI();
 
     if (exitos > 0) {
-        cart = [];
-        updateCartUI();
-
+        cart = []; updateCartUI();
         localStorage.removeItem(STORE_CACHE_KEY);
         await cargarTienda(true);
-
         Swal.close();
 
         if (errores.length > 0) {
-            Toast.fire({ icon: 'warning', title: `Se activaron ${exitos}. Fallaron ${errores.length}` });
+            Toast.fire({ icon: 'warning', title: `Éxito parcial: ${exitos} listos. Fallaron ${errores.length}` });
             if (payBtn) payBtn.disabled = false;
             if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
         } else {
-            Toast.fire({ icon: 'success', title: '¡Compra exitosa!' });
+            Toast.fire({ icon: 'success', title: '¡Compra completada con éxito!' });
             if (payBtn) payBtn.disabled = false;
             if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
         }
-
     } else {
         if (payBtn) payBtn.disabled = false;
         Swal.fire({
-            icon: 'error',
-            title: '<span style="color:var(--danger); font-family:\'Righteous\', cursive;">TRANSACCIÓN FALLIDA</span>',
-            text: errores[0] || "Error desconocido",
-            background: isDark ? 'var(--bg-card)' : '#ffffff',
-            color: isDark ? '#ffffff' : 'var(--text-main)',
-            confirmButtonColor: 'var(--danger)',
-            allowOutsideClick: false,
-            customClass: { container: 'swal-top-layer', popup: 'premium-modal-radius' }
+            icon: 'error', title: '<span style="color:var(--danger); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">Error en el proceso</span>',
+            text: errores[0] || "Ocurrió un error inesperado.", background: isDark ? 'var(--bg-card)' : '#ffffff',
+            color: isDark ? '#ffffff' : 'var(--text-main)', confirmButtonColor: 'var(--danger)', allowOutsideClick: false,
+            customClass: { container: 'swal-top-layer', popup: 'cyber-modal-style' }
         });
     }
 }
