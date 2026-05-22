@@ -32,6 +32,23 @@ const TEMAS_CONFIG = {
 const TEMA_KEY = 'dw_tema_color';
 const CUSTOM_KEY = 'dw_tema_custom';
 
+// 🔥 ESCUDO PROTECTOR DE TEMA (NUEVO) 🔥
+// Intercepta el borrado masivo del localStorage al cerrar sesión para salvar los colores
+const originalClear = localStorage.clear;
+localStorage.clear = function() {
+    const temaGuardado = localStorage.getItem(TEMA_KEY);
+    const customGuardado = localStorage.getItem(CUSTOM_KEY);
+    const temaDarkMode = localStorage.getItem('dw_dark_mode'); // Por si también tienes el botón de luna/sol guardado
+    
+    // Ejecuta el borrado normal (elimina token, usuario, etc.)
+    originalClear.apply(this, arguments);
+    
+    // Restaura inmediatamente la configuración visual
+    if (temaGuardado) localStorage.setItem(TEMA_KEY, temaGuardado);
+    if (customGuardado) localStorage.setItem(CUSTOM_KEY, customGuardado);
+    if (temaDarkMode) localStorage.setItem('dw_dark_mode', temaDarkMode);
+};
+
 // ── Helpers de Color ──────────────────────────────────────────
 function hexToRgba(hex, a) {
     if (!hex || hex.length < 7) return `rgba(124,58,237,${a})`;
