@@ -3,6 +3,20 @@
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
     {
+        version: "V.2.2.0",
+        fecha: "09/06/2026",
+        tipo: "🪙 Tokens & Cashback",
+        cambios: [
+            "🪙 ¡Llegan los Tokens! Cada compra que hagas te da de vuelta una parte en tokens que puedes usar para conseguir tus próximas cuentas totalmente gratis. ¡Compra más, ahorra más!",
+            "💰 Tu saldo siempre a mano: Ahora en el menú lateral puedes ver de un vistazo tu saldo en pesos Y tus tokens disponibles, bien separados y con su propio diseño.",
+            "🛒 Paga como quieras: En la tienda aparece un botón para cambiar entre pagar con dinero 💵 o pagar con tus tokens 🪙. ¡Tú decides!",
+            "⚡ Compra directa con tokens: Cuando activas el modo tokens, cada producto muestra su precio en TK y puedes comprarlo con un solo clic, sin pasar por el carrito.",
+            "📊 Mis Tokens — Tu propio panel: Tienes una sección dedicada donde puedes ver cuántos tokens has ganado, cuántos has usado y todo tu historial de movimientos con iconos y colores.",
+            "🎁 Tokens al instante: En cuanto compras con dinero, ¡pum! tus tokens caen automáticamente a tu saldo. Los verás reflejados de inmediato sin tener que recargar la página.",
+            "🔒 Totalmente seguro: El sistema de tokens está protegido en el servidor. Nadie puede inventarse tokens desde afuera — cada saldo es verificado en tiempo real antes de cualquier canje."
+        ]
+    },
+    {
         version: "V.2.1.0",
         fecha: "17/05/2026",
         tipo: "Personalización Total",
