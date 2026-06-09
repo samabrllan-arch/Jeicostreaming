@@ -102,6 +102,7 @@ if (typeof cart === 'undefined') {
 let lastProductos = [];
 let currentStoreTab = 'pantallas'; // Pestaña por defecto
 let currentSearchTerm = ''; // Termino de búsqueda actual
+let pagoModoTokens = false; // 🪙 false = dinero | true = tokens
 
 // --- FUNCIÓN GLOBAL DE SANITIZACIÓN (MITIGACIÓN XSS) ---
 function escapeHTML(str) {
@@ -191,6 +192,14 @@ async function cargarTienda(silencioso = false) {
         if (res && res.success) {
             window.userBalance = Number(res.saldo);
             localStorage.setItem('dw_saldo', window.userBalance);
+
+            // 🪙 Guardar y actualizar saldo de tokens
+            if (res.token_saldo !== undefined) {
+                window.userTokenSaldo = parseInt(res.token_saldo) || 0;
+                localStorage.setItem('dw_token_saldo', window.userTokenSaldo);
+                if (typeof actualizarTokenSaldoLocal === 'function') actualizarTokenSaldoLocal(window.userTokenSaldo);
+            }
+
             if (typeof updateBalanceUI === 'function') updateBalanceUI();
 
             const nombreInicio = document.getElementById('inicio-user-name-display');
@@ -302,15 +311,35 @@ function renderizarTiendaPremium(productosDB, isCache) {
             <button class="store-tab ${currentStoreTab === 'pantallas' ? 'active' : ''}" onclick="switchStoreTab('pantallas')" style="border-radius: 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;"><i class="material-icons-round" style="font-size:1.2rem; vertical-align: middle;">devices</i> Por Pantallas</button>
             <button class="store-tab ${currentStoreTab === 'completas' ? 'active' : ''}" onclick="switchStoreTab('completas')" style="border-radius: 0; clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px); text-transform: uppercase; font-weight: 800; letter-spacing: 1px;"><i class="material-icons-round" style="font-size:1.2rem; vertical-align: middle;">tv</i> Cuentas Completas</button>
         </div>
-        
-        <div style="position: relative; flex-grow: 1; max-width: 450px; min-width: 250px;">
-            <i class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 1.4rem; pointer-events: none;">search</i>
-            <input type="text" placeholder="Buscar plataforma o servicio..." value="${currentSearchTerm}" 
-                style="width: 100%; padding: 14px 20px 14px 45px; border-radius: 0; border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-white); font-size: 0.95rem; font-weight: 600; outline: none; transition: 0.3s; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);"
-                oninput="filtrarTienda(this.value)"
-                onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 5px 15px var(--accent-glow)';"
-                onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='inset 0 2px 5px rgba(0,0,0,0.05)';">
-            ${currentSearchTerm ? `<i class="material-icons-round" onclick="filtrarTienda('');" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--danger); font-size: 1.2rem; cursor: pointer;">close</i>` : ''}
+
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex-grow:1; justify-content:flex-end;">
+
+            <!-- 🪙 TOGGLE PAGO -->
+            <button id="store-pay-toggle"
+                onclick="togglePagoModo()"
+                style="display:flex; align-items:center; gap:7px; padding:10px 16px;
+                       border-radius:0; font-weight:800; font-size:.78rem; letter-spacing:.5px;
+                       cursor:pointer; transition:.25s; white-space:nowrap; flex-shrink:0;
+                       clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+                       border: 2px solid ${pagoModoTokens ? '#f59e0b' : 'var(--accent)'};
+                       background: ${pagoModoTokens ? 'rgba(245,158,11,.12)' : 'rgba(124,58,237,.12)'};
+                       color: ${pagoModoTokens ? '#f59e0b' : 'var(--accent-text)'};
+                       box-shadow: ${pagoModoTokens ? '0 0 12px rgba(245,158,11,.25)' : '0 0 12px rgba(124,58,237,.15)'}">
+                <i class="material-icons-round" style="font-size:1.1rem;">${pagoModoTokens ? 'toll' : 'attach_money'}</i>
+                ${pagoModoTokens ? '🪙 TOKENS' : '💵 DINERO'}
+                <i class="material-icons-round" style="font-size:.9rem; opacity:.7;">swap_horiz</i>
+            </button>
+
+            <!-- Buscador -->
+            <div style="position: relative; flex-grow: 1; max-width: 380px; min-width: 200px;">
+                <i class="material-icons-round" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-gray); font-size: 1.4rem; pointer-events: none;">search</i>
+                <input type="text" placeholder="Buscar plataforma o servicio..." value="${currentSearchTerm}"
+                    style="width: 100%; padding: 12px 20px 12px 45px; border-radius: 0; border: 2px solid var(--border-color); background: var(--bg-card); color: var(--text-white); font-size: 0.93rem; font-weight: 600; outline: none; transition: 0.3s; box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);"
+                    oninput="filtrarTienda(this.value)"
+                    onfocus="this.style.borderColor='var(--accent)'; this.style.boxShadow='0 5px 15px var(--accent-glow)';"
+                    onblur="this.style.borderColor='var(--border-color)'; this.style.boxShadow='inset 0 2px 5px rgba(0,0,0,0.05)';">
+                ${currentSearchTerm ? `<i class="material-icons-round" onclick="filtrarTienda('');" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: var(--danger); font-size: 1.2rem; cursor: pointer;">close</i>` : ''}
+            </div>
         </div>
     `;
     tempContainer.appendChild(topBar);
@@ -407,11 +436,40 @@ function renderizarTiendaPremium(productosDB, isCache) {
 
             const inputId = `qty-card-${titulo.replace(/\s/g, '')}-${safeName.replace(/\s/g, '')}-${index}`;
 
-            // 🔥 BOTONES INTERACTIVOS (Limpios y claros)
+            // 🔥 BOTONES INTERACTIVOS
             if (isCache) {
-                actionHtml = `<button style="width: 100%; background: var(--bg-dark); color: var(--text-gray); border: 2px solid var(--border-color); padding: 12px; font-weight: 800; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);" disabled>CARGANDO...</button>`;
+                actionHtml = `<button style="width:100%; background:var(--bg-dark); color:var(--text-gray); border:2px solid var(--border-color); padding:12px; font-weight:800; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);" disabled>CARGANDO...</button>`;
             } else if (isSoldOut) {
-                actionHtml = `<button disabled style="width: 100%; background: var(--bg-dark); color: var(--text-gray); border: 2px solid var(--border-color); padding: 12px; font-weight: 900; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); letter-spacing: 1px;">AGOTADO</button>`;
+                actionHtml = `<button disabled style="width:100%; background:var(--bg-dark); color:var(--text-gray); border:2px solid var(--border-color); padding:12px; font-weight:900; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); letter-spacing:1px;">AGOTADO</button>`;
+            } else if (pagoModoTokens) {
+
+                // Modo tokens: botón de compra directa con tokens
+                const tkSaldo = window.userTokenSaldo || parseInt(localStorage.getItem('dw_token_saldo')) || 0;
+                const pkTokens = (p.precio_tokens || 0) * valorInicial;
+                const sinPrecio = !p.precio_tokens || p.precio_tokens <= 0;
+                const sinSaldo  = tkSaldo < pkTokens;
+                actionHtml = `
+                    <div style="display: flex; gap: 8px; margin-top: 15px;">
+                        <div style="display: flex; background: var(--bg-dark); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border: 2px solid var(--border-color); overflow:hidden; transition: 0.2s;" onmouseover="this.style.borderColor='#f59e0b';" onmouseout="this.style.borderColor='var(--border-color)';">
+                            <button onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.4rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='#f59e0b'; this.style.color='#000';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">-</button>
+                            <input type="number" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})" style="width: 40px; text-align: center; background: transparent; border: none; border-left: 2px solid var(--border-color); border-right: 2px solid var(--border-color); color: var(--text-white); font-weight: 800; outline: none; -moz-appearance: textfield; font-size: 1rem;">
+                            <button onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.2rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='#f59e0b'; this.style.color='#000';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">+</button>
+                        </div>
+                        <button
+                            ${sinPrecio || sinSaldo ? 'disabled' : ''}
+                            onclick="comprarDirectoConTokens('${safeName}', '${inputId}', ${p.precio_tokens || 0})"
+                            style="flex-grow:1; background:${sinPrecio || sinSaldo ? 'var(--bg-dark)' : 'linear-gradient(135deg,#f59e0b,#d97706)'};
+                                   color:${sinPrecio || sinSaldo ? 'var(--text-gray)' : '#000'};
+                                   border:none; height:42px; cursor:${sinPrecio || sinSaldo ? 'not-allowed':'pointer'};
+                                   display:flex; align-items:center; justify-content:center; gap:6px;
+                                   font-weight:900; letter-spacing:1px; text-transform:uppercase;
+                                   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
+                                   transition:.3s; font-size:.78rem;">
+                            <i class="material-icons-round" style="font-size:1.1rem;">toll</i>
+                            ${sinPrecio ? 'SIN PRECIO TK' : sinSaldo ? 'TK INSUF.' : new Intl.NumberFormat('es-CO').format(pkTokens)+' TK'}
+                        </button>
+                    </div>
+                `;
             } else {
                 actionHtml = `
                     <div style="display: flex; gap: 8px; margin-top: 15px;">
@@ -421,12 +479,13 @@ function renderizarTiendaPremium(productosDB, isCache) {
                             <button onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.2rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">+</button>
                         </div>
                         
-                        <button onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra})" style="flex-grow: 1; background: var(--accent-gradient); color: #fff; border: none; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: 0.3s; box-shadow: 0 4px 10px var(--accent-glow);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
+                        <button onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra}, ${p.precio_tokens || 0})" style="flex-grow: 1; background: var(--accent-gradient); color: #fff; border: none; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: 0.3s; box-shadow: 0 4px 10px var(--accent-glow);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
                             <i class="material-icons-round" style="font-size: 1.2rem;">shopping_cart</i> AÑADIR
                         </button>
                     </div>
                 `;
             }
+
 
             // SOLO Etiqueta de Cuenta Completa
             let badgesHTML = '';
@@ -466,14 +525,22 @@ function renderizarTiendaPremium(productosDB, isCache) {
                             <h3 style="margin: 0 0 12px 0; font-size: 1.15rem; color: var(--text-white); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">${escapeHTML(p.nombre)}</h3>
 
                             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
-                                <span style="color: var(--accent-text); font-size: 1.5rem; font-weight: 900;">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
-                                ${mostrarPrecioViejo ? `<span style="text-decoration: line-through; color: var(--text-gray); font-size: 0.9rem; font-weight: 600;">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}
+                                ${pagoModoTokens && p.precio_tokens > 0
+                                    ? `<span style="color:#f59e0b; font-size:1.5rem; font-weight:900;">🪙 ${new Intl.NumberFormat('es-CO').format(p.precio_tokens)} TK</span>`
+                                    : `<span style="color: var(--accent-text); font-size: 1.5rem; font-weight: 900;">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
+                                       ${mostrarPrecioViejo ? `<span style="text-decoration: line-through; color: var(--text-gray); font-size: 0.9rem; font-weight: 600;">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}`
+                                }
                             </div>
 
-                            <div style="background: var(--bg-dark); border-left: 3px solid ${isSoldOut ? 'var(--text-gray)' : 'var(--accent)'}; padding: 8px 12px; color: var(--text-gray); font-size: 0.8rem; border-radius: 0 8px 8px 0;">
+                            <div style="background: var(--bg-dark); border-left: 3px solid ${isSoldOut ? 'var(--text-gray)' : (pagoModoTokens ? '#f59e0b' : 'var(--accent)')}; padding: 8px 12px; color: var(--text-gray); font-size: 0.8rem; border-radius: 0 8px 8px 0;">
                                 ${isSoldOut ? '<span style="font-weight:800;">Estado: AGOTADO</span>' : `Stock Disponible: <span style="color:var(--text-white); font-weight:900; font-size:0.9rem;">${stockActual}</span>`}
                                 ${limitesTexto}
                             </div>
+                            ${(!isSoldOut && !pagoModoTokens && p.tokens_otorgados > 0) ? `
+                            <div style="margin-top:8px; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:6px; padding:5px 10px; font-size:.72rem; font-weight:800; color:#f59e0b; display:flex; align-items:center; gap:5px;">
+                                <i class="material-icons-round" style="font-size:.9rem;">toll</i>
+                                +${new Intl.NumberFormat('es-CO').format(p.tokens_otorgados)} TK cashback
+                            </div>` : ''}
 
                             <div style="margin-top: auto; position: relative; z-index: 5;">
                                 ${actionHtml}
@@ -591,14 +658,14 @@ window.mostrarDetallesModal = function (nombre, detalles) {
     });
 };
 
-window.addToCartFromCard = function (nombre, precio, img, stockReal, inputId, minCompra, maxCompra) {
+window.addToCartFromCard = function (nombre, precio, img, stockReal, inputId, minCompra, maxCompra, precioTokens = 0) {
     const input = document.getElementById(inputId);
     const cantidadSeleccionada = input ? (parseInt(input.value) || 1) : 1;
 
     const btnClicked = event.currentTarget;
     const textoOriginal = btnClicked.innerHTML;
 
-    addToCart(nombre, precio, img, stockReal, cantidadSeleccionada, minCompra, maxCompra);
+    addToCart(nombre, precio, img, stockReal, cantidadSeleccionada, minCompra, maxCompra, precioTokens);
     if (input) input.value = minCompra > 0 ? minCompra : 1;
 
     // --- EFECTO VISUAL DE COMPRA ---
@@ -618,7 +685,7 @@ window.addToCartFromCard = function (nombre, precio, img, stockReal, inputId, mi
 /**
  * 3. LÓGICA DEL CARRITO 
  */
-function addToCart(nombre, precio, img, stockReal, cantidad, minCompra, maxCompra) {
+function addToCart(nombre, precio, img, stockReal, cantidad, minCompra, maxCompra, precioTokens = 0) {
     const existe = cart.find(item => item.nombre === nombre);
     let limiteMaximoCombinado = maxCompra > 0 ? Math.min(maxCompra, stockReal) : stockReal;
 
@@ -640,7 +707,7 @@ function addToCart(nombre, precio, img, stockReal, cantidad, minCompra, maxCompr
         if (cantidad > limiteMaximoCombinado) {
             return Toast.fire({ icon: 'error', title: 'Límite Máximo', text: `Solo puedes pedir hasta ${limiteMaximoCombinado} unidades.` });
         }
-        cart.push({ nombre, precio, img, cantidad: cantidad, stockMax: limiteMaximoCombinado, minCompra: minCompra });
+        cart.push({ nombre, precio, img, cantidad, stockMax: limiteMaximoCombinado, minCompra, precio_tokens: precioTokens });
         Toast.fire({ icon: 'success', title: 'Producto añadido' });
     }
     if (typeof updateCartUI === 'function') updateCartUI();
@@ -750,21 +817,63 @@ window.goToCheckout = function () {
     }
 
     const summaryList = document.getElementById('checkout-summary-list');
+    let totalFiat = 0;
+    let totalTokens = 0;
     const htmlSummary = cart.map((item) => {
-        total += (item.precio * item.cantidad);
+        totalFiat   += (item.precio * item.cantidad);
+        totalTokens += ((item.precio_tokens || item.precio * 100) * item.cantidad);
         return `
             <div class="checkout-item-premium" style="display: flex !important; justify-content: space-between !important; align-items: center !important; background: var(--bg-dark) !important; padding: 12px 15px !important; margin-bottom: 8px !important; border-left: 4px solid var(--accent) !important; border-top: 1px solid var(--border-color) !important; border-bottom: 1px solid var(--border-color) !important; border-right: 1px solid var(--border-color) !important; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);">
                 <div>
                     <div class="checkout-item-name" style="color: var(--text-white) !important; font-size: 0.85rem !important; font-weight: 800 !important; text-transform: uppercase !important;">${escapeHTML(item.nombre)}</div>
                     <div class="checkout-item-qty" style="color: var(--text-gray) !important; font-size: 0.75rem !important; font-weight: 600;">Unidades: ${item.cantidad}</div>
                 </div>
-                <div class="checkout-item-price" style="color: var(--success) !important; font-weight: 900 !important; font-size: 1.1rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
+                <div style="text-align:right;">
+                    <div class="checkout-item-price" style="color: var(--success) !important; font-weight: 900 !important; font-size: 1.1rem !important;">$ ${new Intl.NumberFormat('es-CO').format(item.precio * item.cantidad)}</div>
+                    <div style="color:#f59e0b; font-size:.7rem; font-weight:700;">${new Intl.NumberFormat('es-CO').format((item.precio_tokens || item.precio * 100) * item.cantidad)} TK</div>
+                </div>
             </div>
         `;
     }).join('');
 
     summaryList.innerHTML = htmlSummary;
-    document.getElementById('checkout-final-total').innerText = `$ ${new Intl.NumberFormat('es-CO').format(total)}`;
+
+    // Método de pago
+    const tkSaldo = window.userTokenSaldo || parseInt(localStorage.getItem('dw_token_saldo')) || 0;
+    const fmt = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n)||0);
+    const tkSuficiente = tkSaldo >= totalTokens;
+
+    // Actualizar totales visibles
+    const totalEl = document.getElementById('checkout-final-total');
+    if (totalEl) totalEl.innerText = `$ ${fmt(totalFiat)}`;
+
+    // Inyectar selector de método de pago (si no existe ya)
+    let metodoPagoBox = document.getElementById('checkout-metodo-pago');
+    if (!metodoPagoBox) {
+        metodoPagoBox = document.createElement('div');
+        metodoPagoBox.id = 'checkout-metodo-pago';
+        const footerEl = document.querySelector('.checkout-modal-footer') || document.getElementById('checkout-modal');
+        if (footerEl) footerEl.prepend(metodoPagoBox);
+    }
+    metodoPagoBox.innerHTML = `
+        <div style="margin:16px 0; background:rgba(245,158,11,.06); border:1px solid rgba(245,158,11,.2); border-radius:12px; padding:14px 18px;">
+            <p style="margin:0 0 10px; font-size:.75rem; font-weight:800; text-transform:uppercase; letter-spacing:.8px; color:#f59e0b;">
+                🪙 Método de pago
+            </p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <label style="flex:1; min-width:130px; cursor:pointer;">
+                    <input type="radio" name="checkout-payment" value="fiat" checked onchange="actualizarResumenPago(${totalFiat}, ${totalTokens})" style="margin-right:6px;">
+                    <span style="font-weight:700; font-size:.85rem;">Saldo fiat — <b style="color:var(--success);">$ ${fmt(totalFiat)}</b></span><br>
+                    <span style="font-size:.72rem; color:var(--text-muted);">Tu saldo: $ ${fmt(window.userBalance || 0)}</span>
+                </label>
+                <label style="flex:1; min-width:130px; cursor:${tkSuficiente ? 'pointer' : 'not-allowed'}; opacity:${tkSuficiente ? 1 : .5};">
+                    <input type="radio" name="checkout-payment" value="tokens" ${!tkSuficiente ? 'disabled' : ''} onchange="actualizarResumenPago(${totalFiat}, ${totalTokens})" style="margin-right:6px;">
+                    <span style="font-weight:700; font-size:.85rem;">Tokens — <b style="color:#f59e0b;">${fmt(totalTokens)} TK</b></span><br>
+                    <span style="font-size:.72rem; color:${tkSuficiente ? '#f59e0b' : 'var(--danger)'};">Tu saldo: ${fmt(tkSaldo)} TK ${!tkSuficiente ? '(insuficiente)' : ''}</span>
+                </label>
+            </div>
+        </div>
+    `;
 
     toggleCart();
     document.getElementById('checkout-overlay').classList.remove('hidden');
@@ -788,10 +897,29 @@ function generarOrderId() {
     return `ORD-${year}${month}${day}-${hours}${minutes}${seconds}-${rnd}`;
 }
 
+window.actualizarResumenPago = function(totalFiat, totalTokens) {
+    const metodo = document.querySelector('input[name="checkout-payment"]:checked')?.value || 'fiat';
+    const fmt = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n)||0);
+    const totalEl = document.getElementById('checkout-final-total');
+    if (totalEl) {
+        totalEl.innerText = metodo === 'tokens'
+            ? `${fmt(totalTokens)} TK`
+            : `$ ${fmt(totalFiat)}`;
+    }
+};
+
 window.finalizePurchase = async function () {
     const payBtn = document.querySelector('.btn-final-pay');
     if (payBtn) payBtn.disabled = true;
 
+    const metodo = document.querySelector('input[name="checkout-payment"]:checked')?.value || 'fiat';
+
+    if (metodo === 'tokens') {
+        await finalizePurchaseTokens(payBtn);
+        return;
+    }
+
+    // --- FLUJO FIAT ORIGINAL ---
     if (typeof userBalance === 'undefined') userBalance = Number(localStorage.getItem('dw_saldo')) || 0;
 
     let total = cart.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
@@ -842,6 +970,7 @@ window.finalizePurchase = async function () {
                 exitos += item.cantidad;
                 userBalance = res.nuevoSaldo;
                 localStorage.setItem('dw_saldo', userBalance);
+                window._lastPurchaseRes = res; // 🪙 Guardamos para mostrar tokens ganados
 
                 let diasExtraidos = 30;
                 const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|días|mes)/i);
@@ -871,9 +1000,19 @@ window.finalizePurchase = async function () {
 
     if (exitos > 0) {
         cart = []; updateCartUI();
+        // Limpiar el selector de método de pago
+        document.getElementById('checkout-metodo-pago')?.remove();
         localStorage.removeItem(STORE_CACHE_KEY);
         await cargarTienda(true);
         Swal.close();
+
+        // Mostrar tokens ganados si los hubo
+        const lastRes = window._lastPurchaseRes;
+        if (lastRes?.tokens_ganados > 0) {
+            const fmt = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n)||0);
+            if (typeof actualizarTokenSaldoLocal === 'function') actualizarTokenSaldoLocal(lastRes.nuevoTokenSaldo || 0);
+            setTimeout(() => Toast.fire({ icon: 'success', title: `🪙 +${fmt(lastRes.tokens_ganados)} tokens ganados!` }), 800);
+        }
 
         if (errores.length > 0) {
             Toast.fire({ icon: 'warning', title: `Éxito parcial: ${exitos} listos. Fallaron ${errores.length}` });
@@ -894,3 +1033,161 @@ window.finalizePurchase = async function () {
         });
     }
 }
+
+// 🪙 FLUJO DE COMPRA CON TOKENS
+async function finalizePurchaseTokens(payBtn) {
+    const u = localStorage.getItem('dw_user');
+    const t = localStorage.getItem('dw_token');
+    const orderId = generarOrderId();
+    const isDark = document.body.classList.contains('dark-mode');
+    const fmt = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n)||0);
+
+    closeCheckout();
+
+    Swal.fire({
+        title: '<span style="color:var(--text-white); font-weight:800;">Procesando con Tokens</span>',
+        html: '<div style="color:#f59e0b; font-size:.9rem; margin-top:10px;">🪙 Canjeando tus tokens...</div><div class="spinner" style="margin:25px auto;"></div>',
+        showConfirmButton: false, allowOutsideClick: false,
+        background: isDark ? 'var(--bg-card)' : '#ffffff',
+        customClass: { container: 'swal-top-layer', popup: 'cyber-modal-style' }
+    });
+
+    let errores = [], exitos = 0, paqueteParaGoogle = [];
+    const fechaLocal = new Date().toISOString().split('T')[0];
+
+    for (const item of cart) {
+        try {
+            const res = await apiCall({ accion: 'comprarConTokens', usuario: u, token: t, producto: item.nombre, cantidad: item.cantidad, order_id: orderId });
+            if (res.success) {
+                exitos += item.cantidad;
+                window.userTokenSaldo = res.nuevoTokenSaldo || 0;
+                localStorage.setItem('dw_token_saldo', window.userTokenSaldo);
+                if (typeof actualizarTokenSaldoLocal === 'function') actualizarTokenSaldoLocal(window.userTokenSaldo);
+                let diasExtraidos = 30;
+                const matchDias = item.nombre.match(/(\d+)\s*(dias|meses|d\u00edas|mes)/i);
+                if (matchDias) diasExtraidos = matchDias[2].toLowerCase().includes('mes') ? parseInt(matchDias[1]) * 30 : parseInt(matchDias[1]);
+                if (res.datos?.cuentas) res.datos.cuentas.forEach(c => paqueteParaGoogle.push({ cuenta: c, fecha: fechaLocal, dias: diasExtraidos, servicio: item.nombre }));
+            } else {
+                errores.push(`${item.nombre}: ${res.msg}`);
+            }
+        } catch(e) { errores.push(`${item.nombre}: Error de conexión`); }
+    }
+
+    if (paqueteParaGoogle.length > 0) {
+        fetch(GS_CODIGO, { method: 'POST', body: JSON.stringify({ accion: 'registro_masivo', compras: paqueteParaGoogle }), headers: { 'Content-Type': 'text/plain' } }).catch(() => {});
+    }
+
+    document.getElementById('checkout-metodo-pago')?.remove();
+
+    if (exitos > 0) {
+        cart = []; updateCartUI();
+        localStorage.removeItem(STORE_CACHE_KEY);
+        await cargarTienda(true);
+        Swal.close();
+        Toast.fire({ icon: 'success', title: `🪙 ¡Compra con tokens exitosa!` });
+        if (payBtn) payBtn.disabled = false;
+        if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
+    } else {
+        if (payBtn) payBtn.disabled = false;
+        Swal.fire({ icon: 'error', title: 'Error', text: errores[0] || 'Error desconocido.', background: isDark ? 'var(--bg-card)' : '#fff' });
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🪙 TOGGLE DE MODO PAGO (DINERO ↔ TOKENS)
+// ─────────────────────────────────────────────────────────────────────────────
+window.togglePagoModo = function() {
+    pagoModoTokens = !pagoModoTokens;
+
+    // Feedback visual al botón mientras re-renderiza
+    const btn = document.getElementById('store-pay-toggle');
+    if (btn) {
+        btn.style.transform = 'scale(.95)';
+        btn.style.opacity = '.7';
+        setTimeout(() => { btn.style.transform = ''; btn.style.opacity = ''; }, 250);
+    }
+
+    // Toast informativo
+    const tkSaldo = window.userTokenSaldo || parseInt(localStorage.getItem('dw_token_saldo')) || 0;
+    const fmt = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n) || 0);
+    if (pagoModoTokens) {
+        Toast.fire({ icon: 'info', title: `🪙 Modo Tokens — ${fmt(tkSaldo)} TK disponibles`, timer: 2000 });
+    } else {
+        const bal = window.userBalance || parseInt(localStorage.getItem('dw_saldo')) || 0;
+        Toast.fire({ icon: 'info', title: `💵 Modo Dinero — $ ${fmt(bal)} disponibles`, timer: 2000 });
+    }
+
+    renderizarTiendaPremium(lastProductos, false);
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 🪙 COMPRA DIRECTA CON TOKENS (SIN CARRITO)
+// ─────────────────────────────────────────────────────────────────────────────
+window.comprarDirectoConTokens = async function(nombreProducto, inputId, precioTokensUnitario) {
+    const input    = document.getElementById(inputId);
+    const cantidad = input ? (parseInt(input.value) || 1) : 1;
+    const costoTotal = precioTokensUnitario * cantidad;
+    const fmt      = (n) => new Intl.NumberFormat('es-CO').format(parseInt(n) || 0);
+    const isDark   = document.body.classList.contains('dark-mode');
+    const u = localStorage.getItem('dw_user');
+    const t = localStorage.getItem('dw_token');
+
+    // Confirmación rápida
+    const { isConfirmed } = await Swal.fire({
+        title: `<span style="font-size:1.05rem; font-weight:900;">Canjear con Tokens</span>`,
+        html: `
+            <div style="text-align:left; font-size:.88rem; color:var(--text-gray);">
+                <div style="margin-bottom:10px;"><b style="color:var(--text-white);">${escapeHTML(nombreProducto)}</b></div>
+                <div>Cantidad: <b style="color:var(--text-white);">${cantidad}</b></div>
+                <div>Costo total: <b style="color:#f59e0b; font-size:1.1rem;">${fmt(costoTotal)} TK</b></div>
+                <div style="margin-top:8px; font-size:.78rem;">Tu saldo: ${fmt(window.userTokenSaldo || 0)} TK</div>
+            </div>`,
+        showCancelButton: true,
+        confirmButtonText: '🪙 Confirmar canje',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#d97706',
+        background: isDark ? 'var(--bg-card)' : '#fff',
+        customClass: { container: 'swal-top-layer', popup: 'cyber-modal-style' }
+    });
+
+    if (!isConfirmed) return;
+
+    const orderId = generarOrderId();
+
+    Swal.fire({
+        title: '<span style="font-weight:800;">Procesando con Tokens</span>',
+        html: '<div style="color:#f59e0b; font-size:.9rem; margin-top:10px;">🪙 Canjeando tus tokens...</div><div class="spinner" style="margin:25px auto;"></div>',
+        showConfirmButton: false, allowOutsideClick: false,
+        background: isDark ? 'var(--bg-card)' : '#fff',
+        customClass: { container: 'swal-top-layer', popup: 'cyber-modal-style' }
+    });
+
+    try {
+        const res = await apiCall({ accion: 'comprarConTokens', usuario: u, token: t, producto: nombreProducto, cantidad, order_id: orderId });
+
+        if (res.success) {
+            window.userTokenSaldo = res.nuevoTokenSaldo || 0;
+            localStorage.setItem('dw_token_saldo', window.userTokenSaldo);
+            if (typeof actualizarTokenSaldoLocal === 'function') actualizarTokenSaldoLocal(window.userTokenSaldo);
+
+            // Notificar a Google si es necesario
+            if (res.datos?.cuentas) {
+                const fechaLocal = new Date().toISOString().split('T')[0];
+                const diasMatch  = nombreProducto.match(/(\d+)\s*(dias|meses|días|mes)/i);
+                const dias = diasMatch ? (diasMatch[2].toLowerCase().includes('mes') ? parseInt(diasMatch[1])*30 : parseInt(diasMatch[1])) : 30;
+                const paquete = res.datos.cuentas.map(c => ({ cuenta: c, fecha: fechaLocal, dias, servicio: nombreProducto }));
+                fetch(GS_CODIGO, { method:'POST', body: JSON.stringify({ accion:'registro_masivo', compras: paquete }), headers:{'Content-Type':'text/plain'} }).catch(()=>{});
+            }
+
+            localStorage.removeItem(STORE_CACHE_KEY);
+            await cargarTienda(true);
+            Swal.close();
+            Toast.fire({ icon:'success', title:`🪙 ¡Canje exitoso! −${fmt(costoTotal)} TK` });
+            if (typeof abrirFacturaGlobal === 'function') abrirFacturaGlobal(orderId);
+        } else {
+            Swal.fire({ icon:'error', title:'Error en canje', text: res.msg || 'Error desconocido.', background: isDark ? 'var(--bg-card)' : '#fff' });
+        }
+    } catch(e) {
+        Swal.fire({ icon:'error', title:'Error de conexión', text:'Verifica tu conexión e intenta de nuevo.', background: isDark ? 'var(--bg-card)' : '#fff' });
+    }
+};
