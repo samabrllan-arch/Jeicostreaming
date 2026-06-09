@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
 function convertirAThumbnailTicket(url) {
     if (!url || url.trim() === "") return "";
     if (url.includes("uc?export=view&id=")) {
-        return url.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w600";
+        const fileId = new URLSearchParams(url.split('?')[1]).get('id');
+        if (fileId) return `https://lh3.googleusercontent.com/d/${fileId}=w1000`;
     }
     return url;
 }
@@ -365,11 +366,10 @@ window.mostrarDetalleModal = function(textoCodificado, respCodificada, imgCodifi
 window.abrirImagenTicketExpandida = function(urlCodificada) {
     const urlLimpia = decodeURIComponent(urlCodificada);
     
-    // 🔥 TRUCO: Transformamos el link original a un thumbnail GIGANTE (w2500) 
-    // para que el navegador lo dibuje como imagen en vez de forzar una descarga.
     let urlAltaResolucion = urlLimpia;
     if (urlLimpia.includes("uc?export=view&id=")) {
-        urlAltaResolucion = urlLimpia.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w2500";
+        const fileId = new URLSearchParams(urlLimpia.split('?')[1]).get('id');
+        if (fileId) urlAltaResolucion = `https://lh3.googleusercontent.com/d/${fileId}=w2500`;
     }
 
     const isDark = document.body.classList.contains('dark-mode');
