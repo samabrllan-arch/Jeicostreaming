@@ -129,12 +129,20 @@ const Toast = Swal.mixin({
     }
 });
 
-// 🔥 LA MAGIA: Función que convierte enlaces de Drive a Thumbnails ultrarrápidos
+// 🔥 LA MAGIA: Función que convierte enlaces de Drive a un formato sin bloqueos
 function convertirAThumbnail(url) {
     if (!url || url.trim() === "") return "";
+    
+    // Si es un link de Google Drive, usamos el CDN de lh3 para evitar error 403 o descargas forzadas
     if (url.includes("uc?export=view&id=")) {
-        return url.replace("uc?export=view&id=", "thumbnail?id=") + "&sz=w600";
+        const urlParams = new URLSearchParams(url.split('?')[1]);
+        const fileId = urlParams.get('id');
+        if (fileId) {
+            return `https://lh3.googleusercontent.com/d/${fileId}=w1000`;
+        }
     }
+    
+    // Mantener local si no es http
     if (!url.startsWith("http") && !url.startsWith("data:")) {
         return `${API_BASE_URL_CLIENTE}/uploads/categorias/${url}`;
     }
