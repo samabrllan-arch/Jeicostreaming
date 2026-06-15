@@ -171,6 +171,11 @@
           <span class="menu-text">INICIO</span>
         </li>
 
+        <li class="nav-item" onclick="nav('recomendaciones', this)">
+          <span class="material-icons-round">star</span>
+          <span class="menu-text">RECOMENDADOS</span>
+        </li>
+
         <li class="nav-item active" onclick="nav('tienda', this)">
           <span class="material-icons-round">storefront</span>
           <span class="menu-text">TIENDA</span>
@@ -358,6 +363,16 @@
           </div>
         </div>
 
+      </div>
+
+      <div id="sec-recomendaciones" class="hidden">
+        <div class="section-header-premium">
+          <h1 class="page-title">RECOMENDACIONES VIP</h1>
+          <p class="section-description">¡Las mejores películas y series del momento!</p>
+        </div>
+        <div id="recomendaciones-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 15px; padding: 15px 20px;">
+          <!-- Contenido generado por JS -->
+        </div>
       </div>
 
       <div id="sec-tienda">
@@ -669,6 +684,7 @@
   <script src="modal.js"></script>
 
   <script src="temas.js"></script>
+  <script src="recomendaciones.js"></script>
   <script src="update.js"></script>
 
 </body>
