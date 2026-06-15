@@ -3,6 +3,18 @@
 // La primera de la lista (índice 0) siempre será la que se muestre en el botón principal.
 const historicoVersiones = [
     {
+        version: "V.2.3.0",
+        fecha: "15/06/2026",
+        tipo: "🚀 Cartelera Inteligente & UI",
+        cambios: [
+            "🎬 Nueva Cartelera Cinemática: Rediseñamos por completo el sistema de recomendaciones. Ahora los pósters lucen increíbles con tipografías en bloque 3D (Righteous), viñetas oscuras y glow dinámico según el color de la plataforma.",
+            "⚡ Carga Instantánea (Caché Inteligente): Tu dispositivo ahora recuerda la cartelera por 24 horas. ¡Entras al panel y las recomendaciones cargan en 0.1 segundos sin gastar megas extras!",
+            "🛠️ Panel de Gestión Pro: El administrador ahora cuenta con un editor premium, con ventanas 'glassmorphism' y selectores de color visuales para añadir o modificar la cartelera fácilmente.",
+            "🤖 Generador de IA: Añadimos un botón mágico que recopila tu cartelera actual y te crea un 'Prompt' listo para que la Inteligencia Artificial te arme contenido nuevo sin repetir lo que ya tienes.",
+            "🎨 Refinamientos de Interfaz: Mejoras en las sombras, espaciados y renderizado 3D para una experiencia de usuario mucho más fluida."
+        ]
+    },
+    {
         version: "V.2.2.0",
         fecha: "09/06/2026",
         tipo: "🪙 Tokens & Cashback",
