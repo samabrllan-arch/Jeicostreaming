@@ -29,101 +29,118 @@ async function inicializarModuloTokens() {
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Righteous&display=swap');
 
-        /* ── Hero cards ── */
-        .tkc-hero { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:18px; margin-bottom:32px; }
+        /* ── Hero cards (Glassmorphism FreeFrontend Style) ── */
+        .tkc-hero { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:20px; margin-bottom:32px; perspective: 1000px; }
 
         .tkc-hero-card {
-            background: linear-gradient(135deg, var(--card-bg,#1a1a2e) 0%, rgba(30,30,60,.9) 100%);
-            border: 1px solid var(--border-color,#2a2a4a);
-            border-radius:18px; padding:24px 20px; text-align:center;
-            position:relative; overflow:hidden;
-            transition: transform .25s, box-shadow .25s;
+            background: var(--bg-card); /* Fallback */
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid var(--border-color);
+            border-radius: 20px; 
+            padding: 25px 20px; 
+            text-align: center;
+            position: relative; 
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
         }
+        body.dark-mode .tkc-hero-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
         .tkc-hero-card::before {
             content:''; position:absolute; inset:0;
-            background: radial-gradient(circle at 80% 20%, rgba(245,158,11,.07), transparent 60%);
+            background: radial-gradient(circle at 80% 20%, var(--accent-glow, rgba(245,158,11,.1)), transparent 60%);
+            opacity: 0.5;
+            transition: opacity 0.4s ease;
         }
-        .tkc-hero-card:hover { transform:translateY(-4px); box-shadow:0 12px 32px rgba(0,0,0,.35); }
+        
+        .tkc-hero-card:hover { 
+            transform: translateY(-8px) scale(1.02); 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1); 
+            border-color: #f59e0b;
+        }
+        body.dark-mode .tkc-hero-card:hover {
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(245,158,11,0.05);
+        }
+        .tkc-hero-card:hover::before { opacity: 1; }
 
         .tkc-hero-icon {
-            width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
-            margin:0 auto 14px; font-size:1.6rem;
+            width: 56px; height: 56px; 
+            border-radius: 16px; 
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px; font-size: 1.8rem;
+            box-shadow: inset 0 2px 5px rgba(255,255,255,0.1);
         }
         .tkc-hero-val {
-            font-size:2.1rem; font-weight:900; font-family:'Righteous',cursive;
-            margin:0 0 4px; line-height:1;
+            font-size: 2.2rem; font-weight: 900; font-family: 'Righteous', cursive;
+            margin: 0 0 6px; line-height: 1;
             background: linear-gradient(135deg, #f59e0b, #fbbf24);
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            position: relative; z-index: 2;
         }
         .tkc-hero-val.green  { background:linear-gradient(135deg,#10b981,#34d399); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-        .tkc-hero-val.purple { background:linear-gradient(135deg,#818cf8,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-        .tkc-hero-lbl { font-size:.7rem; color:var(--text-muted,#777); font-weight:700; text-transform:uppercase; letter-spacing:.9px; }
+        .tkc-hero-val.purple { background:linear-gradient(135deg,#8b5cf6,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .tkc-hero-lbl { font-size: 0.75rem; color: var(--text-gray); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; position: relative; z-index: 2; }
 
         /* ── Progress bar de tokens ── */
-        .tkc-progress-wrap { margin-bottom:28px; }
-        .tkc-progress-label { display:flex; justify-content:space-between; font-size:.75rem; font-weight:700; margin-bottom:8px; color:var(--text-gray,#aaa); }
-        .tkc-progress-bar-bg { height:8px; border-radius:99px; background:rgba(245,158,11,.12); overflow:hidden; }
-        .tkc-progress-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#f59e0b,#fbbf24); transition:width .8s cubic-bezier(.4,0,.2,1); }
+        .tkc-progress-wrap { margin-bottom:30px; }
+        .tkc-progress-label { display:flex; justify-content:space-between; font-size:.8rem; font-weight:800; margin-bottom:10px; color:var(--text-gray); }
+        .tkc-progress-bar-bg { height:10px; border-radius:99px; background: var(--bg-dark); border: 1px solid var(--border-color); overflow:hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); }
+        .tkc-progress-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#f59e0b,#fbbf24); transition:width 1s cubic-bezier(.4,0,.2,1); box-shadow: 0 0 10px rgba(245,158,11,0.5); }
 
-        /* ── Info banner ── */
+        /* ── Info banner (Modern Glow) ── */
         .tkc-info-banner {
-            background:linear-gradient(135deg,rgba(245,158,11,.08),rgba(217,119,6,.03));
-            border:1px solid rgba(245,158,11,.22); border-radius:14px; padding:16px 20px;
-            margin-bottom:26px; font-size:.82rem; color:var(--text-gray,#aaa); line-height:1.75;
-            position:relative; overflow:hidden;
+            background: var(--bg-card);
+            border: 1px solid rgba(245,158,11,.3); 
+            border-left: 4px solid #f59e0b;
+            border-radius: 12px; padding: 18px 24px;
+            margin-bottom: 30px; font-size: 0.9rem; color: var(--text-gray); line-height: 1.6;
+            position: relative; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        body.dark-mode .tkc-info-banner {
+            background: rgba(245,158,11,.03);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .tkc-info-banner::after {
-            content:'🪙'; position:absolute; right:16px; top:50%; transform:translateY(-50%);
-            font-size:2.8rem; opacity:.12;
+            content:'🪙'; position:absolute; right: -10px; top: 50%; transform: translateY(-50%);
+            font-size: 5rem; opacity: 0.05; pointer-events: none;
         }
-        .tkc-info-banner b { color:#f59e0b; }
+        .tkc-info-banner b { color: #f59e0b; font-weight: 800; }
 
-        /* ── History ── */
+        /* ── History Box ── */
         .tkc-history-box {
-            background:var(--card-bg,#1a1a2e);
-            border:1px solid var(--border-color,#2a2a4a);
-            border-radius:18px; padding:24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px; padding: 25px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.05);
         }
-        .tkc-history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
-        .tkc-history-title { margin:0; font-size:1rem; font-weight:800; display:flex; align-items:center; gap:8px; }
+        body.dark-mode .tkc-history-box {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+        .tkc-history-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:25px; flex-wrap:wrap; gap:10px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+        .tkc-history-title { margin:0; font-size:1.1rem; font-weight:900; display:flex; align-items:center; gap:8px; color: var(--text-white); text-transform: uppercase; letter-spacing: 0.5px; }
 
         .tkc-btn-reload {
-            background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); color:#f59e0b;
-            padding:7px 14px; border-radius:10px; cursor:pointer; font-weight:800; font-size:.78rem;
-            display:flex; align-items:center; gap:6px; transition:.2s;
+            background: var(--bg-dark); border: 1px solid var(--border-color); color: var(--text-white);
+            padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 800; font-size: 0.8rem;
+            display: flex; align-items: center; gap: 6px; transition: 0.3s;
         }
-        .tkc-btn-reload:hover { background:rgba(245,158,11,.18); transform:scale(1.04); }
+        .tkc-btn-reload:hover { background: rgba(245,158,11,.1); border-color: #f59e0b; color: #f59e0b; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(245,158,11,.2); }
 
-        /* ── Item ── */
-        .tkc-item {
-            display:flex; align-items:center; gap:14px; padding:14px 0;
-            border-bottom:1px solid var(--border-color,#2a2a4a);
-            transition: background .15s;
-        }
-        .tkc-item:last-child { border-bottom:none; }
-        .tkc-item:hover { background:rgba(255,255,255,.02); border-radius:10px; padding-left:8px; }
-        .tkc-item.tkc-expired { opacity:.4; }
-
-        .tkc-icon { width:44px; height:44px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-        .tkc-info { flex:1; min-width:0; }
-        .tkc-motivo { font-weight:700; font-size:.85rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-        .tkc-fecha  { font-size:.72rem; color:var(--text-muted,#666); margin-top:3px; display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-        .tkc-amount { font-weight:900; font-size:1.05rem; white-space:nowrap; }
-
-        .tkc-badge {
-            display:inline-flex; align-items:center; gap:3px; padding:2px 7px; border-radius:6px;
-            font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:.5px;
-        }
-        .tkc-badge-vencido { background:rgba(239,68,68,.15); color:#f87171; }
-        .tkc-badge-bono    { background:rgba(139,92,246,.15); color:#a78bfa; }
+        /* ── Estilos removidos por usar mov-table global de billetera ── */
 
         /* ── Empty ── */
-        .tkc-empty { text-align:center; padding:60px 20px; color:var(--text-muted,#666); }
-        .tkc-empty-icon { font-size:4rem; margin-bottom:14px; animation:tkc-bounce 2s ease-in-out infinite; }
-        @keyframes tkc-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+        .tkc-empty { text-align:center; padding:60px 20px; color:var(--text-gray); }
+        .tkc-empty-icon { font-size:4rem; margin-bottom:15px; animation:tkc-bounce 2s ease-in-out infinite; opacity: 0.8; }
+        @keyframes tkc-bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
 
         /* ── Spinner ── */
-        .tkc-spinner { width:36px; height:36px; border:3px solid rgba(245,158,11,.2); border-top-color:#f59e0b; border-radius:50%; animation:tkc-spin .7s linear infinite; margin:40px auto; }
+        .tkc-spinner { width:40px; height:40px; border:4px solid rgba(245,158,11,.1); border-top-color:#f59e0b; border-radius:50%; animation:tkc-spin .8s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite; margin:40px auto; }
         @keyframes tkc-spin { to{transform:rotate(360deg)} }
     </style>
 
@@ -174,9 +191,9 @@ async function inicializarModuloTokens() {
     </div>
 
     <!-- Historial -->
-    <div class="tkc-history-box">
-        <div class="tkc-history-header">
-            <h3 class="tkc-history-title">
+    <div class="premium-table-container" style="background: var(--bg-card); border: 1px solid var(--border-color); box-shadow: 0 10px 30px rgba(0,0,0,0.05); margin-top: 15px;">
+        <div class="tkc-history-header" style="padding: 20px 25px; border-bottom: 1px solid var(--border-color); margin-bottom: 0;">
+            <h3 class="tkc-history-title" style="margin:0; font-size:1.1rem; font-weight:900; display:flex; align-items:center; gap:8px; color: var(--text-white); text-transform: uppercase;">
                 <i class="material-icons-round" style="color:#f59e0b; font-size:1.2rem;">history</i>
                 Historial de Tokens
             </h3>
@@ -184,7 +201,19 @@ async function inicializarModuloTokens() {
                 <i class="material-icons-round" style="font-size:1rem;">refresh</i> Actualizar
             </button>
         </div>
-        <div id="tkc-historial-list"><div class="tkc-spinner"></div></div>
+        <table class="mov-table" id="tabla-mis-tokens">
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Fecha y Hora</th>
+                    <th style="text-align: left;">Tipo</th>
+                    <th style="text-align: left;">Detalle de Operación</th>
+                    <th style="text-align: right;">Monto (TK)</th>
+                </tr>
+            </thead>
+            <tbody id="tkc-historial-list">
+                <tr><td colspan="4" style="text-align:center; padding:60px;"><div class="tkc-spinner"></div></td></tr>
+            </tbody>
+        </table>
     </div>`;
 
     await cargarTokensCliente();
@@ -251,55 +280,71 @@ function renderTokensCliente(data) {
     const hist = data.historial || [];
     if (!hist.length) {
         listEl.innerHTML = `
-            <div class="tkc-empty">
-                <div class="tkc-empty-icon">🪙</div>
-                <p>Aún no tienes movimientos de tokens.<br>
-                <b>¡Compra en la tienda y empieza a ganar!</b></p>
-            </div>`;
+            <tr><td colspan="4" style="text-align:center; padding: 60px;">
+                <div class="tkc-empty" style="padding: 0;">
+                    <div class="tkc-empty-icon">🪙</div>
+                    <p style="margin:0;">Aún no tienes movimientos de tokens.<br>
+                    <b>¡Compra en la tienda y empieza a ganar!</b></p>
+                </div>
+            </td></tr>`;
         return;
     }
-
-    const tiposIcono = {
-        ganado:   { icon:'add_circle',     bg:'rgba(16,185,129,.15)',  color:'#10b981' },
-        bono:     { icon:'card_giftcard',  bg:'rgba(139,92,246,.15)', color:'#a78bfa' },
-        canjeado: { icon:'shopping_cart',  bg:'rgba(239,68,68,.12)',  color:'#f87171' },
-        ajuste:   { icon:'tune',           bg:'rgba(99,102,241,.15)', color:'#818cf8' },
-        expirado: { icon:'timer_off',      bg:'rgba(107,114,128,.1)', color:'#9ca3af' },
-    };
 
     listEl.innerHTML = hist.map(t => {
         const cantidad  = parseInt(t.cantidad);
         const vencido   = parseInt(t.vencido) === 1;
         const esPos     = cantidad > 0;
-        const cfg       = tiposIcono[t.tipo] || tiposIcono.ajuste;
         const signo     = esPos ? '+' : '';
-        const amtColor  = esPos ? '#10b981' : '#f87171';
-        const fechaStr  = (t.fecha || '').split(' ')[0];
-        const expStr    = t.fecha_expiracion ? t.fecha_expiracion.split(' ')[0] : '';
+        const colorClass = esPos ? 'amount-positive' : 'amount-negative';
 
-        const badges = [
-            vencido ? `<span class="tkc-badge tkc-badge-vencido"><i class="material-icons-round" style="font-size:.65rem;">timer_off</i>Vencido</span>` : '',
-            t.tipo === 'bono' ? `<span class="tkc-badge tkc-badge-bono"><i class="material-icons-round" style="font-size:.65rem;">card_giftcard</i>Bono</span>` : '',
-        ].filter(Boolean).join('');
+        let fechaPrimary = (t.fecha || '').split(' ')[0];
+        let fechaSecondary = (t.fecha || '').includes(' ') ? t.fecha.split(' ')[1] : '';
+        
+        try {
+            let fPura = fechaPrimary;
+            let fObj = new Date();
+            if (fPura.includes('-')) {
+                let [y, m, d] = fPura.split('-');
+                fObj = new Date(y, m-1, d);
+            } else if (fPura.includes('/')) {
+                let [d, m, y] = fPura.split('/');
+                fObj = new Date(y, m-1, d);
+            }
+            if(!isNaN(fObj.getTime())) {
+                fechaPrimary = fObj.toLocaleDateString('es-CO', {day:'2-digit', month:'short', year:'numeric'});
+            }
+        } catch(e){}
+
+        let badgeHTML = '';
+        if (vencido || t.tipo === 'expirado') {
+            badgeHTML = `<span class="id-badge-premium nulo" style="color: #ef4444; border-color: rgba(239,68,68,0.3);">VENCIDO</span>`;
+        } else if (t.tipo === 'ganado') {
+            badgeHTML = `<span class="id-badge-premium recarga">GANADO</span>`;
+        } else if (t.tipo === 'canjeado') {
+            badgeHTML = `<span class="id-badge-premium descuento">CANJEADO</span>`;
+        } else if (t.tipo === 'bono') {
+            badgeHTML = `<span class="id-badge-premium" style="background: rgba(139,92,246,0.1); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3);">BONO</span>`;
+        } else {
+            badgeHTML = `<span class="id-badge-premium nulo">AJUSTE</span>`;
+        }
+
+        const expStr = t.fecha_expiracion && !vencido && esPos ? t.fecha_expiracion.split(' ')[0] : '';
+        const detalleAdicional = expStr ? `<br><span style="font-size: 0.7rem; color: #f59e0b;">Vence el ${expStr}</span>` : '';
 
         return `
-        <div class="tkc-item ${vencido ? 'tkc-expired' : ''}">
-            <div class="tkc-icon" style="background:${cfg.bg}; color:${cfg.color};">
-                <i class="material-icons-round" style="font-size:1.35rem;">${cfg.icon}</i>
-            </div>
-            <div class="tkc-info">
-                <div class="tkc-motivo">${t.motivo || 'Transacción de tokens'}</div>
-                <div class="tkc-fecha">
-                    <i class="material-icons-round" style="font-size:.75rem; color:var(--text-muted);">calendar_today</i>
-                    ${fechaStr}
-                    ${expStr ? `· <span style="color:${vencido ? '#f87171':'#f59e0b'};">Vence ${expStr}</span>` : ''}
-                    ${badges}
+        <tr class="mov-row ${vencido ? 'tkc-expired' : ''}">
+            <td data-label="Fecha" style="text-align: left;">
+                <div class="date-block">
+                    <span class="date-primary">${fechaPrimary}</span>
+                    <span class="date-secondary">${fechaSecondary}</span>
                 </div>
-            </div>
-            <div class="tkc-amount" style="color:${amtColor};">
+            </td>
+            <td data-label="Tipo" style="text-align: left;">${badgeHTML}</td>
+            <td data-label="Detalle" style="font-weight:500; color:var(--text-white); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${t.motivo}">${t.motivo || 'Transacción de tokens'}${detalleAdicional}</td>
+            <td data-label="Monto" style="text-align: right; font-weight: 900;" class="${colorClass}">
                 ${signo}${fmt(Math.abs(cantidad))} TK
-            </div>
-        </div>`;
+            </td>
+        </tr>`;
     }).join('');
 }
 
