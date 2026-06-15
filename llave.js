@@ -1,18 +1,18 @@
 const API_URL = `${API_BASE_URL_CLIENTE}/dw_api.php`;
 let userBalance = 0;
 // =======================================================================
-// --- 0. DISEÃ‘O PREMIUM DEL LOGIN (INYECCIÃ“N CSS + DOM) ---
-// Se ejecuta inmediatamente porque el script estÃ¡ al final del body.
+// --- 0. DISEÑO PREMIUM DEL LOGIN (INYECCIí“N CSS + DOM) ---
+// Se ejecuta inmediatamente porque el script está al final del body.
 // =======================================================================
 (function _setupLoginUI() {
-    // â”€â”€ Fuentes â”€â”€
+    // ── Fuentes ──
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = 'https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap';
     document.head.appendChild(link);
-    // â”€â”€ CSS â”€â”€
+    // ── CSS ──
     const css = `
-    /* â”€â”€â”€ ESTRUCTURA SPLIT â”€â”€â”€ */
+    /* ─── ESTRUCTURA SPLIT ─── */
     #login-view {
         display: flex !important;
         height: 100vh !important;
@@ -23,11 +23,11 @@ let userBalance = 0;
         align-items: stretch !important;
         transition: background 0.4s ease !important;
     }
-    /* Clase utilitaria de ocultamiento con mÃ¡xima prioridad */
+    /* Clase utilitaria de ocultamiento con máxima prioridad */
     #login-view.dw-oculto {
         display: none !important;
     }
-    /* â”€â”€â”€ PANEL IZQUIERDO â”€â”€â”€ */
+    /* ─── PANEL IZQUIERDO ─── */
     #login-banner {
         flex: 1 !important;
         height: 100vh !important;
@@ -44,7 +44,7 @@ let userBalance = 0;
         background-blend-mode: normal !important;
         background-color: #000 !important; /* Siempre negro */
     }
-    /* Overlay del banner â€” cambia con el tema */
+    /* Overlay del banner "” cambia con el tema */
     .dw-banner-overlay {
         position: absolute;
         inset: 0;
@@ -90,7 +90,7 @@ let userBalance = 0;
         0%, 100% { transform: scale(1); opacity: 1; }
         50%       { transform: scale(1.06); opacity: 0.75; }
     }
-    /* â”€â”€â”€ Tarjetas flotantes â”€â”€â”€ */
+    /* ─── Tarjetas flotantes ─── */
     .dw-float-card {
         position: absolute;
         background: rgba(13,13,28,0.82);
@@ -128,7 +128,7 @@ let userBalance = 0;
     .dw-dot-green  { background: #10b981; box-shadow: 0 0 7px #10b981; }
     .dw-dot-purple { background: #a855f7; box-shadow: 0 0 7px #a855f7; }
     .dw-dot-amber  { background: #f59e0b; box-shadow: 0 0 7px #f59e0b; }
-    /* â”€â”€â”€ Texto hero â”€â”€â”€ */
+    /* ─── Texto hero ─── */
     .dw-hero-text {
         position: relative;
         z-index: 5;
@@ -211,7 +211,7 @@ let userBalance = 0;
         letter-spacing: 1.2px;
         font-family: 'JetBrains Mono', monospace;
     }
-    /* â”€â”€â”€ VERSION BADGE (moderno) â”€â”€â”€ */
+    /* ─── VERSION BADGE (moderno) ─── */
     .version-badge {
         position: fixed !important;
         top: 18px !important;
@@ -262,7 +262,7 @@ let userBalance = 0;
         padding-left: 10px !important;
         margin-left: 0 !important;
     }
-    /* â”€â”€â”€ PANEL DERECHO â”€â”€â”€ */
+    /* ─── PANEL DERECHO ─── */
     #dw-right-panel {
         width: 430px;
         flex-shrink: 0;
@@ -295,7 +295,7 @@ let userBalance = 0;
         border-radius: 50%;
         z-index: 0;
     }
-    /* â”€â”€â”€ CAJA DE LOGIN â”€â”€â”€ */
+    /* ─── CAJA DE LOGIN ─── */
     #login-box-main,
     #recover-step-1,
     #recover-step-2 {
@@ -309,13 +309,13 @@ let userBalance = 0;
         padding: 40px 44px !important;
         border-radius: 0 !important;
     }
-    /* Cuando estÃ¡n hidden, los colapsamos */
+    /* Cuando están hidden, los colapsamos */
     #login-box-main.hidden,
     #recover-step-1.hidden,
     #recover-step-2.hidden {
         display: none !important;
     }
-    /* â”€â”€â”€ ENCABEZADO (marca) dentro del form â”€â”€â”€ */
+    /* ─── ENCABEZADO (marca) dentro del form ─── */
     .dw-brand {
         margin-bottom: 36px;
         text-align: center;
@@ -352,7 +352,7 @@ let userBalance = 0;
         text-transform: uppercase;
         text-align: center;
     }
-    /* â”€â”€â”€ TÃTULOS DEL FORM â”€â”€â”€ */
+    /* ─── TíTULOS DEL FORM ─── */
     .vault-header {
         font-family: 'Syne', sans-serif !important;
         font-size: 1.5rem !important;
@@ -378,7 +378,7 @@ let userBalance = 0;
         margin-bottom: 28px;
         letter-spacing: 0.5px;
     }
-    /* â”€â”€â”€ INPUT GROUP â”€â”€â”€ */
+    /* ─── INPUT GROUP ─── */
     #login-box-main .input-group,
     #recover-step-1 .input-group,
     #recover-step-2 .input-group {
@@ -414,7 +414,7 @@ let userBalance = 0;
         transition: color 0.2s !important;
     }
     .eye-icon:hover { color: #a855f7 !important; }
-    /* â”€â”€â”€ BOTÃ“N LOGIN â”€â”€â”€ */
+    /* ─── BOTí“N LOGIN ─── */
     .btn-login {
         width: 100% !important;
         padding: 14px !important;
@@ -437,7 +437,7 @@ let userBalance = 0;
         box-shadow: 0 8px 28px rgba(124,58,237,0.42) !important;
     }
     .btn-login:active { transform: translateY(0) !important; }
-    /* â”€â”€â”€ OLVIDÃ‰ CONTRASEÃ‘A â”€â”€â”€ */
+    /* ─── OLVIDÉ CONTRASEÑA ─── */
     .forgot-password-link {
         text-align: center !important;
         margin-top: 16px !important;
@@ -448,7 +448,7 @@ let userBalance = 0;
         transition: color 0.2s !important;
     }
     .forgot-password-link:hover { color: #a855f7 !important; }
-    /* â”€â”€â”€ VOLVER â”€â”€â”€ */
+    /* ─── VOLVER ─── */
     .back-container {
         display: inline-flex !important;
         align-items: center !important;
@@ -465,7 +465,7 @@ let userBalance = 0;
         transition: color 0.2s !important;
     }
     .back-container:hover { color: #a855f7 !important; }
-    /* â”€â”€â”€ TIP DE RECUPERACIÃ“N â”€â”€â”€ */
+    /* ─── TIP DE RECUPERACIí“N ─── */
     .reminder-text {
         font-family: 'JetBrains Mono', monospace !important;
         font-size: 0.7rem !important;
@@ -478,7 +478,7 @@ let userBalance = 0;
         padding: 10px 14px !important;
         line-height: 1.5 !important;
     }
-    /* â”€â”€â”€ PIE DE PÃGINA â”€â”€â”€ */
+    /* ─── PIE DE PíGINA ─── */
     #login-box-main > div:last-child {
         font-family: 'JetBrains Mono', monospace !important;
         font-size: 0.62rem !important;
@@ -486,7 +486,7 @@ let userBalance = 0;
         padding-top: 18px !important;
         margin-top: 28px !important;
     }
-    /* â”€â”€â”€ RESPONSIVE â”€â”€â”€ */
+    /* ─── RESPONSIVE ─── */
     @media (max-width: 820px) {
         #login-banner { display: none !important; }
         #dw-right-panel { width: 100% !important; }
@@ -495,7 +495,7 @@ let userBalance = 0;
         #recover-step-1,
         #recover-step-2 { padding: 32px 24px !important; }
     }
-    /* â”€â”€â”€ BOTÃ“N FLOTANTE DE TEMA â”€â”€â”€ */
+    /* ─── BOTí“N FLOTANTE DE TEMA ─── */
     .dw-theme-fab {
         position: fixed;
         bottom: 24px;
@@ -538,7 +538,7 @@ let userBalance = 0;
     .dw-theme-fab.spinning .material-icons-round {
         animation: dw-fabSpin 0.4s ease-out;
     }
-    /* â”€â”€â”€ SAMURAI ARENA â”€â”€â”€ */
+    /* ─── SAMURAI ARENA ─── */
     .dw-samurai-arena {
         position: absolute;
         inset: 0;
@@ -552,7 +552,7 @@ let userBalance = 0;
     }
     .dw-samurai-wrapper {
         position: absolute;
-        bottom: 5%; /* Samurai mÃ¡s abajo */
+        bottom: 5%; /* Samurai más abajo */
         left: 50%;
         transform: translateX(-50%);
         width: 0; height: 0; /* Punto de anclaje */
@@ -573,12 +573,12 @@ let userBalance = 0;
         will-change: transform;
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
-        /* HACK CYBERPUNK SUAVE: Aura neÃ³n respetando los colores originales */
+        /* HACK CYBERPUNK SUAVE: Aura neón respetando los colores originales */
         filter: drop-shadow(0 0 3px #00f2ea) drop-shadow(0 0 6px #a855f7);
     }
     
         
-    /* BURBUJA DE CHAT ESTILO CÃ“MIC */
+    /* BURBUJA DE CHAT ESTILO Cí“MIC */
     .dw-samurai-speech {
         position: fixed; /* Fixed para escapar de todo overflow */
         z-index: 999999 !important;
@@ -653,7 +653,7 @@ let userBalance = 0;
     style.id = 'dw-login-premium-styles';
     style.textContent = css;
     document.head.appendChild(style);
-    // â”€â”€ Reestructurar el DOM â”€â”€
+    // ── Reestructurar el DOM ──
     const loginView = document.getElementById('login-view');
     if (!loginView) return;
     // 1. Crear el panel derecho y mover las login-box dentro
@@ -662,7 +662,7 @@ let userBalance = 0;
     const boxes = [...loginView.querySelectorAll('.login-box')];
     boxes.forEach(box => rightPanel.appendChild(box));
     loginView.appendChild(rightPanel);
-    // 2. Inyectar imagen del banner (sutil) en panel derecho desde cachÃ©
+    // 2. Inyectar imagen del banner (sutil) en panel derecho desde caché
     try {
         const cache = localStorage.getItem('dw_branding_cache');
         if (cache) {
@@ -673,7 +673,7 @@ let userBalance = 0;
     // 3. Inyectar contenido hero dentro del #login-banner existente
     const banner = document.getElementById('login-banner');
     if (banner) {
-        // â”€â”€â”€ Eliminar estilos del .login-banner-bg que interfieren â”€â”€â”€
+        // ─── Eliminar estilos del .login-banner-bg que interfieren ───
         banner.style.setProperty('-webkit-mask-image', 'none');
         banner.style.setProperty('mask-image', 'none');
         banner.style.opacity = '1';
@@ -693,18 +693,18 @@ let userBalance = 0;
             <div class="dw-samurai-arena" id="dw-samurai-arena" style="z-index: 3;">
                 <div class="dw-samurai-wrapper" id="dw-samu-wrapper">
                     <div class="dw-samurai idle" id="dw-samurai"></div>
-                    <div class="dw-samurai-speech" id="dw-speech">Â¡Compra ahora!</div>
+                    <div class="dw-samurai-speech" id="dw-speech">¡Compra ahora!</div>
                 </div>
             </div>
         `;
 
-        // â”€â”€â”€ INICIALIZAR EFECTO 3D POSTERS TMDB â”€â”€â”€
+        // ─── INICIALIZAR EFECTO 3D POSTERS TMDB ───
         setTimeout(() => initThreeJSPosters(banner), 100);
         
         // Iniciar el samurai arena
         _initSamuraiArena();
     }
-    // 4. Reemplazar el pie de pÃ¡gina dentro de login-box-main
+    // 4. Reemplazar el pie de página dentro de login-box-main
     const mainBox = document.getElementById('login-box-main');
     if (mainBox) {
         const footerDiv = mainBox.querySelector('div[style*="margin-top"]');
@@ -724,7 +724,7 @@ let userBalance = 0;
         brand.innerHTML = `
             <div class="dw-brand-row">
                 <div class="dw-brand-icon"><span class="material-icons-round">lock</span></div>
-                <span class="dw-brand-name">BÃ³veda</span>
+                <span class="dw-brand-name">Bóveda</span>
             </div>
             <div class="dw-brand-sub">// plataforma de acceso seguro</div>
         `;
@@ -737,7 +737,7 @@ let userBalance = 0;
             h2.after(sub);
         }
     }
-    // 5. BotÃ³n flotante de cambio de tema (abajo a la derecha)
+    // 5. Botón flotante de cambio de tema (abajo a la derecha)
     const themeFab = document.createElement('button');
     themeFab.className = 'dw-theme-fab';
     themeFab.title = 'Cambiar tema';
@@ -808,18 +808,18 @@ let userBalance = 0;
             const text = frases[Math.floor(Math.random() * frases.length)];
             speech.textContent = text;
             
-            // Calcular posiciÃ³n real en pantalla
+            // Calcular posición real en pantalla
             const rect = wrapper.getBoundingClientRect();
             speech.style.left = rect.left + 'px';
-            speech.style.bottom = (window.innerHeight - rect.bottom + 175) + 'px'; // Bajado drÃ¡sticamente
+            speech.style.bottom = (window.innerHeight - rect.bottom + 175) + 'px'; // Bajado drásticamente
 
             speech.classList.add('show');
-            setTimeout(hideSpeech, 4500); // Dar mÃ¡s tiempo para leer (4.5s)
+            setTimeout(hideSpeech, 4500); // Dar más tiempo para leer (4.5s)
         }
 
         function updateTransform() {
             wrapper.style.left = posPercent + '%';
-            // Voltearlo segÃºn la direcciÃ³n usando scaleX negativo o positivo
+            // Voltearlo segíºn la dirección usando scaleX negativo o positivo
             samurai.style.transform = `scaleX(${direction * 3.2}) scaleY(3.2)`;
         }
 
@@ -840,7 +840,7 @@ let userBalance = 0;
 
             if (Math.random() > 0.4) {
                 setTimeout(showSpeech, 300);
-                scheduleNextAction(5000); // 5 segundos mÃ­nimos garantizados para leer
+                scheduleNextAction(5000); // 5 segundos mí­nimos garantizados para leer
             } else {
                 scheduleNextAction(1500 + Math.random() * 2000); // 1.5 a 3.5 segs si no habla
             }
@@ -883,7 +883,7 @@ let userBalance = 0;
         }
 
         function randomAction() {
-            // OptimizaciÃ³n: si el login estÃ¡ oculto (ya logueado), no hacer nada
+            // Optimización: si el login está oculto (ya logueado), no hacer nada
             const lv = document.getElementById('login-view');
             if (lv && (lv.classList.contains('dw-oculto') || lv.style.display === 'none')) {
                 scheduleNextAction(2000); // Comprobar de nuevo en 2s
@@ -901,7 +901,7 @@ let userBalance = 0;
             }
         }
 
-        // Iniciar mÃ¡quina de estados
+        // Iniciar máquina de estados
         setIdle();
     }
 })(); // Fin _setupLoginUI
@@ -910,9 +910,9 @@ let userBalance = 0;
 // El CSS del panel premium define #login-view { display: flex !important }
 // lo que hace que un simple loginSection.style.display = 'none' sea ignorado
 // por el navegador (el !important de la hoja de estilos gana al inline sin flag).
-// La soluciÃ³n es usar classList con la clase .dw-oculto que lleva su propio
-// !important, o bien pasar el flag 'important' al mÃ©todo setProperty.
-// Usamos la clase porque es mÃ¡s legible y fÃ¡cil de depurar en DevTools.
+// La solución es usar classList con la clase .dw-oculto que lleva su propio
+// !important, o bien pasar el flag 'important' al método setProperty.
+// Usamos la clase porque es más legible y fácil de depurar en DevTools.
 // =======================================================================
 function _ocultarLogin(el) {
     if (!el) return;
@@ -942,7 +942,7 @@ window.apiCall = async function (params) {
         return await response.json();
     } catch (e) {
         console.error("Error API:", e);
-        return { success: false, msg: "Error de conexiÃ³n con el servidor" };
+        return { success: false, msg: "Error de conexión con el servidor" };
     }
 };
 // =======================================================================
@@ -1006,7 +1006,7 @@ window.mostrarToast = function (mensaje, tipo = 'success') {
     }
 };
 // =======================================================================
-// --- 3. ARRANQUE DE MÃ“DULOS ---
+// --- 3. ARRANQUE DE Mí“DULOS ---
 // =======================================================================
 function arrancarModulos() {
     const ejecutar = () => {
@@ -1018,18 +1018,18 @@ function arrancarModulos() {
             cartBtn.style.display = 'none';
         }
 
-        // â”€â”€ VersiÃ³n nueva o primera visita â†’ Inicio | Ya la vio â†’ Tienda â”€â”€
+        // ── Versión nueva o primera visita â†’ Inicio | Ya la vio â†’ Tienda ──
         const versionActual = (typeof historicoVersiones !== 'undefined' && historicoVersiones[0])
             ? historicoVersiones[0].version : 'unknown';
         const versionVista = localStorage.getItem('dw_version_vista');
 
         if (versionVista !== versionActual) {
-            // Primera vez o hay versiÃ³n nueva: mostrar Inicio y guardar versiÃ³n
+            // Primera vez o hay versión nueva: mostrar Inicio y guardar versión
             localStorage.setItem('dw_version_vista', versionActual);
             const btnInicio = document.querySelector('.nav-item[onclick*="inicio"]');
             nav('inicio', btnInicio);
         } else {
-            // Ya vio esta versiÃ³n: ir directo a la tienda
+            // Ya vio esta versión: ir directo a la tienda
             const btnTienda = document.querySelector('.nav-item[onclick*="tienda"]');
             if (btnTienda) {
                 nav('tienda', btnTienda);
@@ -1050,7 +1050,7 @@ function arrancarModulos() {
     setTimeout(ejecutar, delay);
 }
 // =======================================================================
-// --- 4. LÃ“GICA DE SESIÃ“N Y RENDERIZADO INICIAL ---
+// --- 4. Lí“GICA DE SESIí“N Y RENDERIZADO INICIAL ---
 // =======================================================================
 document.addEventListener('DOMContentLoaded', async () => {
     const formLogin = document.getElementById('login-form');
@@ -1074,7 +1074,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (temaGuardado) aplicarTemaCliente(temaGuardado === 'dark');
     else aplicarTemaCliente(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (themeToggle) themeToggle.addEventListener('change', (e) => aplicarTemaCliente(e.target.checked));
-    // VISIBILIDAD DE CONTRASEÃ‘A
+    // VISIBILIDAD DE CONTRASEÑA
     const togglePassword = document.getElementById('togglePassword');
     const passInput = document.getElementById('pass');
     if (togglePassword && passInput) {
@@ -1084,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             this.textContent = type === 'password' ? 'visibility_off' : 'visibility';
         });
     }
-    // â”€â”€â”€ Helper: ocultar elementos fixed que escapan al padre â”€â”€â”€
+    // ─── Helper: ocultar elementos fixed que escapan al padre ───
     const ocultarElementosFlotantesEnLogin = () => {
         const cartBtn = document.getElementById('main-cart-btn');
         if (cartBtn) {
@@ -1094,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const versionBadge = document.getElementById('version-badge');
         if (versionBadge) versionBadge.style.display = 'none';
     };
-    // COMPROBAR SESIÃ“N ACTIVA
+    // COMPROBAR SESIí“N ACTIVA
     const t = localStorage.getItem('dw_token');
     const u = localStorage.getItem('dw_user');
     if (t && u) {
@@ -1140,7 +1140,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (_fab) _fab.style.display = 'none'; //
                 if (userNameDisplay) userNameDisplay.innerText = res.usuario;
                 updateBalanceUI();
-                mostrarToast(`Â¡Bienvenido, ${res.usuario}!`, 'success');
+                mostrarToast(`¡Bienvenido, ${res.usuario}!`, 'success');
                 arrancarModulos();
                 btnLogin.innerHTML = 'ENTRAR';
                 btnLogin.disabled = false;
@@ -1152,7 +1152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 // =======================================================================
-// --- 5. SINCRONIZACIÃ“N DE SALDO ---
+// --- 5. SINCRONIZACIí“N DE SALDO ---
 // =======================================================================
 window.sincronizarSaldo = async function () {
     const u = localStorage.getItem('dw_user');
@@ -1163,9 +1163,9 @@ window.sincronizarSaldo = async function () {
         userBalance = Number(res.saldo);
         localStorage.setItem('dw_saldo', userBalance);
         updateBalanceUI();
-    } else if (res.msg === 'SesiÃ³n invÃ¡lida') {
-        // ðŸ”¥ Token expirado o invalidado â†’ cerrar sesiÃ³n automÃ¡ticamente
-        mostrarToast('Tu sesiÃ³n ha expirado. Inicia sesiÃ³n de nuevo.', 'warning');
+    } else if (res.msg === 'Sesión inválida') {
+        // ðŸ”¥ Token expirado o invalidado â†’ cerrar sesión automáticamente
+        mostrarToast('Tu sesión ha expirado. Inicia sesión de nuevo.', 'warning');
         setTimeout(() => logout(), 2000);
     }
 };
@@ -1181,7 +1181,7 @@ window.updateBalanceUI = function () {
     if (iName) iName.innerText = localStorage.getItem('dw_user') || 'Cliente';
 };
 // =======================================================================
-// --- 6. NAVEGACIÃ“N (SPA) CON CONTROL DE CARRITO Y BADGE DE VERSIÃ“N ---
+// --- 6. NAVEGACIí“N (SPA) CON CONTROL DE CARRITO Y BADGE DE VERSIí“N ---
 // =======================================================================
 window.nav = function (targetId, element) {
     document.querySelectorAll('.nav-item, .submenu-item').forEach(el => el.classList.remove('active'));
@@ -1220,13 +1220,13 @@ window.nav = function (targetId, element) {
     if (targetId === 'datos' && typeof cargarDatos === 'function') cargarDatos();
     if (targetId === 'mistickets' && typeof cargarMisTickets === 'function') cargarMisTickets();
     if (targetId === 'ranking' && typeof cargarRanking === 'function') cargarRanking();
-    // Sincronizar dashboard de inicio al navegar allÃ­
+    // Sincronizar dashboard de inicio al navegar allí­
     if (targetId === 'inicio' && typeof updateBalanceUI === 'function') updateBalanceUI();
     document.dispatchEvent(new CustomEvent('moduloCargado', { detail: { modulo: targetId } }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 // =======================================================================
-// --- 7. CONTROLES DE INTERFAZ (SIDEBAR / SUBMENÃšS) ---
+// --- 7. CONTROLES DE INTERFAZ (SIDEBAR / SUBMENíšS) ---
 // =======================================================================
 window.toggleSubmenu = function (elemento) {
     const submenu = elemento.nextElementSibling;
@@ -1255,7 +1255,7 @@ window.logout = function () {
 // =======================================================================
 window.initThreeJSPosters = async function(bannerElement) {
     if (typeof THREE === 'undefined') {
-        console.warn('Three.js no estÃ¡ cargado');
+        console.warn('Three.js no está cargado');
         return;
     }
     
@@ -1306,14 +1306,14 @@ window.initThreeJSPosters = async function(bannerElement) {
 
     const camera = new THREE.PerspectiveCamera(75, canvasSize.w / canvasSize.h, 0.1, 1000);
     camera.rotation.x = 0;
-    camera.position.z = 90; // MÃ¡s cerca para ver las imÃ¡genes mÃ¡s grandes
-    camera.position.y = 230; // Centrado en la grilla para evitar ver bordes vacÃ­os
+    camera.position.z = 90; // Más cerca para ver las imágenes más grandes
+    camera.position.y = 230; // Centrado en la grilla para evitar ver bordes vací­os
 
-    // --- BOTÃ“N DE CAMBIO DE PERSPECTIVA ---
+    // --- BOTí“N DE CAMBIO DE PERSPECTIVA ---
     const btnPerspective = document.createElement('button');
     btnPerspective.className = 'dw-theme-fab';
     btnPerspective.style.position = 'absolute';
-    btnPerspective.style.bottom = '80px'; // Evita el boton de pausa que estÃ¡ en 20px
+    btnPerspective.style.bottom = '80px'; // Evita el boton de pausa que está en 20px
     btnPerspective.style.left = '20px';
     btnPerspective.style.right = 'auto'; // override class styles
     btnPerspective.title = 'Cambiar Perspectiva 3D';
@@ -1337,7 +1337,7 @@ window.initThreeJSPosters = async function(bannerElement) {
             btnPerspective.innerHTML = '<span class="material-icons-round">view_day</span>';
         } else if (currentMode === 2) {
             camera.rotation.x = -0.6;
-            camera.position.y = 400; // PosiciÃ³n simÃ©trica superior para evitar ver el vacÃ­o inferior de la grilla
+            camera.position.y = 400; // Posición simétrica superior para evitar ver el vací­o inferior de la grilla
             camera.position.z = 60;
             btnPerspective.innerHTML = '<span class="material-icons-round">view_array</span>';
         }
@@ -1445,7 +1445,7 @@ window.initThreeJSPosters = async function(bannerElement) {
         }
     }
 
-    // â”€â”€ CARGA INSTANTÃNEA VÃA CDN TMDB â”€â”€
+    // ── CARGA INSTANTíNEA VíA CDN TMDB ──
     
 
     function renderPostersFast() {
@@ -1483,7 +1483,7 @@ window.initThreeJSPosters = async function(bannerElement) {
     }
 
     
-    // --- LÃ“GICA DE PAUSA (BOTÃ“N + CACHÃ‰ + LOGIN) ---
+    // --- Lí“GICA DE PAUSA (BOTí“N + CACHÉ + LOGIN) ---
     const btnPause = document.createElement('button');
     btnPause.innerHTML = '<i class="fas fa-pause"></i>';
     btnPause.style.position = 'absolute';
@@ -1531,7 +1531,7 @@ window.initThreeJSPosters = async function(bannerElement) {
 
     btnPause.addEventListener('click', () => window.toggleBackgroundAnimations());
 
-    // Iniciar con la opciÃ³n guardada
+    // Iniciar con la opción guardada
     if (localStorage.getItem('dw_pause_bg') === 'true') {
         window.toggleBackgroundAnimations(true);
     }
