@@ -53,7 +53,7 @@ async function cargarRecomendacionesCliente() {
                 filtroContainer = document.createElement('div');
                 filtroContainer.id = 'filtros-recom-premium';
                 filtroContainer.style.cssText = `
-                    display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px;
+                    display: flex; flex-direction: column; gap: 15px; margin-bottom: 25px; max-width: 100%; overflow: hidden;
                 `;
                 // Ocultar scrollbar en Chrome para contenedores de scroll
                 const style = document.createElement('style');
@@ -76,7 +76,7 @@ async function cargarRecomendacionesCliente() {
             let row1HTML = `
                 <div class="scroll-row" style="display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 10px 20px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
                     <button onclick="cambiarNombreMarca()" class="btn-filtro-rec" style="${btnEstiloBase} background: linear-gradient(45deg, #a855f7, #3b82f6); color: white; border: none; box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);">✨ Mi Marca</button>
-                    <button onclick="filtrarRecomendaciones('Todo', this)" class="btn-filtro-rec active" style="${btnEstiloBase} background: white; color: black; box-shadow: 0 0 15px rgba(255,255,255,0.3);">🚀 Todo</button>
+                    <button id="btn-filtro-todo" onclick="filtrarRecomendaciones('Todo', this)" class="btn-filtro-rec active" style="${btnEstiloBase} background: white; color: black; box-shadow: 0 0 15px rgba(255,255,255,0.3);">🚀 Todo</button>
                     
                     <div style="width: 2px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 5px; flex-shrink: 0;"></div>
                     <span style="color: #a1a1aa; font-weight: 600; font-size: 0.8rem; letter-spacing: 1px; text-transform: uppercase; flex-shrink: 0;">Plataformas:</span>
@@ -107,9 +107,14 @@ async function cargarRecomendacionesCliente() {
             row2HTML += `</div>`;
             
             filtroContainer.innerHTML = row1HTML + row2HTML;
+            
+            // Activar Drag to Scroll
+            activarDragScroll();
 
             // Renderizar todas por defecto
-            renderizarTarjetasRecomendacion(data.datos);
+            window.datosFiltradosActuales = data.datos;
+            window.currentPageRecom = 1;
+            renderizarPaginacionRecom();
         } else {
             container.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: #ef4444;">No se pudieron cargar las recomendaciones. Error: ${data.msg}</p>`;
         }
@@ -121,6 +126,12 @@ async function cargarRecomendacionesCliente() {
 
 // Función global para filtrar
 window.filtrarRecomendaciones = (filtro, btnElement) => {
+    // Si se hace click en un filtro que ya está activo (y no es "Todo"), volver a "Todo"
+    if (btnElement && btnElement.classList.contains('active') && filtro !== 'Todo') {
+        filtro = 'Todo';
+        btnElement = document.getElementById('btn-filtro-todo');
+    }
+
     // Actualizar estilos visuales de botones
     document.querySelectorAll('.btn-filtro-rec').forEach(btn => {
         // Ignorar el botón de cambiar marca para que no pierda su estilo
@@ -148,8 +159,60 @@ window.filtrarRecomendaciones = (filtro, btnElement) => {
         filtradas = window.todasLasRecomendaciones.filter(r => r.categoria === cat);
     }
     
-    renderizarTarjetasRecomendacion(filtradas);
+    window.datosFiltradosActuales = filtradas;
+    window.currentPageRecom = 1;
+    renderizarPaginacionRecom();
 };
+
+window.cambiarPaginaRecom = (page) => {
+    window.currentPageRecom = page;
+    renderizarPaginacionRecom();
+    const sec = document.getElementById('sec-recomendaciones');
+    if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+window.cambiarItemsPorPaginaRecom = (items) => {
+    window.itemsPerPageRecom = parseInt(items);
+    window.currentPageRecom = 1;
+    renderizarPaginacionRecom();
+};
+
+function activarDragScroll() {
+    const sliders = document.querySelectorAll('.scroll-row');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    sliders.forEach(slider => {
+        slider.style.cursor = 'grab';
+        slider.addEventListener('mousedown', (e) => {
+            isDown = true;
+            slider.style.cursor = 'grabbing';
+            startX = e.pageX - slider.offsetLeft;
+            scrollLeft = slider.scrollLeft;
+        });
+        slider.addEventListener('mouseleave', () => {
+            isDown = false;
+            slider.style.cursor = 'grab';
+        });
+        slider.addEventListener('mouseup', () => {
+            isDown = false;
+            slider.style.cursor = 'grab';
+        });
+        slider.addEventListener('mousemove', (e) => {
+            if (!isDown) return;
+            e.preventDefault();
+            const x = e.pageX - slider.offsetLeft;
+            const walk = (x - startX) * 2; // Velocidad de scroll
+            slider.scrollLeft = scrollLeft - walk;
+        });
+    });
+}
+
+// Variables de paginación
+window.currentPageRecom = 1;
+window.itemsPerPageRecom = 10;
+window.datosFiltradosActuales = [];
 
 // Función global para cambiar el nombre de la marca
 window.cambiarNombreMarca = async () => {
@@ -185,16 +248,28 @@ window.cambiarNombreMarca = async () => {
     }
 };
 
-function renderizarTarjetasRecomendacion(datos) {
+function renderizarPaginacionRecom() {
+    const datos = window.datosFiltradosActuales;
     const container = document.getElementById('recomendaciones-container');
     container.innerHTML = '';
     
     if (datos.length === 0) {
         container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-gray); padding: 40px; background: rgba(255,255,255,0.02); border-radius: 20px;">No hay títulos para este filtro. ¡Prueba otro!</p>';
+        eliminarControlesPaginacion();
         return;
     }
 
-    datos.forEach(r => {
+    const totalItems = datos.length;
+    const totalPages = Math.ceil(totalItems / window.itemsPerPageRecom);
+    if (window.currentPageRecom > totalPages && totalPages > 0) window.currentPageRecom = totalPages;
+    
+    const startIdx = (window.currentPageRecom - 1) * window.itemsPerPageRecom;
+    const endIdx = startIdx + window.itemsPerPageRecom;
+    const currentDatos = datos.slice(startIdx, endIdx);
+
+    const fragment = document.createDocumentFragment();
+
+    currentDatos.forEach(r => {
         let colorPlataforma = r.color || '#e50914'; // Usar color de DB o Netflix by default
         let textColor = '#ffffff';
         
@@ -274,8 +349,11 @@ function renderizarTarjetasRecomendacion(datos) {
                 </div>
             </div>
         `;
-        container.appendChild(card);
+        fragment.appendChild(card);
     });
+    
+    // Inyectar el fragmento de una sola vez
+    container.appendChild(fragment);
     
     // Inyectar animación global
     if (!document.getElementById('anim-filtros-style')) {
@@ -304,10 +382,10 @@ function renderizarTarjetasRecomendacion(datos) {
     window.RecomObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry, index) => {
             if (entry.isIntersecting) {
-                // Pequeño delay en cascada para elementos en la misma fila
+                // Pequeño delay ultra-rápido en cascada para elementos en la misma fila
                 setTimeout(() => {
                     entry.target.classList.add('visible');
-                }, index * 100);
+                }, index * 40);
                 window.RecomObserver.unobserve(entry.target);
             }
         });
@@ -320,6 +398,73 @@ function renderizarTarjetasRecomendacion(datos) {
     document.querySelectorAll('.rec-card-premium').forEach(card => {
         window.RecomObserver.observe(card);
     });
+
+    construirControlesPaginacionRecom(totalPages);
+}
+
+function eliminarControlesPaginacion() {
+    const pag = document.getElementById('paginacion-recom-premium');
+    if (pag) pag.remove();
+}
+
+function construirControlesPaginacionRecom(totalPages) {
+    const container = document.getElementById('recomendaciones-container');
+    let pagContainer = document.getElementById('paginacion-recom-premium');
+    
+    if (!pagContainer) {
+        pagContainer = document.createElement('div');
+        pagContainer.id = 'paginacion-recom-premium';
+        pagContainer.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 20px; background: rgba(20,20,30,0.5); border-radius: 12px; margin-top: 20px; flex-wrap: wrap; gap: 15px; width: 100%; border: 1px solid rgba(255,255,255,0.05);`;
+        container.parentNode.insertBefore(pagContainer, container.nextSibling);
+    }
+    
+    if (totalPages <= 1 && window.datosFiltradosActuales.length <= window.itemsPerPageRecom) {
+        pagContainer.style.display = 'none';
+        return;
+    } else {
+        pagContainer.style.display = 'flex';
+    }
+
+    const btnStyle = `background: rgba(20,20,30,0.8); color: var(--text-white); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 800; font-family: 'Inter', sans-serif; transition: all 0.2s ease;`;
+    const btnActiveStyle = `background: var(--accent-gradient); color: #fff; border: none; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-family: 'Inter', sans-serif; box-shadow: 0 4px 15px var(--accent-glow);`;
+    const btnDisabledStyle = `background: transparent; color: var(--text-gray); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: not-allowed; opacity: 0.4;`;
+
+    let pagBtns = '';
+    
+    pagBtns += `<button onclick="cambiarPaginaRecom(1)" style="${window.currentPageRecom === 1 ? btnDisabledStyle : btnStyle}" onmouseover="if(this.style.cursor!=='not-allowed') this.style.borderColor='var(--text-gray)';" onmouseout="if(this.style.cursor!=='not-allowed') this.style.borderColor='rgba(255,255,255,0.1)';" ${window.currentPageRecom === 1 ? 'disabled' : ''}><span class="material-icons-round" style="font-size: 1.1rem;">first_page</span></button>`;
+    pagBtns += `<button onclick="cambiarPaginaRecom(${window.currentPageRecom - 1})" style="${window.currentPageRecom === 1 ? btnDisabledStyle : btnStyle}" onmouseover="if(this.style.cursor!=='not-allowed') this.style.borderColor='var(--text-gray)';" onmouseout="if(this.style.cursor!=='not-allowed') this.style.borderColor='rgba(255,255,255,0.1)';" ${window.currentPageRecom === 1 ? 'disabled' : ''}><span class="material-icons-round" style="font-size: 1.1rem;">chevron_left</span></button>`;
+    
+    let startPage = Math.max(1, window.currentPageRecom - 2);
+    let endPage = Math.min(totalPages, startPage + 4);
+    if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+        if (i === window.currentPageRecom) {
+            pagBtns += `<button style="${btnActiveStyle}">${i}</button>`;
+        } else {
+            pagBtns += `<button onclick="cambiarPaginaRecom(${i})" style="${btnStyle}" onmouseover="this.style.borderColor='var(--text-gray)';" onmouseout="this.style.borderColor='rgba(255,255,255,0.1)';">${i}</button>`;
+        }
+    }
+    
+    pagBtns += `<button onclick="cambiarPaginaRecom(${window.currentPageRecom + 1})" style="${window.currentPageRecom === totalPages ? btnDisabledStyle : btnStyle}" onmouseover="if(this.style.cursor!=='not-allowed') this.style.borderColor='var(--text-gray)';" onmouseout="if(this.style.cursor!=='not-allowed') this.style.borderColor='rgba(255,255,255,0.1)';" ${window.currentPageRecom === totalPages ? 'disabled' : ''}><span class="material-icons-round" style="font-size: 1.1rem;">chevron_right</span></button>`;
+    pagBtns += `<button onclick="cambiarPaginaRecom(${totalPages})" style="${window.currentPageRecom === totalPages ? btnDisabledStyle : btnStyle}" onmouseover="if(this.style.cursor!=='not-allowed') this.style.borderColor='var(--text-gray)';" onmouseout="if(this.style.cursor!=='not-allowed') this.style.borderColor='rgba(255,255,255,0.1)';" ${window.currentPageRecom === totalPages ? 'disabled' : ''}><span class="material-icons-round" style="font-size: 1.1rem;">last_page</span></button>`;
+
+    pagContainer.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="color: #a1a1aa; font-size: 0.8rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">Mostrar:</span>
+            <select onchange="cambiarItemsPorPaginaRecom(this.value)" style="background: rgba(15,15,20,0.9); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 8px; font-weight: 800; outline: none; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+                <option value="10" ${window.itemsPerPageRecom === 10 ? 'selected' : ''}>10</option>
+                <option value="20" ${window.itemsPerPageRecom === 20 ? 'selected' : ''}>20</option>
+                <option value="50" ${window.itemsPerPageRecom === 50 ? 'selected' : ''}>50</option>
+                <option value="100" ${window.itemsPerPageRecom === 100 ? 'selected' : ''}>100</option>
+            </select>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px; background: rgba(15,15,20,0.6); padding: 6px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+            ${pagBtns}
+        </div>
+    `;
 }
 
 // Función global para abrir SweetAlert
