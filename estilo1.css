@@ -3888,3 +3888,9 @@ body.dark-mode .bento-product-card:hover {
     z-index: 2;
     pointer-events: none;
 }
+
+
+/* Fix for Horizontal Overflow in Main Content Grid */
+.main-content { width: calc(100% - var(--sidebar-w)); max-width: 100%; box-sizing: border-box; overflow-x: hidden; }
+@media (max-width: 768px) { .main-content { width: 100%; margin-left: 0; padding: 20px 10px; } }
+
