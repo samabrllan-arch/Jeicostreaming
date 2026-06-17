@@ -758,7 +758,7 @@ let userBalance = 0;
             fabIcon.textContent = esOscuro ? 'light_mode' : 'dark_mode';
         }, 180);
     });
-    document.body.appendChild(themeFab);
+    loginView.appendChild(themeFab);
 
     // 6. Inicializar el sistema de palabras + samurai
     function _initSamuraiArena() {
