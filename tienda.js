@@ -52,7 +52,7 @@ if (!document.getElementById('jeico-premium-styles')) {
             transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
         }
 
-        .jeico-card-wrapper:hover {
+        .jeico-card-wrapper:not(.is-sold-out):hover {
             box-shadow: 0 16px 40px var(--accent-glow, rgba(124, 58, 237, 0.45));
             transform: translateY(-6px);
             border-color: var(--accent, #7c3aed);
@@ -89,8 +89,8 @@ if (!document.getElementById('jeico-premium-styles')) {
             transition: height 0.55s cubic-bezier(0.4, 0, 0.2, 1), object-position 0.55s ease, filter 0.4s ease;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-img,
-        .jeico-card-wrapper:focus-within .jeico-card-img {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-img,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-img {
             height: 52%;
             object-position: 50% 10%;
             transition: height 0.55s cubic-bezier(0.4, 0, 0.2, 1), object-position 0.45s ease;
@@ -156,43 +156,43 @@ if (!document.getElementById('jeico-premium-styles')) {
         }
 
         /* ── 5. HOVER REVEAL: Mostrar contenido ── */
-        .jeico-card-wrapper:hover::before,
-        .jeico-card-wrapper:focus-within::before {
+        .jeico-card-wrapper:not(.is-sold-out):hover::before,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within::before {
             translate: 0 100%;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-section .card-header-anim,
-        .jeico-card-wrapper:focus-within .jeico-card-section .card-header-anim {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-section .card-header-anim,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-section .card-header-anim {
             translate: 0 0;
             transition: translate 0.55s ease-out;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-section .card-title,
-        .jeico-card-wrapper:focus-within .jeico-card-section .card-title {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-section .card-title,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-section .card-title {
             margin-block-end: 0.35rem;
             opacity: 1;
             color: var(--card-title-hover);
             transition: color 0.4s, margin-block-end 0.4s, opacity 0.4s;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-section .card-price-row,
-        .jeico-card-wrapper:focus-within .jeico-card-section .card-price-row {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-section .card-price-row,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-section .card-price-row {
             translate: 0 0;
             margin-block-end: 0.3rem;
             opacity: 1;
             transition: opacity 0.5s 0.05s, translate 0.55s ease-out 0.05s;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-section .card-stock-info,
-        .jeico-card-wrapper:focus-within .jeico-card-section .card-stock-info {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-section .card-stock-info,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-section .card-stock-info {
             translate: 0 0;
             margin-block-end: 0.3rem;
             opacity: 1;
             transition: opacity 0.5s 0.1s, translate 0.55s ease-out 0.1s;
         }
 
-        .jeico-card-wrapper:hover .jeico-card-section .card-actions,
-        .jeico-card-wrapper:focus-within .jeico-card-section .card-actions {
+        .jeico-card-wrapper:not(.is-sold-out):hover .jeico-card-section .card-actions,
+        .jeico-card-wrapper:not(.is-sold-out):focus-within .jeico-card-section .card-actions {
             translate: 0 0;
             opacity: 1;
             transition: opacity 0.5s 0.15s, translate 0.55s ease-out 0.15s;
@@ -280,29 +280,6 @@ if (!document.getElementById('jeico-premium-styles')) {
         .jeico-card-wrapper.is-sold-out {
             filter: grayscale(0.85);
             opacity: 0.85;
-        }
-        .jeico-card-wrapper.is-sold-out:hover {
-            box-shadow: 0 8px 24px var(--card-shadow-color);
-            transform: translateY(0);
-            border-color: var(--card-border-color);
-        }
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-img {
-            height: 100%;
-            object-position: 50% 15%;
-        }
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-title,
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-price-row,
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-stock-info,
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-actions {
-            translate: 0 80%;
-            opacity: 0;
-        }
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-title {
-            translate: 0 -180%;
-            opacity: 1;
-        }
-        .jeico-card-wrapper.is-sold-out:hover::before {
-            translate: 0 0;
         }
 
         /* ── 10. BOTONES DE ACCIÓN (dentro de card-actions) ── */
@@ -423,26 +400,28 @@ if (!document.getElementById('jeico-premium-styles')) {
 
         /* ── 12. MOBILE: Mantener reveal abierto en touch ── */
         @media (hover: none) and (pointer: coarse) {
-            .jeico-card-img {
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-img {
                 height: 52% !important;
                 object-position: 50% 10% !important;
             }
-            .jeico-card-wrapper::before {
+            .jeico-card-wrapper:not(.is-sold-out)::before {
                 translate: 0 100% !important;
             }
-            .jeico-card-section .card-title {
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-header-anim {
                 translate: 0 0 !important;
+            }
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-title {
                 margin-block-end: 0.35rem !important;
                 opacity: 1 !important;
                 color: var(--card-title-hover) !important;
             }
-            .jeico-card-section .card-price-row,
-            .jeico-card-section .card-stock-info {
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-price-row,
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-stock-info {
                 translate: 0 0 !important;
                 margin-block-end: 0.3rem !important;
                 opacity: 1 !important;
             }
-            .jeico-card-section .card-actions {
+            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-actions {
                 translate: 0 0 !important;
                 opacity: 1 !important;
             }
