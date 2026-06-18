@@ -8,84 +8,437 @@ if (!document.getElementById('jeico-premium-styles')) {
     const style = document.createElement('style');
     style.id = 'jeico-premium-styles';
     style.innerHTML = `
-        /* Variables dinámicas para el borde (Negro en claro, Blanco en oscuro) */
+        /* ═══════════════════════════════════════════════════════════════════
+           🎴 TARJETAS HOVER-REVEAL — JEICOSTREAMING PREMIUM
+           La imagen ocupa toda la tarjeta. Al hacer hover, se revela
+           la info del producto con animaciones suaves de slide/fade.
+        ═══════════════════════════════════════════════════════════════════ */
+
         :root {
-            --card-strong-border: #0f172a; /* Negro muy oscuro para modo claro */
-            --card-shadow-color: rgba(0, 0, 0, 0.15); /* Sombra suave para modo claro */
+            --card-bg: #fff;
+            --card-title-color: #fff;
+            --card-title-hover: #000;
+            --card-text-color: #555;
+            --card-btn-bg: #eee;
+            --card-btn-hover: #ddd;
+            --card-shadow-color: rgba(0, 0, 0, 0.15);
+            --card-border-color: #0f172a;
         }
         body.dark-mode {
-            --card-strong-border: #f8fafc; /* Blanco tiza para modo oscuro */
-            --card-shadow-color: rgba(0, 0, 0, 0.6); /* Sombra intensa para modo oscuro */
+            --card-bg: #1a1a2e;
+            --card-title-color: #fff;
+            --card-title-hover: #fff;
+            --card-text-color: #b0b0c8;
+            --card-btn-bg: #2a2a40;
+            --card-btn-hover: #353550;
+            --card-shadow-color: rgba(0, 0, 0, 0.6);
+            --card-border-color: #f8fafc;
         }
 
-        /* 1. EL ENVOLTORIO: Aquí va la sombra, fuera del clip-path */
+        /* ── 1. WRAPPER ── */
         .jeico-card-wrapper {
-            height: 100%;
-            filter: drop-shadow(0px 8px 16px var(--card-shadow-color));
-            transition: filter 0.3s ease; /* Se eliminó el transform para que la tarjeta no se mueva */
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* Efecto al pasar el mouse sobre toda la tarjeta (solo brillo) */
-        .jeico-card-wrapper:hover {
-            filter: drop-shadow(0px 15px 25px var(--accent-glow, rgba(124, 58, 237, 0.5)));
-        }
-
-        /* 2. EL BORDE GRUESO: Este tiene el clip-path y el color dinámico */
-        .jeico-card-border {
-            background: var(--card-strong-border);
-            padding: 3px; /* Borde más grueso para resaltar */
-            clip-path: polygon(20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%, 0 20px);
-            height: 100%;
-            transition: background 0.3s ease;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Al hacer hover, el borde cambia al color principal (Morado/Acento) */
-        .jeico-card-wrapper:hover .jeico-card-border {
-            background: var(--accent);
-        }
-
-        /* 3. EL FONDO INTERIOR */
-        .jeico-card-inner {
-            background: var(--bg-card);
+            background: var(--card-bg);
+            border: 3px solid var(--card-border-color);
+            border-radius: 1.5rem;
+            padding: 0.4rem;
             width: 100%;
-            height: 100%;
+            height: 23.5rem;
             display: flex;
             flex-direction: column;
-            clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+            overflow: clip;
+            position: relative;
+            font-family: 'Lato', 'Montserrat', Helvetica, Arial, sans-serif;
+            box-shadow: 0 8px 24px var(--card-shadow-color);
+            transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
         }
 
-        /* 4. LA IMAGEN: Conectada al hover del wrapper */
+        .jeico-card-wrapper:hover {
+            box-shadow: 0 16px 40px var(--accent-glow, rgba(124, 58, 237, 0.45));
+            transform: translateY(-6px);
+            border-color: var(--accent, #7c3aed);
+        }
+
+        /* ── 2. BLUR BACKDROP (Sutil degradado inferior) ── */
+        .jeico-card-wrapper::before {
+            content: "";
+            position: absolute;
+            width: calc(100% - 0.8rem);
+            height: 35%;
+            bottom: 0.4rem;
+            left: 0.4rem;
+            mask: linear-gradient(transparent, #000f 80%);
+            -webkit-mask: linear-gradient(transparent, #000f 80%);
+            backdrop-filter: blur(1rem);
+            -webkit-backdrop-filter: blur(1rem);
+            border-radius: 0 0 1.2rem 1.2rem;
+            translate: 0 0;
+            transition: translate 0.25s ease;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* ── 3. IMAGEN PRINCIPAL (height animado) ── */
         .jeico-card-img {
             width: 100%;
             height: 100%;
+            flex-shrink: 0;
             object-fit: cover;
-            opacity: 0.9;
-            transition: transform 0.5s ease, opacity 0.5s ease;
-        }
-        
-        .jeico-card-wrapper:hover .jeico-card-img {
-            transform: scale(1.1); /* Efecto zoom activado desde la tarjeta */
-            opacity: 1;
+            object-position: 50% 15%;
+            border-radius: 1.2rem;
+            display: block;
+            transition: height 0.55s cubic-bezier(0.4, 0, 0.2, 1), object-position 0.55s ease, filter 0.4s ease;
         }
 
-        /* 5. TARJETAS AGOTADAS (Neutralizadas sin hover) */
+        .jeico-card-wrapper:hover .jeico-card-img,
+        .jeico-card-wrapper:focus-within .jeico-card-img {
+            height: 52%;
+            object-position: 50% 10%;
+            transition: height 0.55s cubic-bezier(0.4, 0, 0.2, 1), object-position 0.45s ease;
+        }
+
+        /* ── 4. SECCIÓN DE CONTENIDO ── */
+        .jeico-card-section {
+            margin: 0.75rem 0.85rem 0.85rem;
+            flex-grow: 1;
+            height: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 2;
+        }
+
+        .jeico-card-section .card-title {
+            margin: 0;
+            margin-block-end: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--card-title-color);
+            opacity: 1;
+            translate: 0 -180%;
+            transition: color 0.4s, margin-block-end 0.3s, opacity 0.4s, translate 0.45s ease-out;
+            line-height: 1.2;
+        }
+
+        .jeico-card-section .card-price-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            opacity: 0;
+            translate: 0 80%;
+            margin: 0;
+            transition: opacity 0.4s, translate 0.45s ease-out, margin-block-end 0.3s;
+        }
+
+        .jeico-card-section .card-stock-info {
+            font-size: 0.78rem;
+            color: var(--card-text-color);
+            opacity: 0;
+            translate: 0 80%;
+            margin: 0;
+            transition: opacity 0.4s, translate 0.45s ease-out, margin-block-end 0.3s;
+        }
+
+        .jeico-card-section .card-actions {
+            margin-top: auto;
+            display: flex;
+            align-items: flex-end;
+            opacity: 0;
+            translate: 0 60%;
+            transition: translate 0.45s ease-out, opacity 0.4s;
+        }
+
+        /* ── 5. HOVER REVEAL: Mostrar contenido ── */
+        .jeico-card-wrapper:hover::before,
+        .jeico-card-wrapper:focus-within::before {
+            translate: 0 100%;
+        }
+
+        .jeico-card-wrapper:hover .jeico-card-section .card-title,
+        .jeico-card-wrapper:focus-within .jeico-card-section .card-title {
+            translate: 0 0;
+            margin-block-end: 0.35rem;
+            opacity: 1;
+            color: var(--card-title-hover);
+            transition: color 0.4s, margin-block-end 0.4s, opacity 0.4s, translate 0.55s ease-out;
+        }
+
+        .jeico-card-wrapper:hover .jeico-card-section .card-price-row,
+        .jeico-card-wrapper:focus-within .jeico-card-section .card-price-row {
+            translate: 0 0;
+            margin-block-end: 0.3rem;
+            opacity: 1;
+            transition: opacity 0.5s 0.05s, translate 0.55s ease-out 0.05s;
+        }
+
+        .jeico-card-wrapper:hover .jeico-card-section .card-stock-info,
+        .jeico-card-wrapper:focus-within .jeico-card-section .card-stock-info {
+            translate: 0 0;
+            margin-block-end: 0.3rem;
+            opacity: 1;
+            transition: opacity 0.5s 0.1s, translate 0.55s ease-out 0.1s;
+        }
+
+        .jeico-card-wrapper:hover .jeico-card-section .card-actions,
+        .jeico-card-wrapper:focus-within .jeico-card-section .card-actions {
+            translate: 0 0;
+            opacity: 1;
+            transition: opacity 0.5s 0.15s, translate 0.55s ease-out 0.15s;
+        }
+
+        /* ── 6. BADGES FLOTANTES (sobre la imagen) ── */
+        .jeico-card-badges {
+            position: absolute;
+            top: 0.85rem;
+            left: 0.85rem;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .jeico-card-badge {
+            background: var(--accent, #7c3aed);
+            color: #fff;
+            font-size: 0.62rem;
+            font-weight: 900;
+            padding: 4px 10px;
+            border-radius: 0.6rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .jeico-card-badge.badge-completa {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+        }
+
+        .jeico-card-badge.badge-fav {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        /* ── 7. BOTÓN INFO (esquina superior derecha) ── */
+        .jeico-card-info-btn {
+            position: absolute;
+            top: 0.85rem;
+            right: 0.85rem;
+            z-index: 3;
+            background: rgba(0,0,0,0.45);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1.5px solid rgba(255,255,255,0.15);
+            color: #fff;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.25s, transform 0.25s, border-color 0.25s;
+        }
+
+        .jeico-card-info-btn:hover {
+            background: var(--accent, #7c3aed);
+            border-color: var(--accent, #7c3aed);
+            transform: scale(1.1);
+        }
+
+        /* ── 8. OVERLAY AGOTADO ── */
+        .jeico-card-soldout-overlay {
+            position: absolute;
+            inset: 0.4rem;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding-bottom: 25%;
+            color: #fff;
+            font-weight: 900;
+            letter-spacing: 3px;
+            font-size: 1.3rem;
+            z-index: 1;
+            border-radius: 1.2rem;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+
+        /* ── 9. TARJETAS AGOTADAS ── */
         .jeico-card-wrapper.is-sold-out {
-            filter: grayscale(1) drop-shadow(0px 4px 6px rgba(0,0,0,0.1));
-            opacity: 0.75;
+            filter: grayscale(0.85);
+            opacity: 0.85;
         }
         .jeico-card-wrapper.is-sold-out:hover {
-            filter: grayscale(1) drop-shadow(0px 4px 6px rgba(0,0,0,0.1)); /* Mantiene la sombra estática */
-        }
-        .jeico-card-wrapper.is-sold-out:hover .jeico-card-border {
-            background: var(--card-strong-border); /* Mantiene el borde gris/muerto */
+            box-shadow: 0 8px 24px var(--card-shadow-color);
+            transform: translateY(0);
+            border-color: var(--card-border-color);
         }
         .jeico-card-wrapper.is-sold-out:hover .jeico-card-img {
-            transform: scale(1); /* Desactiva el zoom de la imagen */
-            opacity: 0.9; /* Mantiene la opacidad original */
+            height: 100%;
+            object-position: 50% 15%;
+        }
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-title,
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-price-row,
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-stock-info,
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-actions {
+            translate: 0 80%;
+            opacity: 0;
+        }
+        .jeico-card-wrapper.is-sold-out:hover .jeico-card-section .card-title {
+            translate: 0 -180%;
+            opacity: 1;
+        }
+        .jeico-card-wrapper.is-sold-out:hover::before {
+            translate: 0 0;
+        }
+
+        /* ── 10. BOTONES DE ACCIÓN (dentro de card-actions) ── */
+        .card-actions .qty-group {
+            display: flex;
+            background: var(--card-btn-bg);
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1.5px solid rgba(128,128,128,0.2);
+            transition: border-color 0.2s;
+        }
+        .card-actions .qty-group:hover {
+            border-color: var(--accent, #7c3aed);
+        }
+        .card-actions .qty-btn {
+            background: transparent;
+            color: var(--card-title-hover);
+            border: none;
+            width: 32px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: 900;
+            transition: background 0.2s;
+        }
+        .card-actions .qty-btn:hover {
+            background: var(--accent, #7c3aed);
+            color: #fff;
+        }
+        .card-actions .qty-input {
+            width: 36px;
+            text-align: center;
+            background: transparent;
+            border: none;
+            border-left: 1.5px solid rgba(128,128,128,0.2);
+            border-right: 1.5px solid rgba(128,128,128,0.2);
+            color: var(--card-title-hover);
+            font-weight: 800;
+            font-size: 0.9rem;
+            outline: none;
+            -moz-appearance: textfield;
+        }
+        .card-actions .qty-input::-webkit-inner-spin-button,
+        .card-actions .qty-input::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .card-actions .add-cart-btn {
+            flex-grow: 1;
+            background: var(--accent-gradient, linear-gradient(135deg, #7c3aed, #a855f7));
+            color: #fff;
+            border: none;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-weight: 800;
+            font-size: 0.72rem;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            border-radius: 0.75rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 3px 10px var(--accent-glow, rgba(124,58,237,0.3));
+        }
+        .card-actions .add-cart-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px var(--accent-glow, rgba(124,58,237,0.5));
+        }
+
+        .card-actions .token-buy-btn {
+            flex-grow: 1;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #000;
+            border: none;
+            height: 36px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            font-weight: 900;
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-radius: 0.75rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 3px 10px rgba(245,158,11,0.25);
+        }
+        .card-actions .token-buy-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(245,158,11,0.45);
+        }
+        .card-actions .token-buy-btn:disabled,
+        .card-actions .add-cart-btn:disabled {
+            background: var(--card-btn-bg);
+            color: var(--card-text-color);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ── 11. TOKENS CASHBACK BADGE ── */
+        .card-cashback {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(245,158,11,0.1);
+            border: 1px solid rgba(245,158,11,0.25);
+            border-radius: 0.5rem;
+            padding: 2px 8px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            color: #f59e0b;
+        }
+
+        /* ── 12. MOBILE: Mantener reveal abierto en touch ── */
+        @media (hover: none) and (pointer: coarse) {
+            .jeico-card-img {
+                height: 52% !important;
+                object-position: 50% 10% !important;
+            }
+            .jeico-card-wrapper::before {
+                translate: 0 100% !important;
+            }
+            .jeico-card-section .card-title {
+                translate: 0 0 !important;
+                margin-block-end: 0.35rem !important;
+                opacity: 1 !important;
+                color: var(--card-title-hover) !important;
+            }
+            .jeico-card-section .card-price-row,
+            .jeico-card-section .card-stock-info {
+                translate: 0 0 !important;
+                margin-block-end: 0.3rem !important;
+                opacity: 1 !important;
+            }
+            .jeico-card-section .card-actions {
+                translate: 0 0 !important;
+                opacity: 1 !important;
+            }
         }
     `;
     document.head.appendChild(style);
@@ -444,118 +797,106 @@ function renderizarTiendaPremium(productosDB, isCache) {
 
             const inputId = `qty-card-${titulo.replace(/\s/g, '')}-${safeName.replace(/\s/g, '')}-${index}`;
 
-            // 🔥 BOTONES INTERACTIVOS
+            // 🎴 BOTONES INTERACTIVOS (NUEVO DISEÑO HOVER-REVEAL)
             if (isCache) {
-                actionHtml = `<button style="width:100%; background:var(--bg-dark); color:var(--text-gray); border:2px solid var(--border-color); padding:12px; font-weight:800; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);" disabled>CARGANDO...</button>`;
+                actionHtml = `<button class="add-cart-btn" disabled style="width:100%; opacity:0.6;">CARGANDO...</button>`;
             } else if (isSoldOut) {
-                actionHtml = `<button disabled style="width:100%; background:var(--bg-dark); color:var(--text-gray); border:2px solid var(--border-color); padding:12px; font-weight:900; clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px); letter-spacing:1px;">AGOTADO</button>`;
+                actionHtml = `<button class="add-cart-btn" disabled style="width:100%;">AGOTADO</button>`;
             } else if (pagoModoTokens) {
-
                 // Modo tokens: botón de compra directa con tokens
                 const tkSaldo = window.userTokenSaldo || parseInt(localStorage.getItem('dw_token_saldo')) || 0;
                 const pkTokens = (p.precio_tokens || 0) * valorInicial;
                 const sinPrecio = !p.precio_tokens || p.precio_tokens <= 0;
                 const sinSaldo  = tkSaldo < pkTokens;
                 actionHtml = `
-                    <div style="display: flex; gap: 8px; margin-top: 15px;">
-                        <div style="display: flex; background: var(--bg-dark); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border: 2px solid var(--border-color); overflow:hidden; transition: 0.2s;" onmouseover="this.style.borderColor='#f59e0b';" onmouseout="this.style.borderColor='var(--border-color)';">
-                            <button onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.4rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='#f59e0b'; this.style.color='#000';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">-</button>
-                            <input type="number" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})" style="width: 40px; text-align: center; background: transparent; border: none; border-left: 2px solid var(--border-color); border-right: 2px solid var(--border-color); color: var(--text-white); font-weight: 800; outline: none; -moz-appearance: textfield; font-size: 1rem;">
-                            <button onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.2rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='#f59e0b'; this.style.color='#000';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">+</button>
+                    <div style="display:flex; gap:6px; width:100%;">
+                        <div class="qty-group">
+                            <button class="qty-btn" onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})">-</button>
+                            <input type="number" class="qty-input" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})">
+                            <button class="qty-btn" onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})">+</button>
                         </div>
-                        <button
+                        <button class="token-buy-btn"
                             ${sinPrecio || sinSaldo ? 'disabled' : ''}
-                            onclick="comprarDirectoConTokens('${safeName}', '${inputId}', ${p.precio_tokens || 0})"
-                            style="flex-grow:1; background:${sinPrecio || sinSaldo ? 'var(--bg-dark)' : 'linear-gradient(135deg,#f59e0b,#d97706)'};
-                                   color:${sinPrecio || sinSaldo ? 'var(--text-gray)' : '#000'};
-                                   border:none; height:42px; cursor:${sinPrecio || sinSaldo ? 'not-allowed':'pointer'};
-                                   display:flex; align-items:center; justify-content:center; gap:6px;
-                                   font-weight:900; letter-spacing:1px; text-transform:uppercase;
-                                   clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
-                                   transition:.3s; font-size:.78rem;">
-                            <i class="material-icons-round" style="font-size:1.1rem;">toll</i>
-                            ${sinPrecio ? 'SIN PRECIO TK' : sinSaldo ? 'TK INSUF.' : new Intl.NumberFormat('es-CO').format(pkTokens)+' TK'}
+                            onclick="comprarDirectoConTokens('${safeName}', '${inputId}', ${p.precio_tokens || 0})">
+                            <i class="material-icons-round" style="font-size:1rem;">toll</i>
+                            ${sinPrecio ? 'SIN PRECIO' : sinSaldo ? 'TK INSUF.' : new Intl.NumberFormat('es-CO').format(pkTokens)+' TK'}
                         </button>
                     </div>
                 `;
             } else {
                 actionHtml = `
-                    <div style="display: flex; gap: 8px; margin-top: 15px;">
-                        <div style="display: flex; background: var(--bg-dark); clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); border: 2px solid var(--border-color); overflow:hidden; transition: 0.2s;" onmouseover="this.style.borderColor='var(--accent)';" onmouseout="this.style.borderColor='var(--border-color)';">
-                            <button onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.4rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">-</button>
-                            <input type="number" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})" style="width: 40px; text-align: center; background: transparent; border: none; border-left: 2px solid var(--border-color); border-right: 2px solid var(--border-color); color: var(--text-white); font-weight: 800; outline: none; -moz-appearance: textfield; font-size: 1rem;">
-                            <button onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})" style="background: transparent; color: var(--text-white); border: none; width: 35px; height: 38px; cursor: pointer; font-size: 1.2rem; font-weight: 900; transition: 0.2s;" onmouseover="this.style.background='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='transparent'; this.style.color='var(--text-white)';">+</button>
+                    <div style="display:flex; gap:6px; width:100%;">
+                        <div class="qty-group">
+                            <button class="qty-btn" onclick="changeCardQty('${inputId}', -1, ${minCompra}, ${limiteRealMaximo})">-</button>
+                            <input type="number" class="qty-input" id="${inputId}" value="${valorInicial}" min="${valorInicial}" max="${limiteRealMaximo}" onchange="validateCardQty(this, ${minCompra}, ${limiteRealMaximo})">
+                            <button class="qty-btn" onclick="changeCardQty('${inputId}', 1, ${minCompra}, ${limiteRealMaximo})">+</button>
                         </div>
-                        
-                        <button onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra}, ${p.precio_tokens || 0})" style="flex-grow: 1; background: var(--accent-gradient); color: #fff; border: none; height: 42px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); transition: 0.3s; box-shadow: 0 4px 10px var(--accent-glow);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
-                            <i class="material-icons-round" style="font-size: 1.2rem;">shopping_cart</i> AÑADIR
+                        <button class="add-cart-btn" onclick="addToCartFromCard('${safeName}', ${precioActual}, '${img}', ${stockActual}, '${inputId}', ${minCompra}, ${maxCompra}, ${p.precio_tokens || 0})">
+                            <i class="material-icons-round" style="font-size:1rem;">shopping_cart</i> AÑADIR
                         </button>
                     </div>
                 `;
             }
 
 
-            // SOLO Etiqueta de Cuenta Completa
+            // 🎴 BADGES: Etiquetas flotantes sobre la imagen
             let badgesHTML = '';
             const esCuentaCompleta = p.cuenta_completa && (p.cuenta_completa.toString().trim().toLowerCase() === 'si' || p.cuenta_completa.toString().trim().toLowerCase() === 'sí');
             
             if (esCuentaCompleta) {
-                badgesHTML += `<div style="background: #3b82f6; color: #fff; font-size: 0.65rem; font-weight: 900; padding: 4px 10px; clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px); margin-bottom: 6px; display: inline-flex; align-items: center; gap: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);"><i class="material-icons-round" style="font-size: 0.8rem;">tv</i> COMPLETA</div><br>`;
+                badgesHTML += `<div class="jeico-card-badge badge-completa"><i class="material-icons-round" style="font-size:0.75rem;">tv</i> COMPLETA</div>`;
             }
 
-            // 🔥 ESTRUCTURA DE LA TARJETA MEJORADA (Jeicostreaming Style) 🔥
+            // Cashback badge HTML
+            let cashbackHTML = '';
+            if (!isSoldOut && !pagoModoTokens && p.tokens_otorgados > 0) {
+                cashbackHTML = `<span class="card-cashback"><i class="material-icons-round" style="font-size:.75rem;">toll</i> +${new Intl.NumberFormat('es-CO').format(p.tokens_otorgados)} TK</span>`;
+            }
+
+            // Stock info text
+            let stockInfoHTML = '';
+            if (isSoldOut) {
+                stockInfoHTML = `<span style="font-weight:800; color:var(--card-text-color);">AGOTADO</span>`;
+            } else {
+                stockInfoHTML = `Stock: <span style="color:var(--card-title-hover); font-weight:900;">${stockActual}</span>`;
+                if (limitesTexto) {
+                    stockInfoHTML += ` <span style="font-size:0.7rem; opacity:0.8;">${minCompra > 0 ? 'Mín:'+minCompra : ''}${minCompra > 0 && maxCompra > 0 ? ' | ' : ''}${maxCompra > 0 ? 'Máx:'+maxCompra : ''}</span>`;
+                }
+            }
+
+            // 🎴 ESTRUCTURA HOVER-REVEAL DE LA TARJETA 🎴
             const cardWrapper = document.createElement('div');
             cardWrapper.className = `jeico-card-wrapper ${isSoldOut ? 'is-sold-out' : ''}`;
             
             cardWrapper.innerHTML = `
-                <div class="jeico-card-border">
-                    <div class="jeico-card-inner">
-                        
-                        <div style="position: relative; width: 100%; height: 160px; background: var(--bg-dark); overflow: hidden;">
-                            <img src="${img}" class="jeico-card-img">
-                            
-                            <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 50px; background: linear-gradient(to top, var(--bg-card) 0%, transparent 100%);"></div>
-                            
-                            <div style="position: absolute; top: -5px; left: -25px; width: 50px; height: 10px; background: var(--accent); transform: rotate(-45deg); z-index: 2;"></div>
-                            
-                            <button onclick="mostrarDetallesModal('${safeName}', '${safeDesc}')" style="position: absolute; top: 10px; right: 10px; background: var(--bg-dark); border: 2px solid var(--border-color); color: var(--text-white); border-radius: 0; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px); transition: 0.2s; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 3;" onmouseover="this.style.background='var(--accent)'; this.style.borderColor='var(--accent)'; this.style.color='#fff';" onmouseout="this.style.background='var(--bg-dark)'; this.style.borderColor='var(--border-color)'; this.style.color='var(--text-white)';">
-                                <i class="material-icons-round" style="font-size: 1.2rem;">info</i>
-                            </button>
+                ${badgesHTML ? `<div class="jeico-card-badges">${badgesHTML}</div>` : ''}
 
-                            <div style="position: absolute; bottom: 10px; left: 15px; z-index: 2;">
-                                ${badgesHTML}
-                            </div>
-                            
-                            ${isSoldOut ? '<div style="position:absolute; inset:0; background:rgba(0,0,0,0.6); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:900; letter-spacing:2px; font-size:1.4rem; z-index: 3;">AGOTADO</div>' : ''}
-                        </div>
+                <button class="jeico-card-info-btn" onclick="this.blur(); mostrarDetallesModal('${safeName}', '${safeDesc}')">
+                    <i class="material-icons-round" style="font-size:1.1rem;">info_outline</i>
+                </button>
 
-                        <div style="padding: 20px; display: flex; flex-direction: column; flex-grow: 1;">
-                            <h3 style="margin: 0 0 12px 0; font-size: 1.15rem; color: var(--text-white); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1.2;">${escapeHTML(p.nombre)}</h3>
+                <img src="${img}" alt="${escapeHTML(p.nombre)}" class="jeico-card-img" loading="lazy" decoding="async">
 
-                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
-                                ${pagoModoTokens && p.precio_tokens > 0
-                                    ? `<span style="color:#f59e0b; font-size:1.5rem; font-weight:900;">🪙 ${new Intl.NumberFormat('es-CO').format(p.precio_tokens)} TK</span>`
-                                    : `<span style="color: var(--accent-text); font-size: 1.5rem; font-weight: 900;">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
-                                       ${mostrarPrecioViejo ? `<span style="text-decoration: line-through; color: var(--text-gray); font-size: 0.9rem; font-weight: 600;">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}`
-                                }
-                            </div>
+                ${isSoldOut ? '<div class="jeico-card-soldout-overlay">AGOTADO</div>' : ''}
 
-                            <div style="background: var(--bg-dark); border-left: 3px solid ${isSoldOut ? 'var(--text-gray)' : (pagoModoTokens ? '#f59e0b' : 'var(--accent)')}; padding: 8px 12px; color: var(--text-gray); font-size: 0.8rem; border-radius: 0 8px 8px 0;">
-                                ${isSoldOut ? '<span style="font-weight:800;">Estado: AGOTADO</span>' : `Stock Disponible: <span style="color:var(--text-white); font-weight:900; font-size:0.9rem;">${stockActual}</span>`}
-                                ${limitesTexto}
-                            </div>
-                            ${(!isSoldOut && !pagoModoTokens && p.tokens_otorgados > 0) ? `
-                            <div style="margin-top:8px; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:6px; padding:5px 10px; font-size:.72rem; font-weight:800; color:#f59e0b; display:flex; align-items:center; gap:5px;">
-                                <i class="material-icons-round" style="font-size:.9rem;">toll</i>
-                                +${new Intl.NumberFormat('es-CO').format(p.tokens_otorgados)} TK cashback
-                            </div>` : ''}
+                <section class="jeico-card-section">
+                    <h3 class="card-title">${escapeHTML(p.nombre)}</h3>
 
-                            <div style="margin-top: auto; position: relative; z-index: 5;">
-                                ${actionHtml}
-                            </div>
-                        </div>
+                    <div class="card-price-row">
+                        ${pagoModoTokens && p.precio_tokens > 0
+                            ? `<span style="color:#f59e0b; font-size:1.25rem; font-weight:900;">🪙 ${new Intl.NumberFormat('es-CO').format(p.precio_tokens)} TK</span>`
+                            : `<span style="color: var(--accent-text, #7c3aed); font-size: 1.25rem; font-weight: 900;">$ ${new Intl.NumberFormat('es-CO').format(precioActual)}</span>
+                               ${mostrarPrecioViejo ? `<span style="text-decoration: line-through; color: var(--card-text-color); font-size: 0.8rem; font-weight: 600;">$ ${new Intl.NumberFormat('es-CO').format(precioAnterior)}</span>` : ''}`
+                        }
+                        ${cashbackHTML}
                     </div>
-                </div>
+
+                    <div class="card-stock-info">${stockInfoHTML}</div>
+
+                    <div class="card-actions">
+                        ${actionHtml}
+                    </div>
+                </section>
             `;
             gridContainer.appendChild(cardWrapper);
         });
@@ -589,7 +930,10 @@ function renderizarTiendaPremium(productosDB, isCache) {
         }
     }
 
-    container.innerHTML = tempContainer.innerHTML;
+    container.innerHTML = '';
+    while (tempContainer.firstChild) {
+        container.appendChild(tempContainer.firstChild);
+    }
     
     // 🔥 RESTAURAR EL FOCO Y EL CURSOR EXACTO AL BUSCADOR 🔥
     if (focusData.isFocused) {
@@ -677,15 +1021,15 @@ window.addToCartFromCard = function (nombre, precio, img, stockReal, inputId, mi
     if (input) input.value = minCompra > 0 ? minCompra : 1;
 
     // --- EFECTO VISUAL DE COMPRA ---
-    btnClicked.style.background = 'var(--success)';
+    btnClicked.style.background = 'linear-gradient(135deg, #10b981, #059669)';
     btnClicked.style.color = '#fff';
-    btnClicked.style.boxShadow = '0 0 15px rgba(16, 185, 129, 0.4)';
-    btnClicked.innerHTML = '<i class="material-icons-round" style="font-size: 1.2rem; margin-right: 5px;">check_circle</i> AÑADIDO';
+    btnClicked.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.4)';
+    btnClicked.innerHTML = '<i class="material-icons-round" style="font-size:1rem;">check_circle</i> AÑADIDO';
 
     setTimeout(() => {
-        btnClicked.style.background = 'var(--accent-gradient)';
-        btnClicked.style.color = '#fff';
-        btnClicked.style.boxShadow = '0 4px 10px var(--accent-glow)';
+        btnClicked.style.background = '';
+        btnClicked.style.color = '';
+        btnClicked.style.boxShadow = '';
         btnClicked.innerHTML = textoOriginal;
     }, 1500);
 }
