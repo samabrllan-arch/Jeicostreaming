@@ -111,6 +111,7 @@ if (!document.getElementById('jeico-premium-styles')) {
             translate: 0 -130%;
             transition: translate 0.45s ease-out;
             width: 100%;
+            position: relative;
         }
 
         .jeico-card-section .card-title {
@@ -200,6 +201,9 @@ if (!document.getElementById('jeico-premium-styles')) {
 
         /* ── 6. BADGES FLOTANTES (sobre la imagen) ── */
         .jeico-card-badges {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
             display: flex;
             gap: 5px;
             flex-wrap: wrap;
