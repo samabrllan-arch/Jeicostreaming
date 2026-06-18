@@ -50,6 +50,8 @@ if (!document.getElementById('jeico-premium-styles')) {
             font-family: 'Lato', 'Montserrat', Helvetica, Arial, sans-serif;
             box-shadow: 0 8px 24px var(--card-shadow-color);
             transition: box-shadow 0.3s ease, transform 0.3s ease, border-color 0.3s ease;
+            outline: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .jeico-card-wrapper:not(.is-sold-out):hover {
@@ -402,34 +404,7 @@ if (!document.getElementById('jeico-premium-styles')) {
             color: #f59e0b;
         }
 
-        /* ── 12. MOBILE: Mantener reveal abierto en touch ── */
-        @media (hover: none) and (pointer: coarse) {
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-img {
-                height: 52% !important;
-                object-position: 50% 10% !important;
-            }
-            .jeico-card-wrapper:not(.is-sold-out)::before {
-                translate: 0 100% !important;
-            }
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-header-anim {
-                translate: 0 0 !important;
-            }
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-title {
-                margin-block-end: 0.35rem !important;
-                opacity: 1 !important;
-                color: var(--card-title-hover) !important;
-            }
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-price-row,
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-stock-info {
-                translate: 0 0 !important;
-                margin-block-end: 0.3rem !important;
-                opacity: 1 !important;
-            }
-            .jeico-card-wrapper:not(.is-sold-out) .jeico-card-section .card-actions {
-                translate: 0 0 !important;
-                opacity: 1 !important;
-            }
-        }
+
     `;
     document.head.appendChild(style);
 }
@@ -857,6 +832,7 @@ function renderizarTiendaPremium(productosDB, isCache) {
             // 🎴 ESTRUCTURA HOVER-REVEAL DE LA TARJETA 🎴
             const cardWrapper = document.createElement('div');
             cardWrapper.className = `jeico-card-wrapper ${isSoldOut ? 'is-sold-out' : ''}`;
+            cardWrapper.tabIndex = 0;
             
             cardWrapper.innerHTML = `
                 <button class="jeico-card-info-btn" onclick="this.blur(); mostrarDetallesModal('${safeName}', '${safeDesc}')">
