@@ -107,6 +107,12 @@ if (!document.getElementById('jeico-premium-styles')) {
             z-index: 2;
         }
 
+        .jeico-card-section .card-header-anim {
+            translate: 0 -130%;
+            transition: translate 0.45s ease-out;
+            width: 100%;
+        }
+
         .jeico-card-section .card-title {
             margin: 0;
             margin-block-end: 0.5rem;
@@ -116,8 +122,7 @@ if (!document.getElementById('jeico-premium-styles')) {
             letter-spacing: 0.5px;
             color: var(--card-title-color);
             opacity: 1;
-            translate: 0 -180%;
-            transition: color 0.4s, margin-block-end 0.3s, opacity 0.4s, translate 0.45s ease-out;
+            transition: color 0.4s, margin-block-end 0.3s, opacity 0.4s;
             line-height: 1.2;
         }
 
@@ -156,13 +161,18 @@ if (!document.getElementById('jeico-premium-styles')) {
             translate: 0 100%;
         }
 
+        .jeico-card-wrapper:hover .jeico-card-section .card-header-anim,
+        .jeico-card-wrapper:focus-within .jeico-card-section .card-header-anim {
+            translate: 0 0;
+            transition: translate 0.55s ease-out;
+        }
+
         .jeico-card-wrapper:hover .jeico-card-section .card-title,
         .jeico-card-wrapper:focus-within .jeico-card-section .card-title {
-            translate: 0 0;
             margin-block-end: 0.35rem;
             opacity: 1;
             color: var(--card-title-hover);
-            transition: color 0.4s, margin-block-end 0.4s, opacity 0.4s, translate 0.55s ease-out;
+            transition: color 0.4s, margin-block-end 0.4s, opacity 0.4s;
         }
 
         .jeico-card-wrapper:hover .jeico-card-section .card-price-row,
@@ -190,13 +200,10 @@ if (!document.getElementById('jeico-premium-styles')) {
 
         /* ── 6. BADGES FLOTANTES (sobre la imagen) ── */
         .jeico-card-badges {
-            position: absolute;
-            top: 0.85rem;
-            left: 0.85rem;
-            z-index: 3;
             display: flex;
-            flex-direction: column;
             gap: 5px;
+            flex-wrap: wrap;
+            margin-bottom: 0.4rem;
         }
 
         .jeico-card-badge {
@@ -869,8 +876,6 @@ function renderizarTiendaPremium(productosDB, isCache) {
             cardWrapper.className = `jeico-card-wrapper ${isSoldOut ? 'is-sold-out' : ''}`;
             
             cardWrapper.innerHTML = `
-                ${badgesHTML ? `<div class="jeico-card-badges">${badgesHTML}</div>` : ''}
-
                 <button class="jeico-card-info-btn" onclick="this.blur(); mostrarDetallesModal('${safeName}', '${safeDesc}')">
                     <i class="material-icons-round" style="font-size:1.1rem;">info_outline</i>
                 </button>
@@ -880,7 +885,10 @@ function renderizarTiendaPremium(productosDB, isCache) {
                 ${isSoldOut ? '<div class="jeico-card-soldout-overlay">AGOTADO</div>' : ''}
 
                 <section class="jeico-card-section">
-                    <h3 class="card-title">${escapeHTML(p.nombre)}</h3>
+                    <div class="card-header-anim">
+                        ${badgesHTML ? `<div class="jeico-card-badges">${badgesHTML}</div>` : ''}
+                        <h3 class="card-title">${escapeHTML(p.nombre)}</h3>
+                    </div>
 
                     <div class="card-price-row">
                         ${pagoModoTokens && p.precio_tokens > 0
