@@ -1119,6 +1119,12 @@ window.toggleCart = function () {
     const overlay = document.getElementById('cart-overlay');
     if (drawer) drawer.classList.toggle('open');
     if (overlay) overlay.classList.toggle('hidden');
+
+    if (drawer && drawer.classList.contains('open')) {
+        document.body.style.overflow = 'hidden';
+    } else {
+        document.body.style.overflow = '';
+    }
 }
 
 /**
@@ -1197,11 +1203,13 @@ window.goToCheckout = function () {
     toggleCart();
     document.getElementById('checkout-overlay').classList.remove('hidden');
     document.getElementById('checkout-modal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 window.closeCheckout = function () {
     document.getElementById('checkout-overlay').classList.add('hidden');
     document.getElementById('checkout-modal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
 function generarOrderId() {
