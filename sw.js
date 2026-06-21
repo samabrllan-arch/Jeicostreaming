@@ -1,10 +1,10 @@
 
-const CACHE_NAME = 'jeico-cache-1782057743711';
+const CACHE_NAME = 'jeico-cache-1782067974466';
 const urlsToCache = [
   './',
   './index.html',
   './estilo1.min.css',
-  './app.min.js?v=1782057743711'
+  './app.min.js?v=1782067974466'
 ];
 
 self.addEventListener('install', event => {
