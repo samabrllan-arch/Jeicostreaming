@@ -1,8 +1,8 @@
 
-// SW versión: 1782173753558
+// SW versión: 1782174205036
 // ESTRATEGIA: Cache-first SÓLO para assets estáticos.
 // index.html y app.min.js SIEMPRE van a la red (nunca se cachean).
-const CACHE_NAME = 'jeico-static-1782173753558';
+const CACHE_NAME = 'jeico-static-1782174205036';
 
 // Solo assets que NUNCA cambian entre sesiones
 const STATIC_ASSETS = [
