@@ -2,13 +2,49 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Jeico Streaming</title>
-    <meta http-equiv="refresh" content="0; url=https://jeicostreaming.github.io/Tienda/">
+    <title>Redirigiendo a Jeico Streaming...</title>
+    <!-- Evitar caché a nivel de meta tags -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <meta http-equiv="refresh" content="3; url=https://jeicostreaming.github.io/Tienda/">
     
     <script>
-        window.location.replace("https://jeicostreaming.github.io/Tienda/");
+        // 1. Limpiar todo el almacenamiento local y de sesión
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // 2. Desregistrar cualquier Service Worker antiguo
+        if ('serviceWorker' in navigator) {
+            // Intentar registrar el sw.js asesino para garantizar que destruya el cache desde el background
+            navigator.serviceWorker.register('sw.js').then(() => {
+                navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                    for(let registration of registrations) {
+                        registration.unregister();
+                    }
+                });
+            });
+        }
+
+        // 3. Borrar todas las cachés del Service Worker
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (let name of names) {
+                    caches.delete(name);
+                }
+            });
+        }
+
+        // 4. Redirigir al nuevo dominio
+        setTimeout(() => {
+            window.location.replace("https://jeicostreaming.github.io/Tienda/");
+        }, 1500);
     </script>
 </head>
-<body>
-    </body>
+<body style="background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; margin: 0;">
+    <div style="text-align: center;">
+        <h2 style="color: #a855f7;">Jeico Streaming se ha mudado</h2>
+        <p style="color: #94a3b8;">Estamos limpiando tu navegador y redirigiéndote al nuevo panel...</p>
+    </div>
+</body>
 </html>
