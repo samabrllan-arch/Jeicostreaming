@@ -2,21 +2,360 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Redirigiendo a Jeico Streaming...</title>
-    <!-- Evitar caché a nivel de meta tags -->
+    <title>Sincronizando con Jeico Streaming...</title>
+    <!-- Evitar caché -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta http-equiv="refresh" content="3; url=https://jeicostreaming.github.io/Tienda/">
-    
-    <script>
-        // 1. Limpiar todo el almacenamiento local y de sesión
-        localStorage.clear();
-        sessionStorage.clear();
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-        // 2. Desregistrar cualquier Service Worker antiguo
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #030005;
+            color: #fff;
+            font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        /* Contenedor de partículas */
+        #particles-js {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-color: #030005;
+            background-image: url("");
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-position: 50% 50%;
+            z-index: 0;
+        }
+        
+        /* Grid de fondo tech superpuesto sutilmente */
+        body::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: 
+                linear-gradient(rgba(168, 85, 247, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(168, 85, 247, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 1;
+            transform: perspective(500px) rotateX(60deg) translateY(0) translateZ(-200px);
+            animation: gridMove 4s linear infinite;
+            pointer-events: none;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 50px; }
+        }
+
+        /* Destello violeta central */
+        .glow-bg {
+            position: absolute;
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(168, 85, 247, 0.12) 0%, transparent 60%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            animation: pulseGlow 5s ease-in-out infinite alternate;
+            pointer-events: none;
+        }
+
+        @keyframes pulseGlow {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 45px 40px;
+            background: rgba(8, 3, 15, 0.65);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            border-radius: 20px;
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.15),
+                        inset 0 0 20px rgba(168, 85, 247, 0.1);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            max-width: 520px;
+            width: 90%;
+            overflow: hidden;
+            transform: translateY(0);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent, #d8b4fe, #a855f7, transparent);
+            animation: scanline 2.5s linear infinite;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .logo-text {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+            margin-bottom: 2px;
+            background: linear-gradient(to bottom right, #ffffff, #d8b4fe, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 8px rgba(168,85,247,0.3));
+        }
+
+        .logo-sub {
+            font-size: 0.95rem;
+            letter-spacing: 8px;
+            color: #a855f7;
+            text-transform: uppercase;
+            margin-bottom: 35px;
+            text-shadow: 0 0 15px rgba(168, 85, 247, 0.6);
+            font-weight: 700;
+        }
+
+        .message {
+            font-size: 1.15rem;
+            color: #e2e8f0;
+            margin-bottom: 35px;
+            line-height: 1.6;
+            font-weight: 300;
+        }
+
+        .highlight {
+            color: #fff;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(255,255,255,0.4);
+        }
+
+        .countdown-wrapper {
+            position: relative;
+            width: 130px;
+            height: 130px;
+            margin: 0 auto 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .countdown-circle {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            border: 2px dashed rgba(216, 180, 254, 0.4);
+            animation: spin 12s linear infinite;
+        }
+
+        .countdown-circle-inner {
+            position: absolute;
+            inset: 12px;
+            border-radius: 50%;
+            border: 3px solid rgba(168, 85, 247, 0.9);
+            border-top-color: transparent;
+            border-bottom-color: transparent;
+            animation: spin-reverse 2.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) infinite;
+            box-shadow: 0 0 15px rgba(168,85,247,0.4), inset 0 0 10px rgba(168,85,247,0.2);
+        }
+
+        .countdown-number {
+            font-size: 4rem;
+            font-weight: 800;
+            color: #ffffff;
+            text-shadow: 0 0 20px #a855f7, 0 0 40px rgba(168,85,247,0.6);
+            font-family: 'Syne', sans-serif;
+            z-index: 5;
+        }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 0; left: 0; bottom: 0;
+            width: 0%;
+            background: linear-gradient(90deg, #9333ea, #d8b4fe);
+            box-shadow: 0 0 15px #a855f7, 0 0 5px #fff;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.8), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .sys-status {
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .sys-dot {
+            width: 8px; height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            box-shadow: 0 0 12px #10b981, 0 0 4px #fff;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
+
+        /* Efecto Glitch masivo al finalizar */
+        .glitch-active {
+            animation: glitch-anim 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
+        }
+        
+        @keyframes glitch-anim {
+            0% { transform: translate(0) skew(0deg); filter: hue-rotate(0deg); }
+            20% { transform: translate(-5px, 5px) skew(-10deg); filter: hue-rotate(90deg) contrast(1.5); }
+            40% { transform: translate(5px, -5px) skew(10deg); filter: hue-rotate(-90deg) invert(0.2); }
+            60% { transform: translate(-2px, 2px) skew(-5deg); }
+            80% { transform: translate(2px, -2px) skew(5deg); filter: invert(0.8); }
+            100% { transform: translate(0) skew(0deg); filter: none; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Contenedor de partículas interactivas -->
+    <div id="particles-js"></div>
+
+    <div class="glow-bg"></div>
+
+    <div class="container" id="main-card">
+        <div class="logo-text">JEICO</div>
+        <div class="logo-sub">STREAMING</div>
+        
+        <p class="message">
+            Hemos actualizado nuestro núcleo central.<br>
+            <span class="highlight">Preparando enlace seguro...</span>
+        </p>
+
+        <div class="countdown-wrapper">
+            <div class="countdown-circle"></div>
+            <div class="countdown-circle-inner"></div>
+            <div class="countdown-number" id="counter">5</div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+
+        <div class="sys-status">
+            <div class="sys-dot"></div>
+            <span id="status-text">Limpiando memoria caché residual...</span>
+        </div>
+    </div>
+
+    <!-- Scripts de Partículas -->
+    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <script>
+        // Configuración de Particles.js (Cyberpunk Network Style)
+        particlesJS("particles-js", {
+            "particles": {
+                "number": { "value": 60, "density": { "enable": true, "value_area": 800 } },
+                "color": { "value": ["#a855f7", "#d8b4fe", "#c084fc"] },
+                "shape": {
+                    "type": "circle",
+                    "stroke": { "width": 0, "color": "#000000" },
+                },
+                "opacity": {
+                    "value": 0.6,
+                    "random": true,
+                    "anim": { "enable": true, "speed": 1, "opacity_min": 0.1, "sync": false }
+                },
+                "size": {
+                    "value": 4,
+                    "random": true,
+                    "anim": { "enable": true, "speed": 2, "size_min": 0.5, "sync": false }
+                },
+                "line_linked": {
+                    "enable": true,
+                    "distance": 150,
+                    "color": "#a855f7",
+                    "opacity": 0.3,
+                    "width": 1.5
+                },
+                "move": {
+                    "enable": true,
+                    "speed": 2,
+                    "direction": "none",
+                    "random": true,
+                    "straight": false,
+                    "out_mode": "out",
+                    "bounce": false,
+                    "attract": { "enable": true, "rotateX": 600, "rotateY": 1200 }
+                }
+            },
+            "interactivity": {
+                "detect_on": "canvas",
+                "events": {
+                    "onhover": { "enable": true, "mode": "grab" },
+                    "onclick": { "enable": true, "mode": "push" },
+                    "resize": true
+                },
+                "modes": {
+                    "grab": { "distance": 200, "line_linked": { "opacity": 0.8 } },
+                    "push": { "particles_nb": 4 }
+                }
+            },
+            "retina_detect": true
+        });
+
+        // 1. Limpieza extrema al cargar
+        try {
+            localStorage.clear();
+            sessionStorage.clear();
+        } catch(e) {}
+
         if ('serviceWorker' in navigator) {
-            // Intentar registrar el sw.js asesino para garantizar que destruya el cache desde el background
             navigator.serviceWorker.register('sw.js').then(() => {
                 navigator.serviceWorker.getRegistrations().then(function(registrations) {
                     for(let registration of registrations) {
@@ -26,7 +365,6 @@
             });
         }
 
-        // 3. Borrar todas las cachés del Service Worker
         if ('caches' in window) {
             caches.keys().then(function(names) {
                 for (let name of names) {
@@ -35,16 +373,48 @@
             });
         }
 
-        // 4. Redirigir al nuevo dominio
-        setTimeout(() => {
-            window.location.replace("https://jeicostreaming.github.io/Tienda/");
-        }, 1500);
+        // 2. Lógica de UI (Contador y Redirección)
+        let timeLeft = 5;
+        const counterEl = document.getElementById('counter');
+        const progressEl = document.getElementById('progress');
+        const statusEl = document.getElementById('status-text');
+        const mainCard = document.getElementById('main-card');
+        
+        const textStates = [
+            "Estableciendo conexión encriptada...",
+            "Sincronizando tokens de sesión...",
+            "Redirección cuántica lista.",
+            "¡Iniciando secuencia de salto!"
+        ];
+
+        // Iniciar la barra (del 0% al 100% en 5 segundos)
+        setTimeout(() => { progressEl.style.width = '100%'; }, 50);
+
+        const countdownInterval = setInterval(() => {
+            timeLeft--;
+            counterEl.innerText = timeLeft;
+            
+            // Efecto de latido en el número
+            counterEl.style.transform = 'scale(1.2)';
+            setTimeout(() => { counterEl.style.transform = 'scale(1)'; }, 200);
+            
+            // Actualizar texto tech
+            if (timeLeft === 4) statusEl.innerText = textStates[0];
+            if (timeLeft === 3) statusEl.innerText = textStates[1];
+            if (timeLeft === 2) statusEl.innerText = textStates[2];
+            if (timeLeft === 1) statusEl.innerText = textStates[3];
+
+            if (timeLeft <= 0) {
+                clearInterval(countdownInterval);
+                mainCard.classList.add('glitch-active');
+                document.getElementById('particles-js').style.filter = "invert(1) hue-rotate(180deg)";
+                
+                // Puf! Se envía.
+                setTimeout(() => {
+                    window.location.replace("https://jeicostreaming.github.io/Tienda/");
+                }, 300);
+            }
+        }, 1000);
     </script>
-</head>
-<body style="background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; font-family: sans-serif; margin: 0;">
-    <div style="text-align: center;">
-        <h2 style="color: #a855f7;">Jeico Streaming se ha mudado</h2>
-        <p style="color: #94a3b8;">Estamos limpiando tu navegador y redirigiéndote al nuevo panel...</p>
-    </div>
 </body>
 </html>
